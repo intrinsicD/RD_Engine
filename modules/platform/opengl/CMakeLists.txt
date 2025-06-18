@@ -1,11 +1,11 @@
 # RDE_Project/modules/platform/opengl/CMakeLists.txt
 
 add_library(OpenGLPlatform
-        OpenGLShader.cpp
-        OpenGLBuffer.cpp
-        OpenGLVertexArray.cpp
-        OpenGLGraphicsAPI.cpp
-        OpenGLTexture.cpp
+        src/OpenGLShader.cpp
+        src/OpenGLBuffer.cpp
+        src/OpenGLVertexArray.cpp
+        src/OpenGLGraphicsAPI.cpp
+        src/OpenGLTexture.cpp
         # We will add OpenGLBuffer.cpp and OpenGLVertexArray.cpp here later.
 )
 add_library(RDE::Platform::OpenGL ALIAS OpenGLPlatform)

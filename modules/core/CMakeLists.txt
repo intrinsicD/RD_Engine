@@ -24,6 +24,7 @@ add_library(Core
         src/LayerStack.cpp
         src/Log.cpp
         src/Scene.cpp
+        src/SceneSerializer.cpp
         ${IMGUI_SOURCES}
 )
 add_library(RDE::Core ALIAS Core)
@@ -54,6 +55,7 @@ target_link_libraries(Core
         glad_gl_core  # Use the glad target provided by FetchContent
         OpenGL::GL
         EnTT::EnTT
+        yaml-cpp
 )
 
 get_target_property(GLAD_INCLUDES glad_gl_core INCLUDE_DIRECTORIES)

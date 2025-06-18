@@ -2,10 +2,12 @@
 // Created by alex on 18.06.25.
 //
 
-#include "Core/FileIO.h"
-#include "Core/Log.h"
+#include "FileIO.h"
+#include "Log.h"
+
 #include <fstream>
 #include <sstream>
+
 namespace RDE {
     std::string FileIO::read_file(const std::string &filepath) {
         std::ifstream file(filepath);

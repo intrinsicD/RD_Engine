@@ -1,5 +1,5 @@
 // RDE_Project/modules/renderer/src/OrthographicCamera.cpp
-#include "Renderer/OrthographicCamera.h"
+#include "../include/OrthographicCamera.h"
 #include <glm/gtc/matrix_transform.hpp>
 namespace RDE {
     OrthographicCamera::OrthographicCamera(float left, float right, float bottom, float top)

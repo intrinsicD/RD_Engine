@@ -1,7 +1,9 @@
 // RDE_Project/modules/renderer/src/OrthographicCameraController.cpp
-#include "Renderer/OrthographicCameraController.h"
-#include "Core/Events/KeyEvent.h" // To check key presses
-#include "Core/Input.h" // We will create this new input polling abstraction
+#include "OrthographicCameraController.h"
+#include "Input.h"
+
+#include <functional>
+
 namespace RDE {
     OrthographicCameraController::OrthographicCameraController(float aspectRatio, bool rotation)
             : m_aspect_ratio(aspectRatio),

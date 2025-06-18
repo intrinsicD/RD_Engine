@@ -24,13 +24,18 @@ FetchContent_Declare(
 FetchContent_Declare(glm GIT_REPOSITORY https://github.com/g-truc/glm.git GIT_TAG 0.9.9.8)
 FetchContent_Declare(stb GIT_REPOSITORY https://github.com/nothings/stb.git GIT_TAG master)
 FetchContent_Declare(EnTT GIT_REPOSITORY https://github.com/skypjack/entt.git GIT_TAG v3.13.0)
+FetchContent_Declare(
+        yaml-cpp
+        GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+        GIT_TAG 0.8.0 # Can be a tag (yaml-cpp-x.x.x), a commit hash, or a branch name (master)
+)
 
 # Make them all available. This command triggers the download and runs each dependency's
 # own CMakeLists.txt, preparing their targets for us to use.
 FetchContent_MakeAvailable(spdlog glfw imgui stb EnTT)
 
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
-FetchContent_MakeAvailable(glad glm)
+FetchContent_MakeAvailable(glad glm yaml-cpp)
 glad_add_library(glad_gl_core STATIC
         API gl:core=4.3              # adjust your OpenGL version here
         REPRODUCIBLE

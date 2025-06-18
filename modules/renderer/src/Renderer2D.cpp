@@ -1,8 +1,10 @@
-#include "Renderer/Renderer2D.h"
-#include "Renderer/VertexArray.h"
-#include "Renderer/Shader.h"
-#include "Renderer/RenderCommand.h"
-#include "Core/FileIO.h"
+#include "Renderer2D.h"
+#include "VertexArray.h"
+#include "Shader.h"
+#include "RenderCommand.h"
+#include "FileIO.h"
+#include "Texture.h"
+
 #include <glm/gtc/matrix_transform.hpp>
 #include <array>
 
@@ -43,12 +45,12 @@ namespace RDE {
         s_data.quad_vertex_array = VertexArray::Create();
         s_data.qad_vertex_buffer = VertexBuffer::Create(s_data.max_vertices * sizeof(QuadVertex));
         s_data.qad_vertex_buffer->set_layout({
-                                                     {ShaderDataType::Float3, "a_Position"},
-                                                     {ShaderDataType::Float4, "a_Color"},
-                                                     {ShaderDataType::Float2, "a_TexCoord"},
-                                                     {ShaderDataType::Float,  "a_TexIndex"},
-                                                     {ShaderDataType::Float,  "a_TilingFactor"}
-                                             });
+            {ShaderDataType::Float3, "a_Position"},
+            {ShaderDataType::Float4, "a_Color"},
+            {ShaderDataType::Float2, "a_TexCoord"},
+            {ShaderDataType::Float, "a_TexIndex"},
+            {ShaderDataType::Float, "a_TilingFactor"}
+        });
         s_data.quad_vertex_array->add_vertex_buffer(s_data.qad_vertex_buffer);
         s_data.quad_vertex_buffer_base = new QuadVertex[s_data.max_vertices];
 
@@ -86,8 +88,6 @@ namespace RDE {
         s_data.quad_vertex_positions[1] = {0.5f, -0.5f, 0.0f, 1.0f};
         s_data.quad_vertex_positions[2] = {0.5f, 0.5f, 0.0f, 1.0f};
         s_data.quad_vertex_positions[3] = {-0.5f, 0.5f, 0.0f, 1.0f};
-
-
     }
 
     void Renderer2D::Shutdown() { delete[] s_data.quad_vertex_buffer_base; }
@@ -123,17 +123,19 @@ namespace RDE {
 
 
         constexpr size_t quad_vertex_count = 4;
-        constexpr glm::vec2 texture_coords[] = {{0.0f, 0.0f},
-                                                {1.0f, 0.0f},
-                                                {1.0f, 1.0f},
-                                                {0.0f, 1.0f}};
+        constexpr glm::vec2 texture_coords[] = {
+            {0.0f, 0.0f},
+            {1.0f, 0.0f},
+            {1.0f, 1.0f},
+            {0.0f, 1.0f}
+        };
         constexpr glm::vec4 quad_vertex_positions[] =
-                {
-                        {-0.5f, -0.5f, 0.0f, 1.0f},
-                        {0.5f,  -0.5f, 0.0f, 1.0f},
-                        {0.5f,  0.5f,  0.0f, 1.0f},
-                        {-0.5f, 0.5f,  0.0f, 1.0f}
-                };
+        {
+            {-0.5f, -0.5f, 0.0f, 1.0f},
+            {0.5f, -0.5f, 0.0f, 1.0f},
+            {0.5f, 0.5f, 0.0f, 1.0f},
+            {-0.5f, 0.5f, 0.0f, 1.0f}
+        };
 
         // ... logic to find texture_slot from bound textures array ...
         // If texture is nullptr, texture_slot can be 0 (the white texture).
@@ -225,7 +227,6 @@ namespace RDE {
     void
     Renderer2D::DrawQuad(const glm::vec3 &position, const glm::vec2 &size, const std::shared_ptr<Texture2D> &texture,
                          float tilingFactor, const glm::vec4 &tintColor) {
-
         // Check if we need to flush because we're out of indices OR texture slots
         if (s_data.quad_index_count >= Renderer2DData::max_indices ||
             s_data.texture_slot_index >= Renderer2DData::max_texture_slots) {
@@ -285,7 +286,7 @@ namespace RDE {
         s_data.stats.quad_count++;
     }
 
-// Rotated Colored Quad
+    // Rotated Colored Quad
     void
     Renderer2D::DrawRotatedQuad(const glm::vec3 &position, const glm::vec2 &size, float rotation,
                                 const glm::vec4 &color) {
@@ -338,7 +339,7 @@ namespace RDE {
         s_data.stats.quad_count++;
     }
 
-// Rotated Textured Quad
+    // Rotated Textured Quad
     void Renderer2D::DrawRotatedQuad(const glm::vec3 &position, const glm::vec2 &size, float rotation,
                                      const std::shared_ptr<Texture2D> &texture, float tilingFactor,
                                      const glm::vec4 &tintColor) {
@@ -397,7 +398,7 @@ namespace RDE {
         s_data.stats.quad_count++;
     }
 
-// Implement the 2D overloads by calling the 3D ones
+    // Implement the 2D overloads by calling the 3D ones
     void
     Renderer2D::DrawRotatedQuad(const glm::vec2 &position, const glm::vec2 &size, float rotation,
                                 const glm::vec4 &color) {

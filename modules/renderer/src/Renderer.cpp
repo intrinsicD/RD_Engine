@@ -1,5 +1,5 @@
 // RDE_Project/modules/renderer/src/Renderer.cpp
-#include "Renderer/Renderer.h"
+#include "../include/Renderer.h"
 namespace RDE {
     Renderer::SceneData *Renderer::m_scene_data = new Renderer::SceneData;
 

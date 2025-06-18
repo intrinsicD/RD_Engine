@@ -1,8 +1,9 @@
 // RDE_Project/modules/core/src/Log.cpp
 
-#include "Core/Log.h"
+#include "Log.h"
+
 namespace RDE {
-// Definition for static members
+    // Definition for static members
     std::shared_ptr<spdlog::logger> Log::s_core_logger;
     std::shared_ptr<spdlog::logger> Log::s_client_logger;
 

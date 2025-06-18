@@ -1,19 +1,20 @@
 // RDE_Project/applications/sandbox/SandboxApp.cpp
 
-#include <Core/Application.h>
-#include <Core/Events/KeyEvent.h>
-#include <Core/EntryPoint.h>
-#include <Core/Log.h>
-#include <Core/Scene.h>
-#include <Core/Entity.h>
-#include <Core/Components.h>
-#include <Core/FileIO.h>
-#include <GlfwWindow.h> // We need the CONCRETE implementation
-#include <Renderer/Shader.h>
-#include <Renderer/VertexArray.h>
-#include <Renderer/Renderer2D.h>
-#include <Renderer/RenderCommand.h>
-#include <Renderer/OrthographicCameraController.h>
+#include "Application.h"
+#include "Events/KeyEvent.h"
+#include "Log.h"
+#include "Scene.h"
+#include "Entity.h"
+#include "Components.h"
+#include "FileIO.h"
+#include "src/GlfwWindow.h"
+#include "Shader.h"
+#include "VertexArray.h"
+#include "Renderer2D.h"
+#include "RenderCommand.h"
+#include "OrthographicCameraController.h"
+#include "EntryPoint.h"
+
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <glm/gtc/type_ptr.hpp>

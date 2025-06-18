@@ -1,11 +1,14 @@
 // RDE_Project/modules/core/src/Scene.cpp
-#include "Core/Scene.h"
-#include "Core/Entity.h"
-#include "Core/Components.h"
-namespace RDE {
-    Scene::Scene() {}
+#include "Scene.h"
+#include "Entity.h"
+#include "Components.h"
 
-    Scene::~Scene() {}
+namespace RDE {
+    Scene::Scene() {
+    }
+
+    Scene::~Scene() {
+    }
 
     Entity Scene::create_entity(const std::string &name) {
         Entity entity = {m_registry.create(), this};
@@ -24,4 +27,9 @@ namespace RDE {
         // This is where we will run our "systems" later.
         // For now, it's empty.
     }
+
+    void Scene::clear() {
+        m_registry.clear(); // Clear all entities and components
+    }
+
 }

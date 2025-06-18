@@ -1,12 +1,13 @@
 // RDE_Project/modules/core/src/ImGuiLayer.cpp
-#include "Core/ImGuiLayer.h"
-#include "Core/Application.h" // To get window
-#include "imgui.h"
-#include "backends/imgui_impl_glfw.h"
-#include "backends/imgui_impl_opengl3.h"
 
-// TEMPORARY
+#include "ImGuiLayer.h"
+#include "Application.h"
+#include <imgui.h>
+
+#include <backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_opengl3.h>
 #include <GLFW/glfw3.h>
+
 namespace RDE {
     ImGuiLayer::ImGuiLayer() : Layer("ImGuiLayer") {
     }

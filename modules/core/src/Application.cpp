@@ -1,9 +1,8 @@
 // RDE_Project/modules/core/src/Application.cpp
 
-#include "Core/Application.h"
-#include "Core/Log.h"
-#include "Core/Events/KeyEvent.h"
-#include "Core/Events/MouseEvent.h"
+#include "Application.h"
+#include "Log.h"
+
 namespace RDE {
 // Free function: CamelCase
     static void GlfwErrorCallback(int error, const char *description) {

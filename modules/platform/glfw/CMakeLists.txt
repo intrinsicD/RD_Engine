@@ -19,8 +19,8 @@ target_include_directories(GlfwPlatform
 find_package(OpenGL REQUIRED)
 
 target_sources(GlfwPlatform PRIVATE
-        GlfwWindow.cpp
-        GlfwInput.cpp
+        src/GlfwWindow.cpp
+        src/GlfwInput.cpp
 )
 
 target_link_libraries(GlfwPlatform
