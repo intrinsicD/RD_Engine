@@ -50,17 +50,17 @@ namespace RDE {
         GL_CHECK_ERROR();
     }
 
-    void OpenGLVertexArray::Bind() const {
+    void OpenGLVertexArray::bind() const {
         glBindVertexArray(m_renderer_id);
         GL_CHECK_ERROR();
     }
 
-    void OpenGLVertexArray::Unbind() const {
+    void OpenGLVertexArray::unbind() const {
         glBindVertexArray(0);
         GL_CHECK_ERROR();
     }
 
-    void OpenGLVertexArray::AddVertexBuffer(const std::shared_ptr<VertexBuffer> &vertexBuffer) {
+    void OpenGLVertexArray::add_vertex_buffer(const std::shared_ptr<VertexBuffer> &vertexBuffer) {
         RDE_CORE_ASSERT(vertexBuffer->get_layout().get_elements().size(), "Vertex Buffer has no layout!");
         glBindVertexArray(m_renderer_id);
         GL_CHECK_ERROR();
@@ -82,7 +82,7 @@ namespace RDE {
         m_vertex_buffers.push_back(vertexBuffer);
     }
 
-    void OpenGLVertexArray::SetIndexBuffer(const std::shared_ptr<IndexBuffer> &indexBuffer) {
+    void OpenGLVertexArray::set_index_buffer(const std::shared_ptr<IndexBuffer> &indexBuffer) {
         glBindVertexArray(m_renderer_id);
         GL_CHECK_ERROR();
         indexBuffer->bind();

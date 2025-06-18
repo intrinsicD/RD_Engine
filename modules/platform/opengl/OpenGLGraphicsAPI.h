@@ -5,12 +5,12 @@
 namespace RDE {
     class OpenGLGraphicsAPI : public GraphicsAPI {
     public:
-        virtual void Init() override;
+        virtual void init() override;
 
-        virtual void SetClearColor(float r, float g, float b, float a) override;
+        virtual void set_clear_color(float r, float g, float b, float a) override;
 
-        virtual void Clear() override;
+        virtual void clear() override;
 
-        virtual void DrawIndexed(const std::shared_ptr<VertexArray> &vertexArray, uint32_t indexCount = 0) override;
+        virtual void draw_indexed(const std::shared_ptr<VertexArray> &vertexArray, uint32_t indexCount = 0) override;
     };
 }

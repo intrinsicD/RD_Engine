@@ -17,13 +17,13 @@ namespace RDE {
     public:
         virtual ~GraphicsAPI() = default;
 
-        virtual void Init() = 0;
+        virtual void init() = 0;
 
-        virtual void SetClearColor(float r, float g, float b, float a) = 0;
+        virtual void set_clear_color(float r, float g, float b, float a) = 0;
 
-        virtual void Clear() = 0;
+        virtual void clear() = 0;
 
-        virtual void DrawIndexed(const std::shared_ptr<VertexArray> &vertexArray, uint32_t indexCount = 0) = 0;
+        virtual void draw_indexed(const std::shared_ptr<VertexArray> &vertexArray, uint32_t indexCount = 0) = 0;
 
         static API GetAPI() { return s_api; }
 

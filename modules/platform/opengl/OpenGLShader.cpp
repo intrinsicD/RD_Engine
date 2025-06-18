@@ -122,17 +122,17 @@ namespace RDE {
         }
     }
 
-    void OpenGLShader::Bind() const {
+    void OpenGLShader::bind() const {
         glUseProgram(m_renderer_id);
         GL_CHECK_ERROR();
     }
 
-    void OpenGLShader::Unbind() const {
+    void OpenGLShader::unbind() const {
         glUseProgram(0);
         GL_CHECK_ERROR();
     }
 
-    void OpenGLShader::SetMat4(const std::string &name, const glm::mat4 &matrix) {
+    void OpenGLShader::set_mat4(const std::string &name, const glm::mat4 &matrix) {
         GLint location = glGetUniformLocation(m_renderer_id, name.c_str());
         GL_CHECK_ERROR();
 
@@ -140,7 +140,7 @@ namespace RDE {
         GL_CHECK_ERROR();
     }
 
-    void OpenGLShader::SetIntArray(const std::string &name, int *values, uint32_t count) {
+    void OpenGLShader::set_int_array(const std::string &name, int *values, uint32_t count) {
         GLint location = glGetUniformLocation(m_renderer_id, name.c_str());
         GL_CHECK_ERROR();
         glUniform1iv(location, count, values);

@@ -7,6 +7,7 @@
 #include <Core/Scene.h>
 #include <Core/Entity.h>
 #include <Core/Components.h>
+#include <Core/FileIO.h>
 #include <GlfwWindow.h> // We need the CONCRETE implementation
 #include <Renderer/Shader.h>
 #include <Renderer/VertexArray.h>
@@ -22,41 +23,52 @@ namespace RDE {
     public:
         SandboxLayer() : Layer("SandboxLayer"), m_camera_controller(1280.0f / 720.0f) {
             m_scene = std::make_shared<Scene>();
+            m_checkerboard_texture = RDE::Texture2D::Create(FileIO::get_path("assets/textures/Checkerboard.png"));
 
             // Create a square entity
-            auto square = m_scene->create_entity("Green Square");
-            square.add_component<TransformComponent>(glm::vec3(0.5f, 0.5f, 0.0f));
-            square.add_component<SpriteRendererComponent>(glm::vec4(0.2f, 0.8f, 0.3f, 1.0f));
+            auto orange_square = m_scene->create_entity("Orange Square");
+            orange_square.add_component<TransformComponent>(glm::vec3{0.5f, -0.5f, 0.0f});
+            orange_square.add_component<SpriteRendererComponent>(glm::vec4{1.0f, 0.5f, 0.0f, 1.0f});
+
+            auto textured_square = m_scene->create_entity("Textured Square");
+            textured_square.add_component<TransformComponent>(glm::vec3{-0.5f, 0.5f, 0.0f});
+            auto& textured_sprite = textured_square.add_component<SpriteRendererComponent>();
+            textured_sprite.texture = m_checkerboard_texture;
+            textured_sprite.tiling_factor = 2.0f;
         }
 
         void on_update() override {
-            m_camera_controller.OnUpdate(0.016f);
+            m_camera_controller.on_update(0.016f);
 
-            RenderCommand::SetClearColor(0.1f, 0.1f, 0.15f, 1.0f);
-            RenderCommand::Clear();
+            RenderCommand::set_clear_color(0.1f, 0.1f, 0.15f, 1.0f);
+            RenderCommand::clear();
 
             m_scene->on_update(0.016f);
 
             // Render the scene
-            Renderer2D::BeginScene(m_camera_controller.GetCamera());
+            Renderer2D::begin_scene(m_camera_controller.GetCamera());
 
             // New rendering path:
             auto view = m_scene->get_registry().view<TransformComponent, SpriteRendererComponent>();
-            for (auto entity: view) {
-                auto &transform = view.get<TransformComponent>(entity);
-                auto &sprite = view.get<SpriteRendererComponent>(entity);
-                Renderer2D::DrawQuad(transform.Translation, transform.Scale, sprite.Color);
+            for (auto entity : view)
+            {
+                // The view guarantees that both components exist for this entity.
+                auto& transform = view.get<TransformComponent>(entity);
+                auto& sprite = view.get<SpriteRendererComponent>(entity);
+
+                // Submit a render command based on component data.
+                Renderer2D::draw_quad(transform.get_transform(), sprite.texture, sprite.tiling_factor, sprite.color);
             }
 
-            Renderer2D::EndScene();
+            Renderer2D::end_scene();
 
             // Display stats in ImGui
-            auto stats = Renderer2D::GetStats();
+            auto stats = Renderer2D::get_stats();
             ImGui::Begin("Renderer2D Stats");
-            ImGui::Text("Draw Calls: %d", stats.DrawCalls);
-            ImGui::Text("Quads: %d", stats.QuadCount);
-            ImGui::Text("Vertices: %d", stats.GetTotalVertexCount());
-            ImGui::Text("Indices: %d", stats.GetTotalIndexCount());
+            ImGui::Text("Draw Calls: %d", stats.draw_calls);
+            ImGui::Text("Quads: %d", stats.quad_count);
+            ImGui::Text("Vertices: %d", stats.get_total_vertex_count());
+            ImGui::Text("Indices: %d", stats.get_total_index_count());
             ImGui::End();
         }
 
@@ -79,6 +91,7 @@ namespace RDE {
         OrthographicCameraController m_camera_controller;
         std::shared_ptr<Texture2D> m_checkerboard_texture;
         std::shared_ptr<Scene> m_scene;
+        Entity m_selected_entity;
     };
 
     class SandboxApp : public Application {

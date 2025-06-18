@@ -12,13 +12,15 @@ namespace RDE {
 
         virtual ~OpenGLTexture2D();
 
-        uint32_t GetWidth() const override { return m_width; }
+        uint32_t get_width() const override { return m_width; }
 
-        uint32_t GetHeight() const override { return m_height; }
+        uint32_t get_height() const override { return m_height; }
 
-        uint32_t GetRendererID() const override { return m_renderer_id; }
+        uint32_t get_renderer_id() const override { return m_renderer_id; }
 
-        void Bind(uint32_t slot = 0) const override;
+        void bind(uint32_t slot = 0) const override;
+
+        void set_data(void* data, uint32_t size) override;
 
         bool operator==(const Texture &other) const override {
             return m_renderer_id == ((OpenGLTexture2D &) other).m_renderer_id;

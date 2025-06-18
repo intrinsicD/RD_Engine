@@ -9,7 +9,7 @@ namespace RDE {
               m_rotation_enabled(rotation) {
     }
 
-    void OrthographicCameraController::OnUpdate(float ts) {
+    void OrthographicCameraController::on_update(float ts) {
         // For now, we'll poll for keyboard state. A better system might use key events.
         if (Input::is_key_pressed(87)) // W key
             m_camera_position.y += m_camera_move_speed * ts;

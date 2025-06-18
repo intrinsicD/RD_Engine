@@ -19,26 +19,26 @@ namespace RDE {
         return nullptr;
     }
 
-    void OpenGLGraphicsAPI::Init() {
+    void OpenGLGraphicsAPI::init() {
         // In the future, this will enable blending, depth testing, etc.
         RDE_CORE_INFO("OpenGLGraphicsAPI::Init - Enabling depth testing (placeholder)");
         // GL_CALL(glEnable(GL_DEPTH_TEST));
     }
 
-    void OpenGLGraphicsAPI::SetClearColor(float r, float g, float b, float a) {
+    void OpenGLGraphicsAPI::set_clear_color(float r, float g, float b, float a) {
         glClearColor(r, g, b, a);
         GL_CHECK_ERROR();
     }
 
-    void OpenGLGraphicsAPI::Clear() {
+    void OpenGLGraphicsAPI::clear() {
         // For now, we clear color. Later, we'll also clear depth and stencil buffers.
         glClear(GL_COLOR_BUFFER_BIT);
         GL_CHECK_ERROR();
     }
 
-    void OpenGLGraphicsAPI::DrawIndexed(const std::shared_ptr<VertexArray> &vertexArray, uint32_t indexCount) {
-        RDE_CORE_ASSERT(vertexArray->GetIndexBuffer(), "VertexArray has no index buffer!");
-        uint32_t count = indexCount ? indexCount : vertexArray->GetIndexBuffer()->get_count();
+    void OpenGLGraphicsAPI::draw_indexed(const std::shared_ptr<VertexArray> &vertexArray, uint32_t indexCount) {
+        RDE_CORE_ASSERT(vertexArray->get_index_buffer(), "VertexArray has no index buffer!");
+        uint32_t count = indexCount ? indexCount : vertexArray->get_index_buffer()->get_count();
         glDrawElements(GL_TRIANGLES, count, GL_UNSIGNED_INT, nullptr);
         GL_CHECK_ERROR();
     }

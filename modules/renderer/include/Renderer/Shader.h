@@ -10,13 +10,13 @@ namespace RDE {
     public:
         virtual ~Shader() = default;
 
-        virtual void Bind() const = 0;
+        virtual void bind() const = 0;
 
-        virtual void Unbind() const = 0;
+        virtual void unbind() const = 0;
 
-        virtual void SetMat4(const std::string &name, const glm::mat4 &matrix) = 0;
+        virtual void set_mat4(const std::string &name, const glm::mat4 &matrix) = 0;
 
-        virtual void SetIntArray(const std::string &name, int *values, uint32_t count) = 0;
+        virtual void set_int_array(const std::string &name, int *values, uint32_t count) = 0;
 
         // Factory method for creating shaders
         static std::shared_ptr<Shader> Create(const std::string &vertexSrc, const std::string &fragmentSrc);

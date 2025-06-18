@@ -5,6 +5,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 
 #include <stb_image.h>
+
 namespace RDE {
     std::shared_ptr<Texture2D> Texture2D::Create(const std::string &path) {
         return std::make_shared<OpenGLTexture2D>(path);
@@ -84,8 +85,17 @@ namespace RDE {
         GL_CHECK_ERROR();
     }
 
-    void OpenGLTexture2D::Bind(uint32_t slot) const {
+    void OpenGLTexture2D::bind(uint32_t slot) const {
         glBindTextureUnit(slot, m_renderer_id);
         GL_CHECK_ERROR();
+    }
+
+    void OpenGLTexture2D::set_data(void *data, uint32_t size) {
+        // Note: Ensure the format of the data matches the internalFormat/dataFormat of the texture.
+        // For our 0xffffffff example, we created a GL_RGBA8 texture, so this works.
+        // A more robust implementation would require checks.
+        // GL_UNSIGNED_BYTE is the type of the data elements (4 of them for RGBA).
+        glBindTexture(GL_TEXTURE_2D, m_renderer_id);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_width, m_height, m_data_format, GL_UNSIGNED_BYTE, data);
     }
 }

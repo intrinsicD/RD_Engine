@@ -9,13 +9,13 @@ namespace RDE {
 
         ~OpenGLShader() override;
 
-        void Bind() const override;
+        void bind() const override;
 
-        void Unbind() const override;
+        void unbind() const override;
 
-        void SetMat4(const std::string &name, const glm::mat4 &matrix) override;
+        void set_mat4(const std::string &name, const glm::mat4 &matrix) override;
 
-        void SetIntArray(const std::string &name, int *values, uint32_t count) override;
+        void set_int_array(const std::string &name, int *values, uint32_t count) override;
 
     private:
         GLuint m_renderer_id;

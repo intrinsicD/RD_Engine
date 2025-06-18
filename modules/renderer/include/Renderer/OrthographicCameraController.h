@@ -13,7 +13,7 @@ namespace RDE {
     public:
         OrthographicCameraController(float aspectRatio, bool rotation = false); // aspect ratio = width / height
 
-        void OnUpdate(float ts); // ts = timestep, e.g., time in seconds since last frame
+        void on_update(float ts); // ts = timestep, e.g., time in seconds since last frame
         void OnEvent(Event &e);
 
         OrthographicCamera &GetCamera() { return m_camera; }

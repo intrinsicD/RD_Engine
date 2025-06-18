@@ -4,48 +4,52 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <string>
+#include <memory>
+
 namespace RDE {
     struct TagComponent {
-        std::string Tag;
+        std::string tag;
 
         TagComponent() = default;
 
         TagComponent(const TagComponent &) = default;
 
-        TagComponent(const std::string &tag) : Tag(tag) {}
+        TagComponent(const std::string &tag) : tag(tag) {}
     };
 
     struct TransformComponent {
-        glm::vec3 Translation = {0.0f, 0.0f, 0.0f};
-        glm::vec3 Rotation = {0.0f, 0.0f, 0.0f}; // In radians
-        glm::vec3 Scale = {1.0f, 1.0f, 1.0f};
+        glm::vec3 translation = {0.0f, 0.0f, 0.0f};
+        glm::vec3 rotation = {0.0f, 0.0f, 0.0f}; // In radians
+        glm::vec3 scale = {1.0f, 1.0f, 1.0f};
 
         TransformComponent() = default;
 
         TransformComponent(const TransformComponent &) = default;
 
-        TransformComponent(const glm::vec3 &translation) : Translation(translation) {}
+        TransformComponent(const glm::vec3 &translation) : translation(translation) {}
 
         glm::mat4 get_transform() const {
-            glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), Rotation.x, {1, 0, 0})
-                                 * glm::rotate(glm::mat4(1.0f), Rotation.y, {0, 1, 0})
-                                 * glm::rotate(glm::mat4(1.0f), Rotation.z, {0, 0, 1});
+            glm::mat4 rot = glm::rotate(glm::mat4(1.0f), rotation.x, {1, 0, 0})
+                            * glm::rotate(glm::mat4(1.0f), rotation.y, {0, 1, 0})
+                            * glm::rotate(glm::mat4(1.0f), rotation.z, {0, 0, 1});
 
-            return glm::translate(glm::mat4(1.0f), Translation)
-                   * rotation
-                   * glm::scale(glm::mat4(1.0f), Scale);
+            return glm::translate(glm::mat4(1.0f), translation)
+                   * rot
+                   * glm::scale(glm::mat4(1.0f), scale);
         }
     };
 
+    class Texture2D;
+
     struct SpriteRendererComponent {
-        glm::vec4 Color{1.0f, 1.0f, 1.0f, 1.0f};
-        // std::shared_ptr<Texture2D> Texture; // Add later
-        // float TilingFactor = 1.0f;
+        glm::vec4 color{1.0f, 1.0f, 1.0f, 1.0f};
+        std::shared_ptr<Texture2D> texture;
+        float tiling_factor = 1.0f;
 
         SpriteRendererComponent() = default;
 
         SpriteRendererComponent(const SpriteRendererComponent &) = default;
 
-        SpriteRendererComponent(const glm::vec4 &color) : Color(color) {}
+        SpriteRendererComponent(const glm::vec4 &color) : color(color) {}
     };
 }

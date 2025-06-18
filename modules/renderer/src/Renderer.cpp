@@ -5,7 +5,7 @@ namespace RDE {
 
     void Renderer::Init() {
         // Initialize render commands, enable depth testing, etc.
-        RenderCommand::Init();
+        RenderCommand::init();
     }
 
     void Renderer::Shutdown() {
@@ -20,11 +20,11 @@ namespace RDE {
     }
 
     void Renderer::Submit(const std::shared_ptr<Shader> &shader, const std::shared_ptr<VertexArray> &vertexArray) {
-        shader->Bind();
+        shader->bind();
         // Upload the matrix from the scene data to the shader.
-        shader->SetMat4("u_ViewProjection", m_scene_data->ViewProjectionMatrix);
+        shader->set_mat4("u_ViewProjection", m_scene_data->ViewProjectionMatrix);
 
-        vertexArray->Bind();
-        RenderCommand::DrawIndexed(vertexArray);
+        vertexArray->bind();
+        RenderCommand::draw_indexed(vertexArray);
     }
 }

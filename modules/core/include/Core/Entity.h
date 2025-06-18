@@ -41,6 +41,10 @@ namespace RDE {
 
         bool operator==(const Entity &other) const { return m_handle == other.m_handle && m_scene == other.m_scene; }
 
+        bool operator!=(const Entity &other) const { return !(*this == other); }
+
+        operator bool() const { return m_handle != entt::null; }
+
     private:
         entt::entity m_handle{entt::null};
         Scene *m_scene = nullptr;
