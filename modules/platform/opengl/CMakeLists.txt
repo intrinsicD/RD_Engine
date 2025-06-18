@@ -1,0 +1,28 @@
+# RDE_Project/modules/platform/opengl/CMakeLists.txt
+
+add_library(OpenGLPlatform
+        OpenGLShader.cpp
+        # We will add OpenGLBuffer.cpp and OpenGLVertexArray.cpp here later.
+)
+add_library(RDE::Platform::OpenGL ALIAS OpenGLPlatform)
+
+# This module needs to know where the abstract Renderer interfaces are.
+target_include_directories(OpenGLPlatform
+        PUBLIC
+        # No public headers.
+        PRIVATE
+        ${PROJECT_SOURCE_DIR}/modules/renderer/include
+)
+
+# This module implements the renderer, so it links against the graphics libraries.
+find_package(OpenGL REQUIRED)
+
+target_link_libraries(OpenGLPlatform
+        PUBLIC
+        # It implements the Renderer interface.
+        RDE::Renderer
+        # It needs glad for the OpenGL functions.
+        glad_gl_core
+        OpenGL::GL
+        RDE::Core
+)
