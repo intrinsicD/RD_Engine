@@ -9,11 +9,11 @@ namespace RDE {
 
         ~ImGuiLayer();
 
-        virtual void on_attach() override;
+        void on_attach() override;
 
-        virtual void on_detach() override;
+        void on_detach() override;
 
-        virtual void on_event(Event &e) override;
+        void on_event(Event &e) override;
 
         void begin();
 

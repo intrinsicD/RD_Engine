@@ -9,7 +9,7 @@ namespace RDE {
     public:
         GlfwWindow(const WindowProps &props);
 
-        virtual ~GlfwWindow();
+        ~GlfwWindow() override;
 
         void on_update() override;
 
@@ -23,12 +23,12 @@ namespace RDE {
 
         bool is_vsync() const override;
 
-        virtual void *get_native_window() const override { return m_window; }
+        void *get_native_window() const override { return m_window; }
 
     private:
-        virtual void init(const WindowProps &props);
+        void init(const WindowProps &props);
 
-        virtual void shutdown();
+        void shutdown();
 
         GLFWwindow *m_window;
 

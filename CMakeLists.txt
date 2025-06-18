@@ -27,10 +27,10 @@ FetchContent_Declare(EnTT GIT_REPOSITORY https://github.com/skypjack/entt.git GI
 
 # Make them all available. This command triggers the download and runs each dependency's
 # own CMakeLists.txt, preparing their targets for us to use.
-FetchContent_MakeAvailable(spdlog glfw imgui glm stb EnTT)
+FetchContent_MakeAvailable(spdlog glfw imgui stb EnTT)
 
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
-FetchContent_MakeAvailable(glad)
+FetchContent_MakeAvailable(glad glm)
 glad_add_library(glad_gl_core STATIC
         API gl:core=4.3              # adjust your OpenGL version here
         REPRODUCIBLE

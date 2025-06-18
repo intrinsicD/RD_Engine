@@ -14,6 +14,8 @@ namespace RDE {
 
         Entity create_entity(const std::string &name = std::string());
 
+        void destroy_entity(Entity entity);
+
         void on_update(float ts);
 
         entt::registry &get_registry() { return m_registry; }

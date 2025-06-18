@@ -15,7 +15,7 @@ namespace RDE {
 
     class Application {
     public:
-        Application(std::unique_ptr<Window> window);
+        explicit Application(std::unique_ptr<Window> window);
 
         virtual ~Application();
 
@@ -31,9 +31,9 @@ namespace RDE {
 
         virtual void on_event(Event &e);
 
-        void push_layer(Layer *layer);
+        Layer *push_layer(std::unique_ptr<Layer> layer);
 
-        void push_overlay(Layer *layer);
+        Layer *push_overlay(std::unique_ptr<Layer> overlay);
 
         static Application &get();
 

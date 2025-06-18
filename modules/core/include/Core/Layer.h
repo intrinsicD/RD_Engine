@@ -24,6 +24,10 @@ namespace RDE {
         virtual void on_update() {
         }
 
+        // Called every frame to render the GUI.
+        virtual void on_gui_render() {
+        }
+
         // Called when an event is sent to the layer.
         virtual void on_event(Event &event) {
         }

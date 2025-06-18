@@ -19,29 +19,34 @@ namespace RDE {
 
         m_window->set_event_callback(std::bind(&Application::on_event, this, std::placeholders::_1));
 
-        m_imgui_layer = new ImGuiLayer();
-        push_overlay(m_imgui_layer);
+        auto imgui_layer = std::make_unique<ImGuiLayer>();
+        m_imgui_layer = imgui_layer.get();
+        push_overlay(std::move(imgui_layer));
     }
 
     Application::~Application() {
         RDE_CORE_INFO("Shutting down application.");
     }
 
-    void Application::push_layer(Layer *layer) {
-        m_layer_stack.push_layer(layer);
+    Layer * Application::push_layer(std::unique_ptr<Layer> layer) {
+        return m_layer_stack.push_layer(std::move(layer));
     }
 
-    void Application::push_overlay(Layer *layer) {
-        m_layer_stack.push_overlay(layer);
+    Layer * Application::push_overlay(std::unique_ptr<Layer> overlay) {
+        return m_layer_stack.push_overlay(std::move(overlay));
     }
 
     Application &Application::get() { return *s_instance; }
 
     void Application::run() {
         while (m_is_running) {
-            m_imgui_layer->begin();
-            for (Layer *layer: m_layer_stack)
+            for (const auto &layer: m_layer_stack)
                 layer->on_update();
+
+            m_imgui_layer->begin();
+            for (const auto &layer: m_layer_stack) {
+                layer->on_gui_render();
+            }
             m_imgui_layer->end();
 
             m_window->on_update();

@@ -15,6 +15,11 @@ namespace RDE {
         return entity;
     }
 
+    void Scene::destroy_entity(Entity entity) {
+        // We can use the registry to destroy the entity
+        m_registry.destroy(entity);
+    }
+
     void Scene::on_update(float ts) {
         // This is where we will run our "systems" later.
         // For now, it's empty.
