@@ -8,13 +8,13 @@
 #include "Renderer/Renderer2D.h"
 
 // Forward declare the function the client must implement.
-extern RDE::Application* RDE::CreateApplication();
+extern RDE::Application *RDE::CreateApplication();
+
 // The main function is defined here, hidden away from the client.
 // It initializes the core systems, creates the application specified by the client,
 // runs it, and then cleans up.
 // The engine's main entry point.
-int main(int argc, char** argv)
-{
+int main(int argc, char **argv) {
     RDE::Log::Initialize();
     RDE::RenderCommand::Init();
 
