@@ -21,6 +21,7 @@ add_library(Core
         src/Layer.cpp
         src/LayerStack.cpp
         src/Log.cpp
+        src/FileIO.cpp
         ${IMGUI_SOURCES}
 )
 add_library(RDE::Core ALIAS Core)

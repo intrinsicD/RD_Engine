@@ -21,9 +21,12 @@ FetchContent_Declare(
         SOURCE_SUBDIR  cmake
 )
 
+FetchContent_Declare(glm GIT_REPOSITORY https://github.com/g-truc/glm.git GIT_TAG 0.9.9.8)
+FetchContent_Declare(stb GIT_REPOSITORY https://github.com/nothings/stb.git GIT_TAG master)
+
 # Make them all available. This command triggers the download and runs each dependency's
 # own CMakeLists.txt, preparing their targets for us to use.
-FetchContent_MakeAvailable(spdlog glfw imgui)
+FetchContent_MakeAvailable(spdlog glfw imgui glm stb)
 
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 FetchContent_MakeAvailable(glad)
@@ -31,6 +34,9 @@ glad_add_library(glad_gl_core STATIC
         API gl:core=4.3              # adjust your OpenGL version here
         REPRODUCIBLE
 )
+
+string(REPLACE "\\" "/" PROJECT_SOURCE_DIR_SLASH_FORWARD ${PROJECT_SOURCE_DIR})
+add_compile_definitions(RDE_PROJECT_ROOT_DIR="${PROJECT_SOURCE_DIR_SLASH_FORWARD}")
 
 # --- Project Structure ---
 add_subdirectory(modules)

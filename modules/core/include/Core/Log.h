@@ -10,16 +10,18 @@
 // but the rest of our engine will only include this Log.h file.
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
+#include "spdlog/fmt/ostr.h" // Important for ostream operator<<
+#include "spdlog/fmt/fmt.h"   // Include the core fmt library header for FMT_STRING
 
-class Log
-{
+class Log {
 public:
     static void Initialize();
 
     // In a real application, you might want to remove these getters and
     // force all logging through macros to add file/line info automatically.
-    static std::shared_ptr<spdlog::logger>& GetCoreLogger() { return s_core_logger; }
-    static std::shared_ptr<spdlog::logger>& GetClientLogger() { return s_client_logger; }
+    static std::shared_ptr<spdlog::logger> &GetCoreLogger() { return s_core_logger; }
+
+    static std::shared_ptr<spdlog::logger> &GetClientLogger() { return s_client_logger; }
 
 private:
     static std::shared_ptr<spdlog::logger> s_core_logger;

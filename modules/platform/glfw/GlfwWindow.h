@@ -13,8 +13,8 @@ public:
 
     void OnUpdate() override;
 
-    unsigned int get_width() const override { return m_data.width; }
-    unsigned int get_height() const override { return m_data.height; }
+    unsigned int GetWidth() const override { return m_data.width; }
+    unsigned int GetHeight() const override { return m_data.height; }
 
     void set_event_callback(const EventCallbackFn &callback) override { m_data.event_callback = callback; }
 
@@ -22,7 +22,7 @@ public:
 
     bool is_vsync() const override;
 
-    virtual void *get_native_window() const override { return m_window; }
+    virtual void *GetNativeWindow() const override { return m_window; }
 
 private:
     virtual void init(const WindowProps &props);

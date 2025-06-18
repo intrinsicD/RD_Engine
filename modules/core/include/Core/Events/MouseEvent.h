@@ -33,11 +33,11 @@ public:
         : m_x_offset(x_offset), m_y_offset(y_offset) {
     }
 
-    float get_x_offset() const { return m_x_offset; }
-    float get_y_offset() const { return m_y_offset; }
+    float GetXOffset() const { return m_x_offset; }
+    float GetYOffset() const { return m_y_offset; }
 
     std::string to_string() const override {
-        return "MouseScrolledEvent: " + std::to_string(get_x_offset()) + ", " + std::to_string(get_y_offset());
+        return "MouseScrolledEvent: " + std::to_string(GetXOffset()) + ", " + std::to_string(GetYOffset());
     }
 
     int get_category_flags() const override {

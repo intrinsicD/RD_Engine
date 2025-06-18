@@ -4,6 +4,8 @@
 
 #include "Core/Application.h"
 #include "Core/Log.h"
+#include "Renderer/RenderCommand.h"
+#include "Renderer/Renderer2D.h"
 
 // Forward declare the function the client must implement.
 extern Application* CreateApplication();
@@ -14,11 +16,14 @@ extern Application* CreateApplication();
 int main(int argc, char** argv)
 {
     Log::Initialize();
+    RenderCommand::Init();
 
     auto app = CreateApplication();
     RDE_CORE_ASSERT(app, "Client application is null!");
 
+    Renderer2D::Init();
     app->Run();
+    Renderer2D::Shutdown();
 
     delete app; // This triggers all destructors in the correct order.
 

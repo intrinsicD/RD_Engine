@@ -37,7 +37,7 @@ public:
 
     static Application &Get();
 
-    Window &get_window() const { return *m_window; }
+    Window &GetWindow() const { return *m_window; }
 
 private:
     bool OnWindowClose(WindowCloseEvent &e);

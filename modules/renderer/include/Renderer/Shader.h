@@ -3,7 +3,7 @@
 
 #include <string>
 #include <memory>
-// TODO-DESIGN: Add a math library like GLM later. For now, no math dependencies.
+#include <glm/glm.hpp> // Include glm
 
 class Shader {
 public:
@@ -13,6 +13,13 @@ public:
 
     virtual void Unbind() const = 0;
 
+    virtual void SetMat4(const std::string& name, const glm::mat4& matrix) = 0;
+
+    virtual void SetIntArray(const std::string& name, int* values, uint32_t count) = 0;
+
     // Factory method for creating shaders
-    static std::unique_ptr<Shader> Create(const std::string &vertexSrc, const std::string &fragmentSrc);
+    static std::shared_ptr<Shader> Create(const std::string &vertexSrc, const std::string &fragmentSrc);
+
+    static std::shared_ptr<Shader>
+    CreateFromFile(const std::string &vertexFilepath, const std::string &fragmentFilepath);
 };

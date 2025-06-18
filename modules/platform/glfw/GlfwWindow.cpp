@@ -72,16 +72,20 @@ void GlfwWindow::init(const WindowProps &props) {
         WindowData &data = *(WindowData *) glfwGetWindowUserPointer(window);
         switch (action) {
             case GLFW_PRESS: {
-                KeyPressedEvent event(key, false);
+                KeyPressedEvent event(key, 0);
+                data.event_callback(event);
+                break;
+            }
+            case GLFW_RELEASE: {
+                KeyReleasedEvent event(key);
                 data.event_callback(event);
                 break;
             }
             case GLFW_REPEAT: {
-                KeyPressedEvent event(key, true);
+                KeyPressedEvent event(key, 1);
                 data.event_callback(event);
                 break;
             }
-                // case GLFW_RELEASE: ... create and dispatch KeyReleasedEvent
         }
     });
 

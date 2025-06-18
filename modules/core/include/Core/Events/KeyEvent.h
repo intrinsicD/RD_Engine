@@ -38,4 +38,21 @@ private:
     bool m_is_repeat;
 };
 
+class KeyReleasedEvent : public KeyEvent {
+public:
+    KeyReleasedEvent(const int keycode)
+        : KeyEvent(keycode) {
+    }
+
+    std::string to_string() const override {
+        return "KeyReleasedEvent: " + std::to_string(m_key_code);
+    }
+
+    int get_category_flags() const override{
+        return EventCategory::EventCategoryInput | EventCategory::EventCategoryKeyboard;
+    }
+
+    EVENT_CLASS_TYPE(KeyReleased)
+};
+
 // ... Other key events like KeyReleasedEvent can be added similarly.

@@ -28,9 +28,9 @@ public:
 
     virtual void OnUpdate() = 0;
 
-    virtual unsigned int get_width() const = 0;
+    virtual unsigned int GetWidth() const = 0;
 
-    virtual unsigned int get_height() const = 0;
+    virtual unsigned int GetHeight() const = 0;
 
     // Window attributes
     virtual void set_event_callback(const EventCallbackFn &callback) = 0;
@@ -39,7 +39,7 @@ public:
 
     virtual bool is_vsync() const = 0;
 
-    virtual void *get_native_window() const = 0;
+    virtual void *GetNativeWindow() const = 0;
 
     // A factory method to create the appropriate window based on the platform.
     // For now, we only have a GLFW implementation.

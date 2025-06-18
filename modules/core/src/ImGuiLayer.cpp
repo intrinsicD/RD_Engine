@@ -31,9 +31,9 @@ void ImGuiLayer::OnAttach() {
     }
 
     Application &app = Application::Get();
-    Window &window = app.get_window();
+    Window &window = app.GetWindow();
 
-    ImGui_ImplGlfw_InitForOpenGL(static_cast<GLFWwindow *>(window.get_native_window()), true);
+    ImGui_ImplGlfw_InitForOpenGL(static_cast<GLFWwindow *>(window.GetNativeWindow()), true);
     ImGui_ImplOpenGL3_Init("#version 410");
 }
 
@@ -61,10 +61,10 @@ void ImGuiLayer::End() {
     ImGuiIO &io = ImGui::GetIO();
     // TEMPORARY: Should get window size from our own Window class.
     Application &app = Application::Get();
-    Window &window = app.get_window();
+    Window &window = app.GetWindow();
 
     int width, height;
-    glfwGetWindowSize(static_cast<GLFWwindow *>(window.get_native_window()), &width, &height);
+    glfwGetWindowSize(static_cast<GLFWwindow *>(window.GetNativeWindow()), &width, &height);
     io.DisplaySize = ImVec2((float) width, (float) height);
 
     ImGui::Render();

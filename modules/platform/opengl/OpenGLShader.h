@@ -7,11 +7,15 @@ class OpenGLShader : public Shader {
 public:
     OpenGLShader(const std::string &vertexSrc, const std::string &fragmentSrc);
 
-    ~OpenGLShader();
+    ~OpenGLShader() override;
 
     void Bind() const override;
 
     void Unbind() const override;
+
+    void SetMat4(const std::string &name, const glm::mat4 &matrix) override;
+
+    void SetIntArray(const std::string &name, int *values, uint32_t count) override;
 
 private:
     GLuint m_renderer_id;

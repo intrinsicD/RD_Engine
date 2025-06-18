@@ -2,6 +2,10 @@
 
 add_library(OpenGLPlatform
         OpenGLShader.cpp
+        OpenGLBuffer.cpp
+        OpenGLVertexArray.cpp
+        OpenGLGraphicsAPI.cpp
+        OpenGLTexture.cpp
         # We will add OpenGLBuffer.cpp and OpenGLVertexArray.cpp here later.
 )
 add_library(RDE::Platform::OpenGL ALIAS OpenGLPlatform)
@@ -12,6 +16,7 @@ target_include_directories(OpenGLPlatform
         # No public headers.
         PRIVATE
         ${PROJECT_SOURCE_DIR}/modules/renderer/include
+        ${stb_SOURCE_DIR}
 )
 
 # This module implements the renderer, so it links against the graphics libraries.

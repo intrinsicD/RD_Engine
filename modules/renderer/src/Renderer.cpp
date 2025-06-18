@@ -1,0 +1,29 @@
+// RDE_Project/modules/renderer/src/Renderer.cpp
+#include "Renderer/Renderer.h"
+
+Renderer::SceneData *Renderer::m_scene_data = new Renderer::SceneData;
+
+void Renderer::Init() {
+    // Initialize render commands, enable depth testing, etc.
+    RenderCommand::Init();
+}
+
+void Renderer::Shutdown() {
+    delete m_scene_data;
+}
+
+void Renderer::BeginScene(OrthographicCamera &camera) {
+    m_scene_data->ViewProjectionMatrix = camera.GetViewProjectionMatrix();
+}
+
+void Renderer::EndScene() {
+}
+
+void Renderer::Submit(const std::shared_ptr<Shader> &shader, const std::shared_ptr<VertexArray> &vertexArray) {
+    shader->Bind();
+    // Upload the matrix from the scene data to the shader.
+    shader->SetMat4("u_ViewProjection", m_scene_data->ViewProjectionMatrix);
+
+    vertexArray->Bind();
+    RenderCommand::DrawIndexed(vertexArray);
+}
