@@ -13,31 +13,33 @@
 #include "spdlog/fmt/ostr.h" // Important for ostream operator<<
 #include "spdlog/fmt/fmt.h"   // Include the core fmt library header for FMT_STRING
 
-class Log {
-public:
-    static void Initialize();
+namespace RDE {
+    class Log {
+    public:
+        static void Initialize();
 
-    // In a real application, you might want to remove these getters and
-    // force all logging through macros to add file/line info automatically.
-    static std::shared_ptr<spdlog::logger> &GetCoreLogger() { return s_core_logger; }
+        // In a real application, you might want to remove these getters and
+        // force all logging through macros to add file/line info automatically.
+        static std::shared_ptr<spdlog::logger> &GetCoreLogger() { return s_core_logger; }
 
-    static std::shared_ptr<spdlog::logger> &GetClientLogger() { return s_client_logger; }
+        static std::shared_ptr<spdlog::logger> &GetClientLogger() { return s_client_logger; }
 
-private:
-    static std::shared_ptr<spdlog::logger> s_core_logger;
-    static std::shared_ptr<spdlog::logger> s_client_logger;
-};
+    private:
+        static std::shared_ptr<spdlog::logger> s_core_logger;
+        static std::shared_ptr<spdlog::logger> s_client_logger;
+    };
 
 // --- Core Logging Macros ---
-#define RDE_CORE_TRACE(...)    ::Log::GetCoreLogger()->trace(__VA_ARGS__)
-#define RDE_CORE_INFO(...)     ::Log::GetCoreLogger()->info(__VA_ARGS__)
-#define RDE_CORE_WARN(...)     ::Log::GetCoreLogger()->warn(__VA_ARGS__)
-#define RDE_CORE_ERROR(...)    ::Log::GetCoreLogger()->error(__VA_ARGS__)
-#define RDE_CORE_CRITICAL(...) ::Log::GetCoreLogger()->critical(__VA_ARGS__)
+#define RDE_CORE_TRACE(...)    RDE::Log::GetCoreLogger()->trace(__VA_ARGS__)
+#define RDE_CORE_INFO(...)     RDE::Log::GetCoreLogger()->info(__VA_ARGS__)
+#define RDE_CORE_WARN(...)     RDE::Log::GetCoreLogger()->warn(__VA_ARGS__)
+#define RDE_CORE_ERROR(...)    RDE::Log::GetCoreLogger()->error(__VA_ARGS__)
+#define RDE_CORE_CRITICAL(...) RDE::Log::GetCoreLogger()->critical(__VA_ARGS__)
 
 // --- Client Logging Macros ---
-#define RDE_TRACE(...)         ::Log::GetClientLogger()->trace(__VA_ARGS__)
-#define RDE_INFO(...)          ::Log::GetClientLogger()->info(__VA_ARGS__)
-#define RDE_WARN(...)          ::Log::GetClientLogger()->warn(__VA_ARGS__)
-#define RDE_ERROR(...)         ::Log::GetClientLogger()->error(__VA_ARGS__)
-#define RDE_CRITICAL(...)      ::Log::GetClientLogger()->critical(__VA_ARGS__)
+#define RDE_TRACE(...)         RDE::Log::GetClientLogger()->trace(__VA_ARGS__)
+#define RDE_INFO(...)          RDE::Log::GetClientLogger()->info(__VA_ARGS__)
+#define RDE_WARN(...)          RDE::Log::GetClientLogger()->warn(__VA_ARGS__)
+#define RDE_ERROR(...)         RDE::Log::GetClientLogger()->error(__VA_ARGS__)
+#define RDE_CRITICAL(...)      RDE::Log::GetClientLogger()->critical(__VA_ARGS__)
+}

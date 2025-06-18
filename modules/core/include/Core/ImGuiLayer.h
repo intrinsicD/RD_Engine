@@ -2,22 +2,24 @@
 #pragma once
 #include "Core/Layer.h"
 
-class ImGuiLayer : public Layer {
-public:
-    ImGuiLayer();
+namespace RDE {
+    class ImGuiLayer : public Layer {
+    public:
+        ImGuiLayer();
 
-    ~ImGuiLayer();
+        ~ImGuiLayer();
 
-    virtual void OnAttach() override;
+        virtual void on_attach() override;
 
-    virtual void OnDetach() override;
+        virtual void on_detach() override;
 
-    virtual void OnEvent(Event &e) override;
+        virtual void on_event(Event &e) override;
 
-    void Begin();
+        void begin();
 
-    void End();
+        void end();
 
-private:
-    float m_time = 0.0f;
-};
+    private:
+        float m_time = 0.0f;
+    };
+}

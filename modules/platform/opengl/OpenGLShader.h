@@ -2,21 +2,22 @@
 #pragma once
 #include "Renderer/Shader.h"
 #include <glad/gl.h> // OpenGL header
+namespace RDE {
+    class OpenGLShader : public Shader {
+    public:
+        OpenGLShader(const std::string &vertexSrc, const std::string &fragmentSrc);
 
-class OpenGLShader : public Shader {
-public:
-    OpenGLShader(const std::string &vertexSrc, const std::string &fragmentSrc);
+        ~OpenGLShader() override;
 
-    ~OpenGLShader() override;
+        void Bind() const override;
 
-    void Bind() const override;
+        void Unbind() const override;
 
-    void Unbind() const override;
+        void SetMat4(const std::string &name, const glm::mat4 &matrix) override;
 
-    void SetMat4(const std::string &name, const glm::mat4 &matrix) override;
+        void SetIntArray(const std::string &name, int *values, uint32_t count) override;
 
-    void SetIntArray(const std::string &name, int *values, uint32_t count) override;
-
-private:
-    GLuint m_renderer_id;
-};
+    private:
+        GLuint m_renderer_id;
+    };
+}

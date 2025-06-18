@@ -4,5 +4,6 @@
 
 #include "Renderer/RenderCommand.h"
 #include "Renderer/GraphicsAPI.h"
-
-std::unique_ptr<GraphicsAPI> RenderCommand::s_graphics_api = GraphicsAPI::Create();
+namespace RDE {
+    std::unique_ptr<GraphicsAPI> RenderCommand::s_graphics_api = GraphicsAPI::Create();
+}

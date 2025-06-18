@@ -1,58 +1,63 @@
 #pragma once
+
 #include "Core/Events/Event.h"
 
-class KeyEvent : public Event {
-public:
-    int get_key_code() const { return m_key_code; }
+namespace RDE {
 
-    int get_category_flags() const override{
-        return EventCategory::EventCategoryInput | EventCategory::EventCategoryKeyboard;
-    }
+    class KeyEvent : public Event {
+    public:
+        int get_key_code() const { return m_key_code; }
 
-protected:
-    KeyEvent(const int keycode) : m_key_code(keycode) {
-    }
+        int get_category_flags() const override {
+            return EventCategory::EventCategoryInput | EventCategory::EventCategoryKeyboard;
+        }
 
-    int m_key_code;
-};
+    protected:
+        KeyEvent(const int keycode) : m_key_code(keycode) {
+        }
 
-class KeyPressedEvent : public KeyEvent {
-public:
-    KeyPressedEvent(const int keycode, bool is_repeat = false)
-        : KeyEvent(keycode), m_is_repeat(is_repeat) {
-    }
+        int m_key_code;
+    };
 
-    bool is_repeat() const { return m_is_repeat; }
+    class KeyPressedEvent : public KeyEvent {
+    public:
+        KeyPressedEvent(const int keycode, bool is_repeat = false)
+                : KeyEvent(keycode), m_is_repeat(is_repeat) {
+        }
 
-    std::string to_string() const override {
-        return "KeyPressedEvent: " + std::to_string(m_key_code) + " (repeat = " + std::to_string(m_is_repeat) + ")";
-    }
+        bool is_repeat() const { return m_is_repeat; }
 
-    int get_category_flags() const override{
-        return EventCategory::EventCategoryInput | EventCategory::EventCategoryKeyboard;
-    }
+        std::string to_string() const override {
+            return "KeyPressedEvent: " + std::to_string(m_key_code) + " (repeat = " + std::to_string(m_is_repeat) + ")";
+        }
 
-    EVENT_CLASS_TYPE(KeyPressed)
+        int get_category_flags() const override {
+            return EventCategory::EventCategoryInput | EventCategory::EventCategoryKeyboard;
+        }
 
-private:
-    bool m_is_repeat;
-};
+        EVENT_CLASS_TYPE(KeyPressed)
 
-class KeyReleasedEvent : public KeyEvent {
-public:
-    KeyReleasedEvent(const int keycode)
-        : KeyEvent(keycode) {
-    }
+    private:
+        bool m_is_repeat;
+    };
 
-    std::string to_string() const override {
-        return "KeyReleasedEvent: " + std::to_string(m_key_code);
-    }
+    class KeyReleasedEvent : public KeyEvent {
+    public:
+        KeyReleasedEvent(const int keycode)
+                : KeyEvent(keycode) {
+        }
 
-    int get_category_flags() const override{
-        return EventCategory::EventCategoryInput | EventCategory::EventCategoryKeyboard;
-    }
+        std::string to_string() const override {
+            return "KeyReleasedEvent: " + std::to_string(m_key_code);
+        }
 
-    EVENT_CLASS_TYPE(KeyReleased)
-};
+        int get_category_flags() const override {
+            return EventCategory::EventCategoryInput | EventCategory::EventCategoryKeyboard;
+        }
+
+        EVENT_CLASS_TYPE(KeyReleased)
+    };
 
 // ... Other key events like KeyReleasedEvent can be added similarly.
+
+}

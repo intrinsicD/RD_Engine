@@ -4,9 +4,11 @@
 #include <string>
 #include "Core/Log.h"
 
-class FileIO {
-public:
-    static std::string ReadFile(const std::string &filepath);
+namespace RDE {
+    class FileIO {
+    public:
+        static std::string read_file(const std::string &filepath);
 
-    static std::string GetPath(const std::string &relativePath);
-};
+        static std::string get_path(const std::string &relativePath);
+    };
+}

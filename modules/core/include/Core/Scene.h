@@ -3,22 +3,24 @@
 
 #include <entt/entt.hpp>
 
-class Entity; // Forward declaration
+namespace RDE {
+    class Entity; // Forward declaration
 
-class Scene {
-public:
-    Scene();
+    class Scene {
+    public:
+        Scene();
 
-    ~Scene();
+        ~Scene();
 
-    Entity CreateEntity(const std::string &name = std::string());
+        Entity create_entity(const std::string &name = std::string());
 
-    void OnUpdate(float ts);
+        void on_update(float ts);
 
-    entt::registry &GetRegistry() { return m_registry; }
+        entt::registry &get_registry() { return m_registry; }
 
-private:
-    entt::registry m_registry;
+    private:
+        entt::registry m_registry;
 
-    friend class Entity;
-};
+        friend class Entity;
+    };
+}

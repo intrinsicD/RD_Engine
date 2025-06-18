@@ -2,37 +2,41 @@
 
 #include "Core/Events/Event.h"
 
-class WindowResizeEvent : public Event {
-public:
-    WindowResizeEvent(unsigned int width, unsigned int height)
-            : m_width(width), m_height(height) {
-    }
+namespace RDE {
 
-    unsigned int GetWidth() const { return m_width; }
+    class WindowResizeEvent : public Event {
+    public:
+        WindowResizeEvent(unsigned int width, unsigned int height)
+                : m_width(width), m_height(height) {
+        }
 
-    unsigned int GetHeight() const { return m_height; }
+        unsigned int GetWidth() const { return m_width; }
 
-    std::string to_string() const override {
-        return "WindowResizeEvent: " + std::to_string(m_width) + ", " + std::to_string(m_height);
-    }
+        unsigned int GetHeight() const { return m_height; }
 
-    int get_category_flags() const override {
-        return EventCategory::EventCategoryApplication;
-    }
+        std::string to_string() const override {
+            return "WindowResizeEvent: " + std::to_string(m_width) + ", " + std::to_string(m_height);
+        }
 
-    EVENT_CLASS_TYPE(WindowResize)
+        int get_category_flags() const override {
+            return EventCategory::EventCategoryApplication;
+        }
 
-private:
-    unsigned int m_width, m_height;
-};
+        EVENT_CLASS_TYPE(WindowResize)
 
-class WindowCloseEvent : public Event {
-public:
-    WindowCloseEvent() = default;
+    private:
+        unsigned int m_width, m_height;
+    };
 
-    int get_category_flags() const override {
-        return EventCategory::EventCategoryApplication;
-    }
+    class WindowCloseEvent : public Event {
+    public:
+        WindowCloseEvent() = default;
 
-    EVENT_CLASS_TYPE(WindowClose)
-};
+        int get_category_flags() const override {
+            return EventCategory::EventCategoryApplication;
+        }
+
+        EVENT_CLASS_TYPE(WindowClose)
+    };
+
+}

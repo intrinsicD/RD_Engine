@@ -3,15 +3,17 @@
 
 #include <glm/glm.hpp>
 
-class Input {
-public:
-    static bool IsKeyPressed(int keycode);
+namespace RDE {
+    class Input {
+    public:
+        static bool is_key_pressed(int keycode);
 
-    static bool IsMouseButtonPressed(int button);
+        static bool is_mouse_button_pressed(int button);
 
-    static glm::vec2 GetMousePosition();
+        static glm::vec2 get_mouse_position();
 
-    static float GetMouseX();
+        static float get_mouse_x();
 
-    static float GetMouseY();
-};
+        static float get_mouse_y();
+    };
+}

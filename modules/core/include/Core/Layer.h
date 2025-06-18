@@ -5,30 +5,32 @@
 #include "Core/Base.h"
 #include "Core/Events/Event.h"
 
-class Layer {
-public:
-    Layer(const std::string &name = "Layer");
+namespace RDE {
+    class Layer {
+    public:
+        Layer(const std::string &name = "Layer");
 
-    virtual ~Layer() = default;
+        virtual ~Layer() = default;
 
-    // Called when the layer is pushed onto the layer stack.
-    virtual void OnAttach() {
-    }
+        // Called when the layer is pushed onto the layer stack.
+        virtual void on_attach() {
+        }
 
-    // Called when the layer is popped from the layer stack.
-    virtual void OnDetach() {
-    }
+        // Called when the layer is popped from the layer stack.
+        virtual void on_detach() {
+        }
 
-    // Called every frame during the main application loop.
-    virtual void OnUpdate() {
-    }
+        // Called every frame during the main application loop.
+        virtual void on_update() {
+        }
 
-    // Called when an event is sent to the layer.
-    virtual void OnEvent(Event &event) {
-    }
+        // Called when an event is sent to the layer.
+        virtual void on_event(Event &event) {
+        }
 
-    const std::string &get_name() const { return m_debug_name; }
+        const std::string &get_name() const { return m_debug_name; }
 
-protected:
-    std::string m_debug_name;
-};
+    protected:
+        std::string m_debug_name;
+    };
+}

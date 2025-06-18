@@ -8,22 +8,22 @@
 #include "Renderer/Renderer2D.h"
 
 // Forward declare the function the client must implement.
-extern Application* CreateApplication();
+extern RDE::Application* RDE::CreateApplication();
 // The main function is defined here, hidden away from the client.
 // It initializes the core systems, creates the application specified by the client,
 // runs it, and then cleans up.
 // The engine's main entry point.
 int main(int argc, char** argv)
 {
-    Log::Initialize();
-    RenderCommand::Init();
+    RDE::Log::Initialize();
+    RDE::RenderCommand::Init();
 
-    auto app = CreateApplication();
+    auto app = RDE::CreateApplication();
     RDE_CORE_ASSERT(app, "Client application is null!");
 
-    Renderer2D::Init();
-    app->Run();
-    Renderer2D::Shutdown();
+    RDE::Renderer2D::Init();
+    app->run();
+    RDE::Renderer2D::Shutdown();
 
     delete app; // This triggers all destructors in the correct order.
 

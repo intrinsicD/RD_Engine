@@ -5,52 +5,49 @@
 #include "Core/Base.h"
 #include "Core/Log.h"
 #include "Core/Window.h"
-#include "Core/Events/Event.h" // Include our new event header
-#include "Core/Events/ApplicationEvent.h" // And the application-specific events
-#include "Core/LayerStack.h" // Include LayerStack
-#include "Core/ImGuiLayer.h" // Include LayerStack
+#include "Core/Events/Event.h"
+#include "Core/Events/ApplicationEvent.h"
+#include "Core/LayerStack.h"
+#include "Core/ImGuiLayer.h"
 
-class Application {
-public:
-    Application(std::unique_ptr<Window> window);
+namespace RDE {
 
-    virtual ~Application();
 
-    // The main run loop for the application.
-    void Run();
+    class Application {
+    public:
+        Application(std::unique_ptr<Window> window);
 
-    // Non-copyable and non-movable
-    Application(const Application &) = delete;
+        virtual ~Application();
 
-    Application &operator=(const Application &) = delete;
+        void run();
 
-    Application(Application &&) = delete;
+        Application(const Application &) = delete;
 
-    Application &operator=(Application &&) = delete;
+        Application &operator=(const Application &) = delete;
 
-    // The main event handling function, to be overridden by clients.
-    virtual void OnEvent(Event &e);
+        Application(Application &&) = delete;
 
-    void PushLayer(Layer *layer);
+        Application &operator=(Application &&) = delete;
 
-    void PushOverlay(Layer *layer);
+        virtual void on_event(Event &e);
 
-    static Application &Get();
+        void push_layer(Layer *layer);
 
-    Window &GetWindow() const { return *m_window; }
+        void push_overlay(Layer *layer);
 
-private:
-    bool OnWindowClose(WindowCloseEvent &e);
+        static Application &get();
 
-    // This is the main window for the application.
-    // NOTE-DESIGN: In a more complex engine, this would be a unique_ptr to a
-    // custom Window class that wraps the GLFWwindow. For now, we keep it simple.
-    std::unique_ptr<Window> m_window;
-    bool m_is_running = true;
-    LayerStack m_layer_stack;
-    ImGuiLayer *m_imgui_layer;
-};
+        Window &get_window() const { return *m_window; }
 
-// This function must be defined in a client project (e.g., Sandbox)
-// and will return a new instance of their specific application class.
-Application *CreateApplication();
+    private:
+        bool on_window_close(WindowCloseEvent &e);
+
+        std::unique_ptr<Window> m_window;
+        bool m_is_running = true;
+        LayerStack m_layer_stack;
+        ImGuiLayer *m_imgui_layer;
+    };
+
+// Free function, CamelCase
+    Application *CreateApplication();
+}

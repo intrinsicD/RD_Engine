@@ -2,20 +2,21 @@
 #include "Core/Scene.h"
 #include "Core/Entity.h"
 #include "Core/Components.h"
+namespace RDE {
+    Scene::Scene() {}
 
-Scene::Scene() {}
+    Scene::~Scene() {}
 
-Scene::~Scene() {}
+    Entity Scene::create_entity(const std::string &name) {
+        Entity entity = {m_registry.create(), this};
+        // We will add a TagComponent here later
 
-Entity Scene::CreateEntity(const std::string &name) {
-    Entity entity = {m_registry.create(), this};
-    // We will add a TagComponent here later
+        entity.add_component<TagComponent>(name.empty() ? "Entity" : name);
+        return entity;
+    }
 
-    entity.AddComponent<TagComponent>(name.empty() ? "Entity" : name);
-    return entity;
-}
-
-void Scene::OnUpdate(float ts) {
-    // This is where we will run our "systems" later.
-    // For now, it's empty.
+    void Scene::on_update(float ts) {
+        // This is where we will run our "systems" later.
+        // For now, it's empty.
+    }
 }
