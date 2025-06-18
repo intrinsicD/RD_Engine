@@ -1,4 +1,4 @@
-// RDE_Project/modules/core/include/Core/LayerStack.h
+// RDE_Project/modules/core/include/LayerStack.h
 
 #pragma once
 

@@ -1,4 +1,4 @@
-// RDE_Project/modules/core/include/Core/EntryPoint.h
+// RDE_Project/modules/core/include/EntryPoint.h
 
 #pragma once
 

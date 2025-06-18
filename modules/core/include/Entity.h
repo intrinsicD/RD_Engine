@@ -1,4 +1,4 @@
-// RDE_Project/modules/core/include/Core/Entity.h
+// RDE_Project/modules/core/include/Entity.h
 #pragma once
 
 #include "Scene.h"

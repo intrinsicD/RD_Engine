@@ -1,4 +1,4 @@
-// RDE_Project/modules/core/include/Core/Application.h
+// RDE_Project/modules/core/include/Application.h
 
 #pragma once
 

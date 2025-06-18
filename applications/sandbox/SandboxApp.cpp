@@ -13,11 +13,15 @@
 #include "Renderer2D.h"
 #include "RenderCommand.h"
 #include "OrthographicCameraController.h"
+#include "Serialization.h"
+#include "SceneSerializer.h"
 #include "EntryPoint.h"
 
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <glm/gtc/type_ptr.hpp>
+
+#include <yaml-cpp/yaml.h> // We need this for the lambda bodies
 
 namespace RDE {
     template<typename T, typename UIFunction>
@@ -62,6 +66,7 @@ namespace RDE {
     public:
         SandboxLayer() : Layer("SandboxLayer"), m_camera_controller(1280.0f / 720.0f), m_selected_entity() {
             m_scene = std::make_shared<Scene>();
+            m_scene_serializer = std::make_shared<SceneSerializer>(m_scene);
             m_checkerboard_texture = RDE::Texture2D::Create(FileIO::get_path("assets/textures/Checkerboard.png"));
 
             // Create a square entity
@@ -113,6 +118,14 @@ namespace RDE {
             ImGui::Text("Vertices: %d", stats.get_total_vertex_count());
             ImGui::Text("Indices: %d", stats.get_total_index_count());
             ImGui::End();
+
+            if (ImGui::MenuItem("Save Scene As...")) {
+               save_scene();
+            }
+
+            if (ImGui::MenuItem("Open Scene...")) {
+                load_scene();
+            }
         }
 
         void on_event(Event &e) override {
@@ -256,12 +269,50 @@ namespace RDE {
             ImGui::End();
         }
 
+        void save_scene(const std::string &filepath = "assets/scenes/MyScene.rde") {
+            m_scene_serializer->serialize(filepath,
+                    // This is our serialization lambda (the "hook")
+                    [](YAML::Emitter& out, Entity entity) {
+                        if (entity.has_component<SpriteRendererComponent>()) {
+                            out << YAML::Key << "SpriteRendererComponent";
+                            out << YAML::BeginMap; // SpriteRendererComponent
+
+                            auto& src = entity.get_component<SpriteRendererComponent>();
+                            out << YAML::Key << "Color" << YAML::Value << src.color;
+                            if (src.texture)
+                                out << YAML::Key << "TexturePath" << YAML::Value << src.texture->get_path();
+                            out << YAML::Key << "TilingFactor" << YAML::Value << src.tiling_factor;
+
+                            out << YAML::EndMap; // SpriteRendererComponent
+                        }
+                    });
+        }
+
+        void load_scene(const std::string &filepath = "assets/scenes/MyScene.rde") {
+            m_selected_entity = {};
+            m_scene_serializer->deserialize(filepath,
+                // This is our deserialization lambda (the "hook")
+                [](const YAML::Node& entity_node, Entity entity) {
+                    auto sprite_component = entity_node["SpriteRendererComponent"];
+                    if (sprite_component) {
+                        auto& src = entity.add_component<SpriteRendererComponent>();
+                        src.color = sprite_component["Color"].as<glm::vec4>();
+                        if (sprite_component["TexturePath"]) {
+                            std::string path = sprite_component["TexturePath"].as<std::string>();
+                            src.texture = RDE::Texture2D::Create(path);
+                        }
+                        src.tiling_factor = sprite_component["TilingFactor"].as<float>();
+                    }
+                });
+        }
+
     private:
         std::shared_ptr<Shader> m_shader;
         std::shared_ptr<VertexArray> m_vertex_array;
         OrthographicCameraController m_camera_controller;
         std::shared_ptr<Texture2D> m_checkerboard_texture;
         std::shared_ptr<Scene> m_scene;
+        std::shared_ptr<SceneSerializer> m_scene_serializer;
         Entity m_selected_entity;
     };
 

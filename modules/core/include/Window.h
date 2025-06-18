@@ -1,4 +1,4 @@
-// RDE_Project/modules/core/include/Core/Window.h
+// RDE_Project/modules/core/include/Window.h
 
 #pragma once
 

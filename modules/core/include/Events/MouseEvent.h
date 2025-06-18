@@ -1,4 +1,4 @@
-// RDE_Project/modules/core/include/Core/Events/MouseEvent.h
+// RDE_Project/modules/core/include/Events/MouseEvent.h
 
 #pragma once
 

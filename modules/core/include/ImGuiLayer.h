@@ -1,4 +1,4 @@
-// RDE_Project/modules/core/include/Core/ImGuiLayer.h
+// RDE_Project/modules/core/include/ImGuiLayer.h
 #pragma once
 #include "Layer.h"
 

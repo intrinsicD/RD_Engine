@@ -1,4 +1,4 @@
-// RDE_Project/modules/core/include/Core/Log.h
+// RDE_Project/modules/core/include/Log.h
 
 #pragma once // Modern alternative to include guards.
 

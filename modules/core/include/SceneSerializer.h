@@ -3,14 +3,21 @@
 #include "Scene.h"
 #include <string>
 
+// Forward-declare YAML types to avoid including yaml-cpp in this public header.
+namespace YAML { class Emitter; class Node; }
+
 namespace RDE {
     class SceneSerializer {
     public:
-        SceneSerializer(const std::shared_ptr<Scene> &scene);
+        // Define function signatures for our serialization hooks
+        using SerializeEntityFn = std::function<void(YAML::Emitter&, Entity)>;
+        using DeserializeEntityFn = std::function<void(const YAML::Node&, Entity)>;
 
-        void serialize(const std::string &filepath);
+        explicit SceneSerializer(const std::shared_ptr<Scene> &scene);
 
-        bool deserialize(const std::string &filepath);
+        void serialize(const std::string &filepath, SerializeEntityFn serialize_callback = nullptr);
+
+        bool deserialize(const std::string &filepath, DeserializeEntityFn deserialize_callback = nullptr);
 
     private:
         std::shared_ptr<Scene> m_scene;

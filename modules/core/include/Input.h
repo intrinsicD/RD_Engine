@@ -1,4 +1,4 @@
-// RDE_Project/modules/core/include/Core/Input.h
+// RDE_Project/modules/core/include/Input.h
 #pragma once
 
 #include <glm/glm.hpp>

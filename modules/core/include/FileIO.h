@@ -1,4 +1,4 @@
-// RDE_Project/modules/core/include/Core/FileIO.h
+// RDE_Project/modules/core/include/FileIO.h
 #pragma once
 
 #include <string>

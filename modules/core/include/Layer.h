@@ -1,4 +1,4 @@
-// RDE_Project/modules/core/include/Core/Layer.h
+// RDE_Project/modules/core/include/Layer.h
 
 #pragma once
 

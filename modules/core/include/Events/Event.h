@@ -1,4 +1,4 @@
-// RDE_Project/modules/core/include/Core/Events/Event.h
+// RDE_Project/modules/core/include/Events/Event.h
 
 #pragma once
 

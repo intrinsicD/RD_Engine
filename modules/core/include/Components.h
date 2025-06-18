@@ -1,4 +1,4 @@
-// RDE_Project/modules/core/include/Core/Components.h
+// RDE_Project/modules/core/include/Components.h
 #pragma once
 
 #include <glm/glm.hpp>

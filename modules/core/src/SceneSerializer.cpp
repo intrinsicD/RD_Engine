@@ -39,7 +39,7 @@ namespace RDE {
         : m_scene(scene) {
     }
 
-    void SceneSerializer::serialize(const std::string &filepath) {
+    void SceneSerializer::serialize(const std::string &filepath, SerializeEntityFn serialize_callback) {
         YAML::Emitter out;
         out << YAML::BeginMap;
         out << YAML::Key << "Scene" << YAML::Value << "Untitled Scene"; // TODO: Scene name
@@ -56,6 +56,11 @@ namespace RDE {
             SerializeComponent<TransformComponent>(out, entity, "TransformComponent");
             // Add other components here...
 
+            // --- HOOK FOR EXTERNAL SERIALIZATION ---
+            if (serialize_callback) {
+                serialize_callback(out, entity);
+            }
+
             out << YAML::EndMap; // End Entity map
         });
 
@@ -67,7 +72,7 @@ namespace RDE {
     }
 
 
-    bool SceneSerializer::deserialize(const std::string &filepath) {
+    bool SceneSerializer::deserialize(const std::string &filepath, DeserializeEntityFn deserialize_callback) {
         std::ifstream stream(filepath);
         std::stringstream str_stream;
         str_stream << stream.rdbuf();
@@ -95,6 +100,11 @@ namespace RDE {
                     tc.translation = transform_component["Translation"].as<glm::vec3>();
                     tc.rotation = transform_component["Rotation"].as<glm::vec3>();
                     tc.scale = transform_component["Scale"].as<glm::vec3>();
+                }
+
+                // --- HOOK FOR EXTERNAL DESERIALIZATION ---
+                if (deserialize_callback) {
+                    deserialize_callback(entity_node, deserialized_entity);
                 }
             }
         }
