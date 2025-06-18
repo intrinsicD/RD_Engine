@@ -4,8 +4,9 @@
 #include <Core/Log.h>
 #include <Core/Events/KeyEvent.h> // Include event definitions
 #include <Renderer/Shader.h>
-#include "GlfwWindow.h" // We need the CONCRETE implementation
-#include "imgui.h" // Include imgui header
+#include <Core/EntryPoint.h>
+#include <GlfwWindow.h> // We need the CONCRETE implementation
+#include <imgui.h> // Include imgui header
 
 // The Sandbox is now a Layer, not an Application.
 class SandboxLayer : public Layer {
