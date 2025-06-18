@@ -17,11 +17,13 @@ set(IMGUI_SOURCES
 # Add Application.cpp to the list of source files for the Core library.
 add_library(Core
         src/Application.cpp
+        src/Entity.cpp
+        src/FileIO.cpp
         src/ImGuiLayer.cpp
         src/Layer.cpp
         src/LayerStack.cpp
         src/Log.cpp
-        src/FileIO.cpp
+        src/Scene.cpp
         ${IMGUI_SOURCES}
 )
 add_library(RDE::Core ALIAS Core)
@@ -33,6 +35,7 @@ target_include_directories(Core
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${imgui_SOURCE_DIR}
         ${glad_SOURCE_DIR}/include
+        ${glm_SOURCE_DIR}
 )
 
 # Add compile definitions specifically to the Core target.
@@ -50,6 +53,7 @@ target_link_libraries(Core
         glfw
         glad_gl_core  # Use the glad target provided by FetchContent
         OpenGL::GL
+        EnTT::EnTT
 )
 
 get_target_property(GLAD_INCLUDES glad_gl_core INCLUDE_DIRECTORIES)
