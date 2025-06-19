@@ -25,12 +25,21 @@ namespace RDE {
 
         const glm::vec3 &get_focal_point() const { return m_focal_point; }
 
+        void set_viewport_size(float width, float height){
+            m_viewport_width = width;
+            m_viewport_height = height;
+            set_aspect_ratio(width / height);
+            update_view_matrix();
+        }
+
     private:
         bool on_mouse_scroll(MouseScrolledEvent &e);
 
         void mouse_pan(const glm::vec2 &delta);
 
-        void mouse_rotate(const glm::vec2 &delta);
+        void mouse_rotate(const glm::vec2& current_pos);
+
+        bool map_to_sphere(const glm::vec2 &point, glm::vec3 &result) const;
 
         void mouse_zoom(float delta);
 
@@ -50,11 +59,13 @@ namespace RDE {
         glm::mat4 m_view_matrix{1.0f};
         glm::vec3 m_position{0.0f, 0.0f, 0.0f};
         glm::vec3 m_focal_point{0.0f, 0.0f, 0.0f};
-        glm::quat m_orientation;
+        glm::quat m_rotation;
 
         float m_distance = 10.0f;
+        glm::vec2 m_last_mouse_position{0.0f};
+        glm::vec3 m_last_mouse_position_3d{0.0f};
+        bool m_last_point_ok = false;
 
-        glm::vec2 m_initial_mouse_position{0.0f, 0.0f};
-        float m_pitch = 0.0f, m_yaw = 0.0f;
+        float m_viewport_width = 1280, m_viewport_height = 720;
     };
 }

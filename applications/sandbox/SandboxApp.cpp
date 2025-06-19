@@ -170,24 +170,7 @@ namespace RDE {
             // 1. Update the Renderer's viewport
             Renderer::OnWindowResize((uint32_t) width, (uint32_t) height);
 
-            m_editor_camera.set_aspect_ratio(width / height);
-
-            // 2. Update the Scene's camera(s)
-            auto view = m_scene->get_registry().view<CameraComponent>();
-            for (auto entity: view) {
-                auto &camera_component = view.get<CameraComponent>(entity);
-                if (!camera_component.fixed_aspect_ratio) {
-                    // This is a dynamic cast, a bit slow. We'll improve this later.
-                    // For now, it's the clearest way.
-                    auto perspective_cam = std::dynamic_pointer_cast<PerspectiveCamera>(camera_component.camera);
-                    if (perspective_cam) {
-                        perspective_cam->set_aspect_ratio(width / height);
-                    }
-
-                    // You could also add a case for orthographic cameras if needed
-                    // auto ortho_cam = std::dynamic_pointer_cast<OrthographicCamera>(...);
-                }
-            }
+            m_editor_camera.set_viewport_size(width, height);
 
             // Return false to indicate the event can be processed by other layers if necessary.
             return false;
