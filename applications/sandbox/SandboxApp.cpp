@@ -24,12 +24,17 @@
 #include "SceneSerializer.h"
 #include "EntryPoint.h"
 #include "EditorCamera.h"
+#include "src/ComponentUIRegistry.h"
+
 
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 #include <yaml-cpp/yaml.h> // We need this for the lambda bodies
+
+#include "Components/ArcballControllerComponent.h"
 
 namespace RDE {
     template<typename T, typename UIFunction>
@@ -96,8 +101,7 @@ namespace RDE {
             Renderer::BeginScene(m_editor_camera.get_view_projection());
 
             // 2. Execute the 3D Pass
-            Renderer::Begin3DPass();
-            {
+            Renderer::Begin3DPass(); {
                 // --- This is much cleaner ---
                 // 1. Set the shader and all scene-level data for the pass
                 Renderer3D::SetShaderAndSceneUniforms(m_3d_shader);
@@ -126,8 +130,7 @@ namespace RDE {
             Renderer::End3DPass();
 
             // 3. Execute the 2D Pass (for UI, etc.)
-            Renderer::Begin2DPass();
-            {
+            Renderer::Begin2DPass(); {
                 // Example: Draw a UI element if needed.
                 // Renderer::DrawScreenSpaceQuad({100, 100}, {50, 50}, {0.2, 0.8, 0.3, 1.0});
             }
@@ -271,19 +274,78 @@ namespace RDE {
                 }
 
                 // Use our new template helper for TransformComponent
-                DrawComponent<TransformComponent>("Transform", m_selected_entity, [](auto &component) {
-                    ImGui::DragFloat3("Translation", glm::value_ptr(component.translation), 0.1f);
-                    glm::vec3 rotation_degrees = glm::degrees(component.rotation);
-                    if (ImGui::DragFloat3("Rotation", glm::value_ptr(rotation_degrees), 1.0f)) {
-                        component.rotation.z = glm::radians(rotation_degrees.z);
-                    }
-                    ImGui::DragFloat3("Scale", glm::value_ptr(component.scale), 0.1f);
+                ComponentUIRegistry::RegisterComponent<TransformComponent>("Transform", [](Entity entity) {
+                    DrawComponent<TransformComponent>("Transform", entity, [](auto &component) {
+                        ImGui::DragFloat3("Translation", glm::value_ptr(component.translation), 0.1f);
+                        glm::vec3 rotation_degrees = glm::degrees(component.rotation);
+                        if (ImGui::DragFloat3("Rotation", glm::value_ptr(rotation_degrees), 1.0f)) {
+                            component.rotation.z = glm::radians(rotation_degrees.z);
+                        }
+                        ImGui::DragFloat3("Scale", glm::value_ptr(component.scale), 0.1f);
+                    });
+                });
+                // And for SpriteRendererComponent
+                ComponentUIRegistry::RegisterComponent<MeshComponent>("Sprite Renderer", [](Entity entity) {
+                    DrawComponent<SpriteRendererComponent>("Sprite Renderer", entity, [](auto &component) {
+                        ImGui::ColorEdit4("Color", glm::value_ptr(component.color));
+                    });
                 });
 
-                // And for SpriteRendererComponent
-                DrawComponent<SpriteRendererComponent>("Sprite Renderer", m_selected_entity, [](auto &component) {
-                    ImGui::ColorEdit4("Color", glm::value_ptr(component.color));
+                ComponentUIRegistry::RegisterComponent<MeshComponent>("Mesh Renderer", [](Entity entity) {
+                    DrawComponent<MeshComponent>("Mesh Renderer", entity, [](auto &component) {
+                        ImGui::ColorEdit4("Color", glm::value_ptr(component.color));
+
+                        ImGui::Text("Texture: %s", component.texture ? component.texture->get_path().c_str() : "None");
+                        if (ImGui::Button("Select Mesh")) {
+                            // Open a file dialog to select a mesh asset
+                            // This is a placeholder, actual implementation would depend on your asset management system
+                            // For now, we just log the action
+                            RDE_CORE_INFO("Open mesh selection dialog (not implemented)");
+                        }
+                        if (ImGui::Button("Select Texture")) {
+                            // Open a file dialog to select a texture asset
+                            // This is a placeholder, actual implementation would depend on your asset management system
+                            // For now, we just log the action
+                            RDE_CORE_INFO("Open texture selection dialog (not implemented)");
+                        }
+
+                        // Later: Add a field for the mesh asset, texture asset, etc.
+                    });
                 });
+                ComponentUIRegistry::RegisterComponent<ArcballControllerComponent>(
+                    "ArcBall Controller", [](Entity entity) {
+                        DrawComponent<ArcballControllerComponent>("ArcBall Controller", entity, [](auto &component) {
+                            ImGui::InputFloat3("Focal Point", glm::value_ptr(component.focal_point));
+                            ImGui::DragFloat("Distance", &component.distance, 0.1f, 0.1f, 100.0f);
+                            ImGui::Text("is_rotating %i", &component.is_rotating);
+                            ImGui::Text("is_panning %i", &component.is_panning);
+
+                            ImGui::Text("start_rotation %f, %f, %f", &component.start_rotation.x,
+                                        component.start_rotation.y, component.start_rotation.z);
+                            ImGui::Text("rotation_start_point_3d %f, %f, %f", &component.rotation_start_point_3d.x,
+                                        component.rotation_start_point_3d.y, component.rotation_start_point_3d.z);
+                            ImGui::Text("last_mouse_position %f, %f", &component.last_mouse_position.x,
+                                        component.last_mouse_position.y);
+                        });
+                    });
+                ComponentUIRegistry::RegisterComponent<CameraComponent>(
+                    "Camera", [](Entity entity) {
+                        DrawComponent<CameraComponent>("Camera", entity, [](auto &component) {
+                            ImGui::Checkbox("Primary Camera", &component.primary);
+                            if (component.camera) {
+                                const auto proj = component.camera->get_projection_matrix();
+                                ImGui::Text("Projection Matrix:");
+                                std::stringstream ss;
+                                ss << glm::to_string(proj);
+                                ImGui::Text("  %s", ss.str().c_str());
+                            }
+                        });
+                    });
+                ComponentUIRegistry::Draw<TransformComponent>(m_scene.get(), m_selected_entity);
+                ComponentUIRegistry::Draw<MeshComponent>(m_scene.get(), m_selected_entity);
+                ComponentUIRegistry::Draw<SpriteRendererComponent>(m_scene.get(), m_selected_entity);
+                ComponentUIRegistry::Draw<ArcballControllerComponent>(m_scene.get(), m_selected_entity);
+                ComponentUIRegistry::Draw<CameraComponent>(m_scene.get(), m_selected_entity);
 
                 // "Add Component" button
                 ImGui::Spacing();
@@ -324,7 +386,7 @@ namespace RDE {
 
         void save_scene(const std::string &filepath = "assets/scenes/MyScene.rde") {
             m_scene_serializer->serialize(FileIO::GetPath(filepath),
-                    // This is our serialization lambda (the "hook")
+                                          // This is our serialization lambda (the "hook")
                                           [](YAML::Emitter &out, Entity entity) {
                                               if (entity.has_component<SpriteRendererComponent>()) {
                                                   out << YAML::Key << "SpriteRendererComponent";
@@ -334,9 +396,9 @@ namespace RDE {
                                                   out << YAML::Key << "Color" << YAML::Value << src.color;
                                                   if (src.texture)
                                                       out << YAML::Key << "TexturePath" << YAML::Value
-                                                          << src.texture->get_path();
+                                                              << src.texture->get_path();
                                                   out << YAML::Key << "TilingFactor" << YAML::Value
-                                                      << src.tiling_factor;
+                                                          << src.tiling_factor;
 
                                                   out << YAML::EndMap; // SpriteRendererComponent
                                               }
@@ -346,14 +408,15 @@ namespace RDE {
         void load_scene(const std::string &filepath = "assets/scenes/MyScene.rde") {
             m_selected_entity = {};
             m_scene_serializer->deserialize(FileIO::GetPath(filepath),
-                    // This is our deserialization lambda (the "hook")
+                                            // This is our deserialization lambda (the "hook")
                                             [](const YAML::Node &entity_node, Entity entity) {
                                                 auto sprite_component = entity_node["SpriteRendererComponent"];
                                                 if (sprite_component) {
                                                     auto &src = entity.add_component<SpriteRendererComponent>();
                                                     src.color = sprite_component["Color"].as<glm::vec4>();
                                                     if (sprite_component["TexturePath"]) {
-                                                        std::string path = sprite_component["TexturePath"].as<std::string>();
+                                                        std::string path = sprite_component["TexturePath"].as<
+                                                            std::string>();
                                                         src.texture = RDE::Texture2D::Create(path);
                                                     }
                                                     src.tiling_factor = sprite_component["TilingFactor"].as<float>();
@@ -365,7 +428,7 @@ namespace RDE {
         std::shared_ptr<Shader> m_shader;
         std::shared_ptr<Shader> m_3d_shader;
         std::shared_ptr<VertexArray> m_vertex_array;
-/*        OrthographicCameraController m_camera_controller;*/
+        /*        OrthographicCameraController m_camera_controller;*/
         std::shared_ptr<Texture2D> m_checkerboard_texture;
         std::shared_ptr<Scene> m_scene;
         std::shared_ptr<SceneSerializer> m_scene_serializer;

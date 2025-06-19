@@ -3,6 +3,11 @@
 # The source file is now SandboxApp.cpp
 add_executable(Sandbox SandboxApp.cpp)
 
+target_sources(Sandbox PRIVATE
+        src/systems/CameraSystem.cpp
+        src/ComponentUIRegistry.cpp
+)
+
 target_link_libraries(Sandbox
         PRIVATE
         RDE::Core
