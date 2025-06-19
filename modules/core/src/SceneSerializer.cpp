@@ -1,9 +1,12 @@
 #include "SceneSerializer.h"
 #include "Entity.h"
-#include "Components.h"
+#include "Components/TagComponent.h"
+#include "Components/TransformComponent.h"
 #include "Serialization.h"
+#include "Log.h"
 
 #include <fstream>
+#include <filesystem>
 #include <yaml-cpp/yaml.h>
 
 // Helper to write a component to the YAML emitter
@@ -40,6 +43,21 @@ namespace RDE {
     }
 
     void SceneSerializer::serialize(const std::string &filepath, SerializeEntityFn serialize_callback) {
+        try {
+            std::filesystem::path path = filepath;
+            std::filesystem::path directory = path.parent_path();
+            if (!std::filesystem::exists(directory)) {
+                RDE_CORE_INFO("Creating directory: {0}", directory.string());
+                if (!std::filesystem::create_directories(directory)) {
+                    RDE_CORE_ERROR("Failed to create directory for serialization: {0}", directory.string());
+                    return; // Abort if directory creation fails
+                }
+            }
+        } catch (const std::filesystem::filesystem_error& e) {
+            RDE_CORE_ERROR("Filesystem error: {0}", e.what());
+            return;
+        }
+
         YAML::Emitter out;
         out << YAML::BeginMap;
         out << YAML::Key << "Scene" << YAML::Value << "Untitled Scene"; // TODO: Scene name
@@ -68,14 +86,29 @@ namespace RDE {
         out << YAML::EndMap;
 
         std::ofstream fout(filepath);
+        if (!fout.is_open()) {
+            RDE_CORE_ERROR("Failed to open file for writing: {0}", filepath);
+            return; // Abort if file cannot be opened
+        }
         fout << out.c_str();
+        fout.close();
     }
 
 
     bool SceneSerializer::deserialize(const std::string &filepath, DeserializeEntityFn deserialize_callback) {
+        if (!std::filesystem::exists(filepath)) {
+            RDE_CORE_ERROR("Scene file does not exist: {0}", filepath);
+            return false; // File does not exist
+        }
+
         std::ifstream stream(filepath);
+        if (!stream.is_open()) {
+            RDE_CORE_ERROR("Failed to open scene file: {0}", filepath);
+            return false; // Abort if file cannot be opened
+        }
         std::stringstream str_stream;
         str_stream << stream.rdbuf();
+        stream.close();
 
         YAML::Node data = YAML::Load(str_stream.str());
         if (!data["Scene"]) return false; // File is not a scene file
@@ -96,7 +129,7 @@ namespace RDE {
 
                 auto transform_component = entity_node["TransformComponent"];
                 if (transform_component) {
-                    auto &tc = deserialized_entity.get_component<TransformComponent>();
+                    auto &tc = deserialized_entity.add_component<TransformComponent>();
                     tc.translation = transform_component["Translation"].as<glm::vec3>();
                     tc.rotation = transform_component["Rotation"].as<glm::vec3>();
                     tc.scale = transform_component["Scale"].as<glm::vec3>();

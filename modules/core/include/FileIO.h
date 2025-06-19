@@ -9,6 +9,6 @@ namespace RDE {
     public:
         static std::string read_file(const std::string &filepath);
 
-        static std::string get_path(const std::string &relativePath);
+        static std::string GetPath(const std::string &relativePath);
     };
 }

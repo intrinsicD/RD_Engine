@@ -1,4 +1,4 @@
-// RDE_Project/modules/renderer/include/Renderer/Texture.h
+// RDE_Project/modules/renderer/include/Texture.h
 #pragma once
 
 #include <string>

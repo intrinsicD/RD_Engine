@@ -1,21 +1,23 @@
 // RDE_Project/modules/renderer/src/OrthographicCamera.cpp
 #include "../include/OrthographicCamera.h"
+
 #include <glm/gtc/matrix_transform.hpp>
+
 namespace RDE {
     OrthographicCamera::OrthographicCamera(float left, float right, float bottom, float top)
-            : m_projection_matrix(glm::ortho(left, right, bottom, top, -1.0f, 1.0f)),
-              m_view_matrix(1.0f) {
-        m_view_projection_matrix = m_projection_matrix * m_view_matrix;
+            : m_left(left), m_right(right), m_bottom(bottom), m_top(top) {
+        recalculate_projection();
     }
 
-    void OrthographicCamera::SetProjection(float left, float right, float bottom, float top) {
-        m_projection_matrix = glm::ortho(left, right, bottom, top, -1.0f, 1.0f);
-        m_view_projection_matrix = m_projection_matrix * m_view_matrix;
+    void OrthographicCamera::set_projection(float left, float right, float bottom, float top) {
+        m_left = left;
+        m_right = right;
+        m_bottom = bottom;
+        m_top = top;
+        recalculate_projection();
     }
 
-    void OrthographicCamera::RecalculateViewMatrix() {
-        glm::mat4 transform = glm::translate(glm::mat4(1.0f), m_position);
-        m_view_matrix = glm::inverse(transform);
-        m_view_projection_matrix = m_projection_matrix * m_view_matrix;
+    void OrthographicCamera::recalculate_projection() {
+        m_projection_matrix = glm::ortho(m_left, m_right, m_bottom, m_top, -1.0f, 1.0f);
     }
 }

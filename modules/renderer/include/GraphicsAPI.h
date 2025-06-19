@@ -23,6 +23,10 @@ namespace RDE {
 
         virtual void clear() = 0;
 
+        virtual void set_depth_test(bool enabled) = 0;
+
+        virtual void set_blending(bool enabled) = 0;
+
         virtual void draw_indexed(const std::shared_ptr<VertexArray> &vertexArray, uint32_t indexCount = 0) = 0;
 
         static API GetAPI() { return s_api; }

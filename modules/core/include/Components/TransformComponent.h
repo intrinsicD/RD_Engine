@@ -1,22 +1,10 @@
-// RDE_Project/modules/core/include/Components.h
+// RDE_Project/modules/core/include/Components/TransformComponent.h
 #pragma once
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <string>
-#include <memory>
 
 namespace RDE {
-    struct TagComponent {
-        std::string tag;
-
-        TagComponent() = default;
-
-        TagComponent(const TagComponent &) = default;
-
-        TagComponent(const std::string &tag) : tag(tag) {}
-    };
-
     struct TransformComponent {
         glm::vec3 translation = {0.0f, 0.0f, 0.0f};
         glm::vec3 rotation = {0.0f, 0.0f, 0.0f}; // In radians
@@ -37,19 +25,5 @@ namespace RDE {
                    * rot
                    * glm::scale(glm::mat4(1.0f), scale);
         }
-    };
-
-    class Texture2D;
-
-    struct SpriteRendererComponent {
-        glm::vec4 color{1.0f, 1.0f, 1.0f, 1.0f};
-        std::shared_ptr<Texture2D> texture;
-        float tiling_factor = 1.0f;
-
-        SpriteRendererComponent() = default;
-
-        SpriteRendererComponent(const SpriteRendererComponent &) = default;
-
-        SpriteRendererComponent(const glm::vec4 &color) : color(color) {}
     };
 }

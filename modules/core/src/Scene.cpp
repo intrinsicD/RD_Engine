@@ -1,7 +1,7 @@
 // RDE_Project/modules/core/src/Scene.cpp
 #include "Scene.h"
 #include "Entity.h"
-#include "Components.h"
+#include "Components/TagComponent.h"
 
 namespace RDE {
     Scene::Scene() {

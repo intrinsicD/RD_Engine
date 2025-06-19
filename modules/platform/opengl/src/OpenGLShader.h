@@ -18,6 +18,10 @@ namespace RDE {
 
         void set_int_array(const std::string &name, int *values, uint32_t count) override;
 
+        void set_float(const std::string &name, const glm::vec3 &data) override;
+
+        void set_float(const std::string &name, const glm::vec4 &data) override;
+
     private:
         GLuint m_renderer_id;
     };

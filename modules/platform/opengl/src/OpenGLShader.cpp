@@ -147,4 +147,18 @@ namespace RDE {
         glUniform1iv(location, count, values);
         GL_CHECK_ERROR();
     }
+
+    void OpenGLShader::set_float(const std::string &name, const glm::vec3 &data) {
+        GLint location = glGetUniformLocation(m_renderer_id, name.c_str());
+        GL_CHECK_ERROR();
+        glUniform3fv(location, 1, &data[0]);
+        GL_CHECK_ERROR();
+    }
+
+    void OpenGLShader::set_float(const std::string &name, const glm::vec4 &data) {
+        GLint location = glGetUniformLocation(m_renderer_id, name.c_str());
+        GL_CHECK_ERROR();
+        glUniform4fv(location, 1, &data[0]);
+        GL_CHECK_ERROR();
+    }
 }

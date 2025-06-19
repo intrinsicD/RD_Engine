@@ -5,12 +5,17 @@
 #include "Log.h"
 #include "Scene.h"
 #include "Entity.h"
-#include "Components.h"
+#include "Components/CameraComponent.h"
+#include "Components/TransformComponent.h"
+#include "Components/SpriteRendererComponent.h"
+#include "Components/TagComponent.h"
+#include "Components/MeshComponent.h"
+#include "PerspectiveCamera.h"
 #include "FileIO.h"
 #include "src/GlfwWindow.h"
 #include "Shader.h"
 #include "VertexArray.h"
-#include "Renderer2D.h"
+#include "Renderer.h"
 #include "RenderCommand.h"
 #include "OrthographicCameraController.h"
 #include "Serialization.h"
@@ -64,10 +69,10 @@ namespace RDE {
     // The Sandbox is now a Layer, not an Application.
     class SandboxLayer : public Layer {
     public:
-        SandboxLayer() : Layer("SandboxLayer"), m_camera_controller(1280.0f / 720.0f), m_selected_entity() {
+        SandboxLayer() : Layer("SandboxLayer"), /*m_camera_controller(1280.0f / 720.0f),*/ m_selected_entity() {
             m_scene = std::make_shared<Scene>();
             m_scene_serializer = std::make_shared<SceneSerializer>(m_scene);
-            m_checkerboard_texture = RDE::Texture2D::Create(FileIO::get_path("assets/textures/Checkerboard.png"));
+            m_checkerboard_texture = RDE::Texture2D::Create(FileIO::GetPath("assets/textures/Checkerboard.png"));
 
             // Create a square entity
             auto orange_square = m_scene->create_entity("Orange Square");
@@ -79,31 +84,71 @@ namespace RDE {
             auto &textured_sprite = textured_square.add_component<SpriteRendererComponent>();
             textured_sprite.texture = m_checkerboard_texture;
             textured_sprite.tiling_factor = 2.0f;
+
+            // Create a camera entity
+            m_camera_entity = m_scene->create_entity("Scene Camera");
+            auto &cc = m_camera_entity.add_component<CameraComponent>();
+            auto &ct = m_camera_entity.add_component<TransformComponent>();
+            ct.translation = glm::vec3(0.0f, 0.0f, 3.0f); // Position the camera
+            cc.camera = std::make_shared<PerspectiveCamera>(45.0f, 16.0f / 9.0f, 0.1f, 1000.0f);
+
+
+            m_3d_shader = Shader::CreateFromFile(FileIO::GetPath("assets/shaders/Simple3D.vert"),
+                                                 FileIO::GetPath("assets/shaders/Simple3D.frag"));
+
+            m_cube_entity = m_scene->create_entity("3D Cube");
+            m_cube_entity.add_component<MeshComponent>(Mesh::CreateCube(), glm::vec4{0.8f, 0.2f, 0.3f, 1.0f});
+            m_cube_entity.add_component<TransformComponent>();
         }
 
         void on_update() override {
-            m_camera_controller.on_update(0.016f);
+            Camera *main_camera = nullptr;
+            glm::mat4 camera_transform = glm::mat4(1.0f);
+            glm::mat4 camera_view = glm::mat4(1.0f);
+            glm::mat4 camera_projection = glm::mat4(1.0f);
 
-            RenderCommand::set_clear_color(0.1f, 0.1f, 0.15f, 1.0f);
-            RenderCommand::clear();
-
-            m_scene->on_update(0.016f);
-
-            // Render the scene
-            Renderer2D::begin_scene(m_camera_controller.GetCamera());
-
-            // New rendering path:
-            auto view = m_scene->get_registry().view<TransformComponent, SpriteRendererComponent>();
+            auto view = m_scene->get_registry().view<TransformComponent, CameraComponent>();
             for (auto entity: view) {
-                // The view guarantees that both components exist for this entity.
-                auto &transform = view.get<TransformComponent>(entity);
-                auto &sprite = view.get<SpriteRendererComponent>(entity);
-                transform.rotation.z += 0.01f; // Rotate the entity slightly for demonstration
-                // Submit a render command based on component data.
-                Renderer2D::draw_quad(transform.get_transform(), sprite.texture, sprite.tiling_factor, sprite.color);
+                auto [transform, camera] = view.get<TransformComponent, CameraComponent>(entity);
+                if (camera.primary) {
+                    main_camera = camera.camera.get();
+                    camera_transform = transform.get_transform();
+                    break;
+                }
             }
 
-            Renderer2D::end_scene();
+            if (main_camera) {
+                RenderCommand::SetClearColor(0.1f, 0.1f, 0.15f, 1.0f);
+                RenderCommand::Clear();
+
+                m_scene->on_update(0.016f);
+
+                // Render the scene
+                Renderer::BeginScene(*main_camera, camera_transform);
+
+                // Submit all 3D objects
+                auto view = m_scene->get_registry().view<TransformComponent, MeshComponent>();
+                for (auto entity: view) {
+                    auto [transform, mesh] = view.get<TransformComponent, MeshComponent>(entity);
+                    if (mesh.mesh) {
+                        m_3d_shader->bind();
+                        m_3d_shader->set_float("u_Color", mesh.color);
+                        // Use the main Renderer::Submit
+                        Renderer::Submit(m_3d_shader, mesh.mesh->get_vertex_array(), transform.get_transform());
+                    }
+                }
+
+                // Submit all 2D UI/Overlay objects
+                // Example: Draw a small colored square in the bottom-left corner of the screen
+                glm::mat4 screen_space_transform = glm::translate(glm::mat4(1.0f), {100.0f, 100.0f, 0.0f}) * glm::scale(glm::mat4(1.0f), {50.0f, 50.0f, 1.0f});
+                Renderer::DrawScreenSpaceQuad(screen_space_transform, {0.2f, 0.8f, 0.3f, 1.0f});
+
+
+                Renderer::EndScene();
+            }
+
+/*            m_camera_controller.on_update(0.016f);*/
+
         }
 
         void on_gui_render() override {
@@ -111,7 +156,7 @@ namespace RDE {
             draw_properties_panel();
 
             // Display stats in ImGui
-            auto stats = Renderer2D::get_stats();
+            auto stats = Renderer2D::GetStats();
             ImGui::Begin("Renderer2D Stats");
             ImGui::Text("Draw Calls: %d", stats.draw_calls);
             ImGui::Text("Quads: %d", stats.quad_count);
@@ -120,7 +165,7 @@ namespace RDE {
             ImGui::End();
 
             if (ImGui::MenuItem("Save Scene As...")) {
-               save_scene();
+                save_scene();
             }
 
             if (ImGui::MenuItem("Open Scene...")) {
@@ -138,7 +183,7 @@ namespace RDE {
                     e.handled = true; // This event is now consumed.
                 }
             }
-            m_camera_controller.OnEvent(e);
+            /*     m_camera_controller.on_event(e);*/
         }
 
         void draw_scene_hierarchy_panel() {
@@ -270,50 +315,55 @@ namespace RDE {
         }
 
         void save_scene(const std::string &filepath = "assets/scenes/MyScene.rde") {
-            m_scene_serializer->serialize(filepath,
+            m_scene_serializer->serialize(FileIO::GetPath(filepath),
                     // This is our serialization lambda (the "hook")
-                    [](YAML::Emitter& out, Entity entity) {
-                        if (entity.has_component<SpriteRendererComponent>()) {
-                            out << YAML::Key << "SpriteRendererComponent";
-                            out << YAML::BeginMap; // SpriteRendererComponent
+                                          [](YAML::Emitter &out, Entity entity) {
+                                              if (entity.has_component<SpriteRendererComponent>()) {
+                                                  out << YAML::Key << "SpriteRendererComponent";
+                                                  out << YAML::BeginMap; // SpriteRendererComponent
 
-                            auto& src = entity.get_component<SpriteRendererComponent>();
-                            out << YAML::Key << "Color" << YAML::Value << src.color;
-                            if (src.texture)
-                                out << YAML::Key << "TexturePath" << YAML::Value << src.texture->get_path();
-                            out << YAML::Key << "TilingFactor" << YAML::Value << src.tiling_factor;
+                                                  auto &src = entity.get_component<SpriteRendererComponent>();
+                                                  out << YAML::Key << "Color" << YAML::Value << src.color;
+                                                  if (src.texture)
+                                                      out << YAML::Key << "TexturePath" << YAML::Value
+                                                          << src.texture->get_path();
+                                                  out << YAML::Key << "TilingFactor" << YAML::Value
+                                                      << src.tiling_factor;
 
-                            out << YAML::EndMap; // SpriteRendererComponent
-                        }
-                    });
+                                                  out << YAML::EndMap; // SpriteRendererComponent
+                                              }
+                                          });
         }
 
         void load_scene(const std::string &filepath = "assets/scenes/MyScene.rde") {
             m_selected_entity = {};
-            m_scene_serializer->deserialize(filepath,
-                // This is our deserialization lambda (the "hook")
-                [](const YAML::Node& entity_node, Entity entity) {
-                    auto sprite_component = entity_node["SpriteRendererComponent"];
-                    if (sprite_component) {
-                        auto& src = entity.add_component<SpriteRendererComponent>();
-                        src.color = sprite_component["Color"].as<glm::vec4>();
-                        if (sprite_component["TexturePath"]) {
-                            std::string path = sprite_component["TexturePath"].as<std::string>();
-                            src.texture = RDE::Texture2D::Create(path);
-                        }
-                        src.tiling_factor = sprite_component["TilingFactor"].as<float>();
-                    }
-                });
+            m_scene_serializer->deserialize(FileIO::GetPath(filepath),
+                    // This is our deserialization lambda (the "hook")
+                                            [](const YAML::Node &entity_node, Entity entity) {
+                                                auto sprite_component = entity_node["SpriteRendererComponent"];
+                                                if (sprite_component) {
+                                                    auto &src = entity.add_component<SpriteRendererComponent>();
+                                                    src.color = sprite_component["Color"].as<glm::vec4>();
+                                                    if (sprite_component["TexturePath"]) {
+                                                        std::string path = sprite_component["TexturePath"].as<std::string>();
+                                                        src.texture = RDE::Texture2D::Create(path);
+                                                    }
+                                                    src.tiling_factor = sprite_component["TilingFactor"].as<float>();
+                                                }
+                                            });
         }
 
     private:
         std::shared_ptr<Shader> m_shader;
+        std::shared_ptr<Shader> m_3d_shader;
         std::shared_ptr<VertexArray> m_vertex_array;
-        OrthographicCameraController m_camera_controller;
+/*        OrthographicCameraController m_camera_controller;*/
         std::shared_ptr<Texture2D> m_checkerboard_texture;
         std::shared_ptr<Scene> m_scene;
         std::shared_ptr<SceneSerializer> m_scene_serializer;
         Entity m_selected_entity;
+        Entity m_camera_entity;
+        Entity m_cube_entity;
     };
 
     class SandboxApp : public Application {

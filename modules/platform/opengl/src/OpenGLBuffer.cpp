@@ -58,11 +58,11 @@ namespace RDE {
     }
 
     // --- IndexBuffer ---
-    std::shared_ptr<IndexBuffer> IndexBuffer::Create(uint32_t *indices, uint32_t count) {
+    std::shared_ptr<IndexBuffer> IndexBuffer::Create(const uint32_t *indices, uint32_t count) {
         return std::make_shared<OpenGLIndexBuffer>(indices, count);
     }
 
-    OpenGLIndexBuffer::OpenGLIndexBuffer(uint32_t *indices, uint32_t count) : m_count(count) {
+    OpenGLIndexBuffer::OpenGLIndexBuffer(const uint32_t *indices, uint32_t count) : m_count(count) {
         glCreateBuffers(1, &m_renderer_id);
         GL_CHECK_ERROR();
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_renderer_id);

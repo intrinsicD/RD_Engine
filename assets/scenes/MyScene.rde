@@ -1,0 +1,23 @@
+Scene: Untitled Scene
+Entities:
+  - Entity: 1
+    TagComponent:
+      Tag: Textured Square
+    TransformComponent:
+      Translation: [-0.5, 0.5, 0]
+      Rotation: [0, 0, 4.40000582]
+      Scale: [1, 1, 1]
+    SpriteRendererComponent:
+      Color: [1, 1, 1, 1]
+      TexturePath: /home/alex/Documents/RD_Engine/assets/textures/Checkerboard.png
+      TilingFactor: 2
+  - Entity: 0
+    TagComponent:
+      Tag: Orange Square
+    TransformComponent:
+      Translation: [0.5, -0.5, 0]
+      Rotation: [0, 0, 4.40000582]
+      Scale: [1, 1, 1]
+    SpriteRendererComponent:
+      Color: [1, 0.5, 0, 1]
+      TilingFactor: 1

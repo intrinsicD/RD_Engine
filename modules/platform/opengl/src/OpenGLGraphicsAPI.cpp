@@ -35,6 +35,25 @@ namespace RDE {
         GL_CHECK_ERROR();
     }
 
+    void OpenGLGraphicsAPI::set_depth_test(bool enabled) {
+        if (enabled) {
+            glEnable(GL_DEPTH_TEST);
+        } else {
+            glDisable(GL_DEPTH_TEST);
+        }
+        GL_CHECK_ERROR();
+    }
+
+    void OpenGLGraphicsAPI::set_blending(bool enabled) {
+        if (enabled) {
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        } else {
+            glDisable(GL_BLEND);
+        }
+        GL_CHECK_ERROR();
+    }
+
     void OpenGLGraphicsAPI::clear() {
         // For now, we clear color. Later, we'll also clear depth and stencil buffers.
         glClear(GL_COLOR_BUFFER_BIT);

@@ -21,7 +21,7 @@ namespace RDE {
         return buffer.str();
     }
 
-    std::string FileIO::get_path(const std::string &relativePath) {
+    std::string FileIO::GetPath(const std::string &relativePath) {
         // RDE_PROJECT_ROOT_DIR is defined by CMake.
         return std::string(RDE_PROJECT_ROOT_DIR) + "/" + relativePath;
     }

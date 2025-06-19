@@ -15,16 +15,17 @@ namespace RDE {
         OrthographicCameraController(float aspectRatio, bool rotation = false); // aspect ratio = width / height
 
         void on_update(float ts); // ts = timestep, e.g., time in seconds since last frame
-        void OnEvent(Event &e);
 
-        OrthographicCamera &GetCamera() { return m_camera; }
+        void on_event(Event &e);
 
-        const OrthographicCamera &GetCamera() const { return m_camera; }
+        OrthographicCamera &get_camera() { return m_camera; }
+
+        const OrthographicCamera &get_camera() const { return m_camera; }
 
     private:
-        bool OnMouseScrolled(MouseScrolledEvent &e);
+        bool on_mouse_scrolled(MouseScrolledEvent &e);
 
-        bool OnWindowResized(WindowResizeEvent &e);
+        bool on_window_resized(WindowResizeEvent &e);
 
     private:
         float m_aspect_ratio;

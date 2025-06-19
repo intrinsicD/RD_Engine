@@ -9,16 +9,24 @@ namespace RDE {
         // This is not a class to be instantiated.
         RenderCommand() = delete;
 
-        static void init() { s_graphics_api->init(); }
+        static void Init() { s_graphics_api->init(); }
 
-        static void set_clear_color(float r, float g, float b, float a) {
+        static void SetClearColor(float r, float g, float b, float a) {
             s_graphics_api->set_clear_color(r, g, b, a);
         }
 
-        static void clear() { s_graphics_api->clear(); }
+        static void Clear() { s_graphics_api->clear(); }
 
-        static void draw_indexed(const std::shared_ptr<VertexArray> &vertexArray, uint32_t indexCount = 0) {
+        static void DrawIndexed(const std::shared_ptr<VertexArray> &vertexArray, uint32_t indexCount = 0) {
             s_graphics_api->draw_indexed(vertexArray, indexCount);
+        }
+
+        static void SetDepthTest(bool enabled) {
+            s_graphics_api->set_depth_test(enabled);
+        }
+
+        static void SetBlending(bool enabled) {
+            s_graphics_api->set_blending(enabled);
         }
 
     private:

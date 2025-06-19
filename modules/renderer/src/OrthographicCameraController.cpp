@@ -23,29 +23,29 @@ namespace RDE {
         else if (Input::is_key_pressed(68)) // D key
             m_camera_position.x += m_camera_move_speed * ts;
 
-        m_camera.SetPosition(m_camera_position);
+  /*      m_camera.SetPosition(m_camera_position);*/
     }
 
-    void OrthographicCameraController::OnEvent(Event &e) {
+    void OrthographicCameraController::on_event(Event &e) {
         EventDispatcher dispatcher(e);
         dispatcher.dispatch<MouseScrolledEvent>(
-                std::bind(&OrthographicCameraController::OnMouseScrolled, this, std::placeholders::_1));
+                std::bind(&OrthographicCameraController::on_mouse_scrolled, this, std::placeholders::_1));
         dispatcher.dispatch<WindowResizeEvent>(
-                std::bind(&OrthographicCameraController::OnWindowResized, this, std::placeholders::_1));
+                std::bind(&OrthographicCameraController::on_window_resized, this, std::placeholders::_1));
     }
 
-    bool OrthographicCameraController::OnMouseScrolled(MouseScrolledEvent &e) {
+    bool OrthographicCameraController::on_mouse_scrolled(MouseScrolledEvent &e) {
         m_zoom_level -= e.GetYOffset() * 0.25f;
         m_zoom_level = std::max(m_zoom_level, 0.25f);
-        m_camera.SetProjection(-m_aspect_ratio * m_zoom_level, m_aspect_ratio * m_zoom_level, -m_zoom_level,
-                               m_zoom_level);
+/*        m_camera.SetProjection(-m_aspect_ratio * m_zoom_level, m_aspect_ratio * m_zoom_level, -m_zoom_level,
+                               m_zoom_level);*/
         return false; // Allow other layers to process the event
     }
 
-    bool OrthographicCameraController::OnWindowResized(WindowResizeEvent &e) {
+    bool OrthographicCameraController::on_window_resized(WindowResizeEvent &e) {
         m_aspect_ratio = (float) e.GetWidth() / (float) e.GetHeight();
-        m_camera.SetProjection(-m_aspect_ratio * m_zoom_level, m_aspect_ratio * m_zoom_level, -m_zoom_level,
-                               m_zoom_level);
+/*        m_camera.SetProjection(-m_aspect_ratio * m_zoom_level, m_aspect_ratio * m_zoom_level, -m_zoom_level,
+                               m_zoom_level);*/
         return false;
     }
 }
