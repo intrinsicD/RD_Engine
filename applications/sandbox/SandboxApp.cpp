@@ -16,11 +16,14 @@
 #include "Shader.h"
 #include "VertexArray.h"
 #include "Renderer.h"
+#include "Renderer2D.h"
+#include "Renderer3D.h"
 #include "RenderCommand.h"
 #include "OrthographicCameraController.h"
 #include "Serialization.h"
 #include "SceneSerializer.h"
 #include "EntryPoint.h"
+#include "EditorCamera.h"
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -69,86 +72,69 @@ namespace RDE {
     // The Sandbox is now a Layer, not an Application.
     class SandboxLayer : public Layer {
     public:
-        SandboxLayer() : Layer("SandboxLayer"), /*m_camera_controller(1280.0f / 720.0f),*/ m_selected_entity() {
+        SandboxLayer() : Layer("SandboxLayer"), /*m_camera_controller(1280.0f / 720.0f),*/ m_selected_entity(),
+                         m_editor_camera(45.0f, 16.0f / 9.0f, 0.1f, 1000.0f) {
             m_scene = std::make_shared<Scene>();
             m_scene_serializer = std::make_shared<SceneSerializer>(m_scene);
             m_checkerboard_texture = RDE::Texture2D::Create(FileIO::GetPath("assets/textures/Checkerboard.png"));
 
-            // Create a square entity
-            auto orange_square = m_scene->create_entity("Orange Square");
-            orange_square.add_component<TransformComponent>(glm::vec3{0.5f, -0.5f, 0.0f});
-            orange_square.add_component<SpriteRendererComponent>(glm::vec4{1.0f, 0.5f, 0.0f, 1.0f});
-
-            auto textured_square = m_scene->create_entity("Textured Square");
-            textured_square.add_component<TransformComponent>(glm::vec3{-0.5f, 0.5f, 0.0f});
-            auto &textured_sprite = textured_square.add_component<SpriteRendererComponent>();
-            textured_sprite.texture = m_checkerboard_texture;
-            textured_sprite.tiling_factor = 2.0f;
-
-            // Create a camera entity
-            m_camera_entity = m_scene->create_entity("Scene Camera");
-            auto &cc = m_camera_entity.add_component<CameraComponent>();
-            auto &ct = m_camera_entity.add_component<TransformComponent>();
-            ct.translation = glm::vec3(0.0f, 0.0f, 3.0f); // Position the camera
-            cc.camera = std::make_shared<PerspectiveCamera>(45.0f, 16.0f / 9.0f, 0.1f, 1000.0f);
-
-
             m_3d_shader = Shader::CreateFromFile(FileIO::GetPath("assets/shaders/Simple3D.vert"),
                                                  FileIO::GetPath("assets/shaders/Simple3D.frag"));
 
-            m_cube_entity = m_scene->create_entity("3D Cube");
-            m_cube_entity.add_component<MeshComponent>(Mesh::CreateCube(), glm::vec4{0.8f, 0.2f, 0.3f, 1.0f});
+            m_cube_entity = m_scene->create_entity("Textured Cube");
+            auto &mc = m_cube_entity.add_component<MeshComponent>(Mesh::CreateCube());
+            mc.texture = m_checkerboard_texture; // Assign the texture
             m_cube_entity.add_component<TransformComponent>();
+            RenderCommand::SetClearColor(0.1f, 0.2f, 0.3f, 1.0f);
         }
 
         void on_update() override {
-            Camera *main_camera = nullptr;
-            glm::mat4 camera_transform = glm::mat4(1.0f);
-            glm::mat4 camera_view = glm::mat4(1.0f);
-            glm::mat4 camera_projection = glm::mat4(1.0f);
+            m_editor_camera.on_update(0.016f);
+            RenderCommand::Clear();
 
-            auto view = m_scene->get_registry().view<TransformComponent, CameraComponent>();
-            for (auto entity: view) {
-                auto [transform, camera] = view.get<TransformComponent, CameraComponent>(entity);
-                if (camera.primary) {
-                    main_camera = camera.camera.get();
-                    camera_transform = transform.get_transform();
-                    break;
-                }
-            }
+            // 1. Set up the scene's camera matrices
+            Renderer::BeginScene(m_editor_camera.get_view_projection());
 
-            if (main_camera) {
-                RenderCommand::SetClearColor(0.1f, 0.1f, 0.15f, 1.0f);
-                RenderCommand::Clear();
+            // 2. Execute the 3D Pass
+            Renderer::Begin3DPass();
+            {
+                // --- This is much cleaner ---
+                // 1. Set the shader and all scene-level data for the pass
+                Renderer3D::SetShaderAndSceneUniforms(m_3d_shader);
 
-                m_scene->on_update(0.016f);
-
-                // Render the scene
-                Renderer::BeginScene(*main_camera, camera_transform);
-
-                // Submit all 3D objects
+                // 2. Submit all mesh entities
                 auto view = m_scene->get_registry().view<TransformComponent, MeshComponent>();
                 for (auto entity: view) {
-                    auto [transform, mesh] = view.get<TransformComponent, MeshComponent>(entity);
-                    if (mesh.mesh) {
-                        m_3d_shader->bind();
-                        m_3d_shader->set_float("u_Color", mesh.color);
-                        // Use the main Renderer::Submit
-                        Renderer::Submit(m_3d_shader, mesh.mesh->get_vertex_array(), transform.get_transform());
+                    auto [transform, mesh_comp] = view.get<TransformComponent, MeshComponent>(entity);
+                    if (mesh_comp.mesh) {
+                        // Set per-entity material properties on the already-bound shader
+                        bool use_texture = mesh_comp.texture != nullptr;
+                        m_3d_shader->set_int("u_UseTexture", use_texture);
+
+                        if (use_texture) {
+                            mesh_comp.texture->bind(0);
+                            m_3d_shader->set_int("u_TextureSampler", 0);
+                        } else {
+                            m_3d_shader->set_float("u_Color", mesh_comp.color);
+                        }
+
+                        // Submit only the per-entity data
+                        Renderer3D::Submit(mesh_comp.mesh->get_vertex_array(), transform.get_transform());
                     }
                 }
-
-                // Submit all 2D UI/Overlay objects
-                // Example: Draw a small colored square in the bottom-left corner of the screen
-                glm::mat4 screen_space_transform = glm::translate(glm::mat4(1.0f), {100.0f, 100.0f, 0.0f}) * glm::scale(glm::mat4(1.0f), {50.0f, 50.0f, 1.0f});
-                Renderer::DrawScreenSpaceQuad(screen_space_transform, {0.2f, 0.8f, 0.3f, 1.0f});
-
-
-                Renderer::EndScene();
             }
+            Renderer::End3DPass();
 
-/*            m_camera_controller.on_update(0.016f);*/
+            // 3. Execute the 2D Pass (for UI, etc.)
+            Renderer::Begin2DPass();
+            {
+                // Example: Draw a UI element if needed.
+                // Renderer::DrawScreenSpaceQuad({100, 100}, {50, 50}, {0.2, 0.8, 0.3, 1.0});
+            }
+            Renderer::End2DPass();
 
+            // 4. Finalize the frame
+            Renderer::EndScene();
         }
 
         void on_gui_render() override {
@@ -173,7 +159,46 @@ namespace RDE {
             }
         }
 
+        bool on_window_resize(WindowResizeEvent &e) {
+            float width = (float) e.get_width();
+            float height = (float) e.get_height();
+
+            // It's good practice to check for zero dimensions here as well,
+            // even though the Application class already does.
+            if (width == 0 || height == 0) return false;
+
+            // 1. Update the Renderer's viewport
+            Renderer::OnWindowResize((uint32_t) width, (uint32_t) height);
+
+            m_editor_camera.set_aspect_ratio(width / height);
+
+            // 2. Update the Scene's camera(s)
+            auto view = m_scene->get_registry().view<CameraComponent>();
+            for (auto entity: view) {
+                auto &camera_component = view.get<CameraComponent>(entity);
+                if (!camera_component.fixed_aspect_ratio) {
+                    // This is a dynamic cast, a bit slow. We'll improve this later.
+                    // For now, it's the clearest way.
+                    auto perspective_cam = std::dynamic_pointer_cast<PerspectiveCamera>(camera_component.camera);
+                    if (perspective_cam) {
+                        perspective_cam->set_aspect_ratio(width / height);
+                    }
+
+                    // You could also add a case for orthographic cameras if needed
+                    // auto ortho_cam = std::dynamic_pointer_cast<OrthographicCamera>(...);
+                }
+            }
+
+            // Return false to indicate the event can be processed by other layers if necessary.
+            return false;
+        }
+
         void on_event(Event &e) override {
+            m_editor_camera.on_event(e);
+
+            EventDispatcher dispatcher(e);
+            dispatcher.dispatch<WindowResizeEvent>(BIND_EVENT_FN(SandboxLayer::on_window_resize));
+
             // RDE_TRACE("SandboxLayer Event: {0}", e.to_string());
             if (e.get_event_type() == EventType::KeyPressed) {
                 KeyPressedEvent &ke = static_cast<KeyPressedEvent &>(e);
@@ -364,6 +389,7 @@ namespace RDE {
         Entity m_selected_entity;
         Entity m_camera_entity;
         Entity m_cube_entity;
+        EditorCamera m_editor_camera; // Optional: For 3D camera controls
     };
 
     class SandboxApp : public Application {

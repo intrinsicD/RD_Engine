@@ -141,6 +141,13 @@ namespace RDE {
         GL_CHECK_ERROR();
     }
 
+    void OpenGLShader::set_int(const std::string &name, int value) {
+        GLint location = glGetUniformLocation(m_renderer_id, name.c_str());
+        GL_CHECK_ERROR();
+        glUniform1i(location, value);
+        GL_CHECK_ERROR();
+    }
+
     void OpenGLShader::set_int_array(const std::string &name, int *values, uint32_t count) {
         GLint location = glGetUniformLocation(m_renderer_id, name.c_str());
         GL_CHECK_ERROR();

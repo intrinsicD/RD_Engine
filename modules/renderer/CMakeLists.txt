@@ -15,6 +15,7 @@ target_include_directories(Renderer
 
 target_sources(Renderer
         PRIVATE
+        src/EditorCamera.cpp
         src/Mesh.cpp
         src/Renderer.cpp
         src/Renderer2D.cpp

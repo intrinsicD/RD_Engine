@@ -9,6 +9,8 @@ namespace RDE {
 
         void set_projection(float vertical_fov, float aspect_ratio, float near_clip, float far_clip);
 
+        void set_aspect_ratio(float aspect_ratio);
+
     private:
         void recalculate_projection();
 

@@ -18,7 +18,9 @@ namespace RDE {
 
         static void EndPass();
 
-        static void Submit(const std::shared_ptr<Shader> &shader, const std::shared_ptr<VertexArray> &vertex_array,
+        static void SetShaderAndSceneUniforms(const std::shared_ptr<Shader>& shader);
+
+        static void Submit(const std::shared_ptr<VertexArray> &vertex_array,
                            const glm::mat4 &model_transform);
     };
 }

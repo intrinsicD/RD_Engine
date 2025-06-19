@@ -57,3 +57,8 @@
     #define RDE_CORE_ASSERT(check, ...)
 #endif
 
+// This macro simplifies binding a class member function to a std::function.
+// It takes a member function (fn) and creates a callable that takes one argument,
+// automatically binding 'this' as the object instance.
+#define BIND_EVENT_FN(fn) [this](auto&&... args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
+

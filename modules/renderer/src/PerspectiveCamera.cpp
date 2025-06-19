@@ -16,6 +16,11 @@ namespace RDE {
         recalculate_projection();
     }
 
+    void PerspectiveCamera::set_aspect_ratio(float aspect_ratio) {
+        m_aspect_ratio = aspect_ratio;
+        recalculate_projection();
+    }
+
     void PerspectiveCamera::recalculate_projection() {
         m_projection_matrix = glm::perspective(glm::radians(m_vertical_fov), m_aspect_ratio, m_near_clip, m_far_clip);
     }

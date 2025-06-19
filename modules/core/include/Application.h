@@ -41,8 +41,11 @@ namespace RDE {
     private:
         bool on_window_close(WindowCloseEvent &e);
 
+        bool on_window_resize(WindowResizeEvent &e);
+
         std::unique_ptr<Window> m_window;
         bool m_is_running = true;
+        bool m_is_minimized = false;
         LayerStack m_layer_stack;
         ImGuiLayer *m_imgui_layer;
     };

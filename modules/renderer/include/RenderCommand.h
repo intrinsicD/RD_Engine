@@ -29,6 +29,10 @@ namespace RDE {
             s_graphics_api->set_blending(enabled);
         }
 
+        static void SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
+            s_graphics_api->set_viewport(x, y, width, height);
+        }
+
     private:
         static std::unique_ptr<GraphicsAPI> s_graphics_api;
     };

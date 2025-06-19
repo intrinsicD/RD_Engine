@@ -15,14 +15,20 @@ namespace RDE {
 
         static void Shutdown();
 
-        // A "scene" is defined by a camera's view and projection matrices.
-        static void BeginScene(const Camera &camera, const glm::mat4 &camera_transform);
+        static void BeginScene(const glm::mat4 &view_projection_matrix);
 
         static void EndScene();
 
+        static void Begin2DPass();
+
+        static void End2DPass();
+
+        static void Begin3DPass();
+
+        static void End3DPass();
+
         // Submit geometry for drawing.
-        static void Submit(const std::shared_ptr<Shader> &shader,
-                           const std::shared_ptr<VertexArray> &vertex_array,
+        static void Submit(const std::shared_ptr<VertexArray> &vertex_array,
                            const glm::mat4 &model_transform = glm::mat4(1.0f));
 
         // Quads
@@ -42,9 +48,18 @@ namespace RDE {
                                                const std::shared_ptr<Texture2D> &texture, float tiling_factor = 1.0f,
                                                const glm::vec4 &tint_color = {1.0f, 1.0f, 1.0f, 1.0f});
 
+        // Event handling
+        static void OnWindowResize(uint32_t width, uint32_t height);
+
         // In the future, this will hold view-projection matrices.
+        struct Light {
+            glm::vec3 direction{-0.5f, -0.5f, -0.5f}; // A simple directional light
+            glm::vec3 color{1.0f, 1.0f, 1.0f};
+        };
+
         struct SceneData {
             glm::mat4 view_projection_matrix;
+            Light main_light;
         };
 
         static SceneData *GetSceneData();

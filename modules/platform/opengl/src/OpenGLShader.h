@@ -16,6 +16,8 @@ namespace RDE {
 
         void set_mat4(const std::string &name, const glm::mat4 &matrix) override;
 
+        void set_int(const std::string &name, int value) override;
+
         void set_int_array(const std::string &name, int *values, uint32_t count) override;
 
         void set_float(const std::string &name, const glm::vec3 &data) override;

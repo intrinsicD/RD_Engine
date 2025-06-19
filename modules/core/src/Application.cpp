@@ -16,7 +16,7 @@ namespace RDE {
         RDE_CORE_ASSERT(!s_instance, "Application already exists!");
         s_instance = this;
 
-        m_window->set_event_callback(std::bind(&Application::on_event, this, std::placeholders::_1));
+        m_window->set_event_callback(BIND_EVENT_FN(Application::on_event));
 
         auto imgui_layer = std::make_unique<ImGuiLayer>();
         m_imgui_layer = imgui_layer.get();
@@ -27,11 +27,11 @@ namespace RDE {
         RDE_CORE_INFO("Shutting down application.");
     }
 
-    Layer * Application::push_layer(std::unique_ptr<Layer> layer) {
+    Layer *Application::push_layer(std::unique_ptr<Layer> layer) {
         return m_layer_stack.push_layer(std::move(layer));
     }
 
-    Layer * Application::push_overlay(std::unique_ptr<Layer> overlay) {
+    Layer *Application::push_overlay(std::unique_ptr<Layer> overlay) {
         return m_layer_stack.push_overlay(std::move(overlay));
     }
 
@@ -54,7 +54,8 @@ namespace RDE {
 
     void Application::on_event(Event &e) {
         EventDispatcher dispatcher(e);
-        dispatcher.dispatch<WindowCloseEvent>(std::bind(&Application::on_window_close, this, std::placeholders::_1));
+        dispatcher.dispatch<WindowCloseEvent>(BIND_EVENT_FN(Application::on_window_close));
+        dispatcher.dispatch<WindowResizeEvent>(BIND_EVENT_FN(Application::on_window_resize));
 
         for (auto it = m_layer_stack.rbegin(); it != m_layer_stack.rend(); ++it) {
             if (e.handled)
@@ -66,5 +67,18 @@ namespace RDE {
     bool Application::on_window_close(WindowCloseEvent &e) {
         m_is_running = false;
         return true;
+    }
+
+    bool Application::on_window_resize(WindowResizeEvent &e) {
+        // Don't process if minimized
+        if (e.get_width() == 0 || e.get_height() == 0) {
+            m_is_minimized = true;
+            return false;
+        }
+        m_is_minimized = false;
+
+        // This function's only job is to manage the minimized state.
+        // It MUST return false to allow layers to handle the event.
+        return false;
     }
 }

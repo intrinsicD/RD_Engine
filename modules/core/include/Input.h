@@ -6,14 +6,14 @@
 namespace RDE {
     class Input {
     public:
-        static bool is_key_pressed(int keycode);
+        static bool IsKeyPressed(int keycode);
 
-        static bool is_mouse_button_pressed(int button);
+        static bool IsMouseButtonPressed(int button);
 
-        static glm::vec2 get_mouse_position();
+        static glm::vec2 GetMousePosition();
 
-        static float get_mouse_x();
+        static float GetMouseX();
 
-        static float get_mouse_y();
+        static float GetMouseY();
     };
 }

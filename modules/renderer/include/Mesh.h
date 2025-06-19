@@ -10,8 +10,8 @@
 namespace RDE {
     struct Vertex3D {
         glm::vec3 position;
-        // glm::vec3 normal; // For future lighting
-        // glm::vec2 tex_coords; // For future texturing
+        glm::vec3 normal;
+        glm::vec2 tex_coords;
     };
 
     class Mesh {

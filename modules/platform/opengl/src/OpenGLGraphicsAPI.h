@@ -14,6 +14,8 @@ namespace RDE {
 
         void set_blending(bool enabled) override;
 
+        void set_viewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height) override;
+
         void clear() override;
 
         void draw_indexed(const std::shared_ptr<VertexArray> &vertexArray, uint32_t indexCount = 0) override;

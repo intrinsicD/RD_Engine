@@ -54,9 +54,14 @@ namespace RDE {
         GL_CHECK_ERROR();
     }
 
+    void OpenGLGraphicsAPI::set_viewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
+        glViewport(x, y, width, height);
+        GL_CHECK_ERROR();
+    }
+
     void OpenGLGraphicsAPI::clear() {
         // For now, we clear color. Later, we'll also clear depth and stencil buffers.
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
         GL_CHECK_ERROR();
     }
 

@@ -9,9 +9,9 @@ namespace RDE {
             : m_width(width), m_height(height) {
         }
 
-        unsigned int GetWidth() const { return m_width; }
+        unsigned int get_width() const { return m_width; }
 
-        unsigned int GetHeight() const { return m_height; }
+        unsigned int get_height() const { return m_height; }
 
         std::string to_string() const override {
             return "WindowResizeEvent: " + std::to_string(m_width) + ", " + std::to_string(m_height);
