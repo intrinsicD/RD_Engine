@@ -36,12 +36,12 @@ namespace RDE {
                 : m_x_offset(x_offset), m_y_offset(y_offset) {
         }
 
-        float GetXOffset() const { return m_x_offset; }
+        float get_x_offset() const { return m_x_offset; }
 
-        float GetYOffset() const { return m_y_offset; }
+        float get_y_offset() const { return m_y_offset; }
 
         std::string to_string() const override {
-            return "MouseScrolledEvent: " + std::to_string(GetXOffset()) + ", " + std::to_string(GetYOffset());
+            return "MouseScrolledEvent: " + std::to_string(get_x_offset()) + ", " + std::to_string(get_y_offset());
         }
 
         int get_category_flags() const override {
@@ -60,6 +60,18 @@ namespace RDE {
 
         int get_category_flags() const override {
             return EventCategory::EventCategoryInput | EventCategory::EventCategoryMouse;
+        }
+
+        bool is_left_button() const {
+            return m_button == 0; // Assuming 0 is the left mouse button
+        }
+
+        bool is_right_button() const {
+            return m_button == 1; // Assuming 1 is the right mouse button
+        }
+
+        bool is_middle_button() const {
+            return m_button == 2; // Assuming 2 is the middle mouse button
         }
 
     protected:

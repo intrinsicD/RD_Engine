@@ -30,9 +30,9 @@ namespace RDE {
 
         virtual void on_event(Event &e);
 
-        Layer *push_layer(std::unique_ptr<Layer> layer);
+        Layer *push_layer(std::shared_ptr<Layer> layer);
 
-        Layer *push_overlay(std::unique_ptr<Layer> overlay);
+        Layer *push_overlay(std::shared_ptr<Layer> overlay);
 
         static Application &get();
 

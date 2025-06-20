@@ -34,7 +34,7 @@ namespace RDE {
     }
 
     bool OrthographicCameraController::on_mouse_scrolled(MouseScrolledEvent &e) {
-        m_zoom_level -= e.GetYOffset() * 0.25f;
+        m_zoom_level -= e.get_y_offset() * 0.25f;
         m_zoom_level = std::max(m_zoom_level, 0.25f);
 /*        m_camera.SetProjection(-m_aspect_ratio * m_zoom_level, m_aspect_ratio * m_zoom_level, -m_zoom_level,
                                m_zoom_level);*/

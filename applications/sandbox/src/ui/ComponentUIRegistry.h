@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <typeindex>
 
-#include "Components/TransformComponent.h"
+#include "EntityComponents/TransformComponent.h"
 
 namespace RDE {
     // A function that draws the UI for a component on a given entity.

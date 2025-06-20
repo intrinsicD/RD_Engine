@@ -6,6 +6,7 @@
 #include "Events/ApplicationEvent.h"
 #include "Events/MouseEvent.h"
 #include "Events/KeyEvent.h"
+#include "ContextComponents/MouseContextComponent.h"
 
 namespace RDE {
     static bool s_glfw_initialized = false;

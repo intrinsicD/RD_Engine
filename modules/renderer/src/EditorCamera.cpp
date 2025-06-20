@@ -37,7 +37,7 @@ namespace RDE {
     }
 
     bool EditorCamera::on_mouse_scroll(MouseScrolledEvent &e) {
-        float delta = e.GetYOffset() * 0.1f;
+        float delta = e.get_y_offset() * 0.1f;
         mouse_zoom(delta);
         return true;
     }

@@ -5,7 +5,9 @@ add_executable(Sandbox SandboxApp.cpp)
 
 target_sources(Sandbox PRIVATE
         src/systems/CameraSystem.cpp
-        src/ComponentUIRegistry.cpp
+        src/ui/ComponentUIRegistry.cpp
+        src/EditorLayer.cpp
+        src/SandboxLayer.cpp
 )
 
 target_link_libraries(Sandbox

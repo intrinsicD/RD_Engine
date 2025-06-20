@@ -21,7 +21,7 @@ namespace RDE {
         }
 
         // Called every frame during the main application loop.
-        virtual void on_update() {
+        virtual void on_update(float delta_time) {
         }
 
         // Called every frame to render the GUI.

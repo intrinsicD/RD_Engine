@@ -3,6 +3,8 @@
 #include "Application.h"
 #include "Log.h"
 
+#include <chrono>
+
 namespace RDE {
 // Free function: CamelCase
     static void GlfwErrorCallback(int error, const char *description) {
@@ -27,20 +29,28 @@ namespace RDE {
         RDE_CORE_INFO("Shutting down application.");
     }
 
-    Layer *Application::push_layer(std::unique_ptr<Layer> layer) {
-        return m_layer_stack.push_layer(std::move(layer));
+    Layer *Application::push_layer(std::shared_ptr<Layer> layer) {
+        return m_layer_stack.push_layer(layer);
     }
 
-    Layer *Application::push_overlay(std::unique_ptr<Layer> overlay) {
-        return m_layer_stack.push_overlay(std::move(overlay));
+    Layer *Application::push_overlay(std::shared_ptr<Layer> overlay) {
+        return m_layer_stack.push_overlay(overlay);
     }
 
     Application &Application::get() { return *s_instance; }
 
     void Application::run() {
+        //Timer
+
+        auto start_time = std::chrono::high_resolution_clock::now();
         while (m_is_running) {
+            // Calculate delta time
+            auto current_time = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<float> delta_time = current_time - start_time;
+            start_time = current_time;
+
             for (const auto &layer: m_layer_stack)
-                layer->on_update();
+                layer->on_update(delta_time.count());
 
             m_imgui_layer->begin();
             for (const auto &layer: m_layer_stack) {

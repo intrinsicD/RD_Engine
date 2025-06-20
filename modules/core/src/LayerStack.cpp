@@ -12,7 +12,7 @@ namespace RDE {
         m_layers.clear();
     }
 
-    Layer *LayerStack::push_layer(std::unique_ptr<Layer> layer) {
+    Layer *LayerStack::push_layer(std::shared_ptr<Layer> layer) {
         auto *raw_ptr = m_layers.emplace(m_layers.begin() + m_layer_insert_index, std::move(layer))->get();
         m_layer_insert_index++;
         raw_ptr->on_attach();
@@ -20,7 +20,7 @@ namespace RDE {
         return raw_ptr;
     }
 
-    Layer *LayerStack::push_overlay(std::unique_ptr<Layer> overlay) {
+    Layer *LayerStack::push_overlay(std::shared_ptr<Layer> overlay) {
         auto *raw_ptr = m_layers.emplace_back(std::move(overlay)).get();
         raw_ptr->on_attach();
         return raw_ptr;
@@ -28,7 +28,7 @@ namespace RDE {
 
     void LayerStack::pop_layer(Layer *layer) {
         auto it = std::find_if(m_layers.begin(), m_layers.begin() + m_layer_insert_index,
-                               [&](const std::unique_ptr<Layer> &ptr) {
+                               [&](const std::shared_ptr<Layer> &ptr) {
                                    return ptr.get() == layer;
                                });
 
@@ -41,7 +41,7 @@ namespace RDE {
 
     void LayerStack::pop_overlay(Layer *overlay) {
         auto it = std::find_if(m_layers.begin() + m_layer_insert_index, m_layers.end(),
-                               [&](const std::unique_ptr<Layer> &ptr) {
+                               [&](const std::shared_ptr<Layer> &ptr) {
                                    return ptr.get() == overlay;
                                });
 
