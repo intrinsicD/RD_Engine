@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Mesh.h"
+#include "AssetHandle.h"
 #include "Texture.h"
 
 #include <glm/glm.hpp>
@@ -8,15 +8,8 @@
 
 namespace RDE {
     struct MeshComponent {
-        std::shared_ptr<Mesh> mesh = nullptr;
+        AssetHandle mesh_handle;
         std::shared_ptr<Texture2D> texture = nullptr;
         glm::vec4 color{1.0f, 1.0f, 1.0f, 1.0f};
-
-        MeshComponent() = default;
-
-        MeshComponent(const MeshComponent &) = default;
-
-        MeshComponent(const std::shared_ptr<Mesh> &mesh, const glm::vec4 &color = {1.0f, 1.0f, 1.0f, 1.0f})
-                : mesh(mesh), color(color) {}
     };
 }

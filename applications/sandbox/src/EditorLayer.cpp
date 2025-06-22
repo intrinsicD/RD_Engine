@@ -10,7 +10,7 @@
 #include "EntityComponents/CameraComponent.h"
 #include "EntityComponents/TagComponent.h"
 
-#include "Serialization.h"
+#include "YamlUtils.h"
 #include "SceneSerializer.h"
 #include "FileIO.h"
 
@@ -20,10 +20,13 @@
 
 #include <yaml-cpp/yaml.h> // For YAML serialization/deserialization
 
+#include "EntityComponents/PrimaryCameraTag.h"
+
 // ... all your component and ImGui includes ...
 
 namespace RDE {
-    EditorLayer::EditorLayer() : Layer("EditorLayer") {}
+    EditorLayer::EditorLayer() : Layer("EditorLayer") {
+    }
 
     void EditorLayer::set_context(const std::shared_ptr<Scene> &scene) {
         m_scene = scene;
@@ -39,8 +42,6 @@ namespace RDE {
         draw_scene_hierarchy_panel();
         draw_properties_panel();
         // ... End dockspace ...
-
-
     }
 
     // Move draw_scene_hierarchy_panel and draw_properties_panel here.
@@ -67,7 +68,7 @@ namespace RDE {
             flags |= ImGuiTreeNodeFlags_SpanAvailWidth; // Makes the node span the full width
 
             // We use TreeNodeEx to have more control and prepare for parenting.
-            bool opened = ImGui::TreeNodeEx((void *) (uint64_t) (uint32_t) entity, flags, tag.c_str());
+            bool opened = ImGui::TreeNodeEx((void *) (uint64_t) (uint32_t) entity, flags, "%s", tag.c_str());
 
             // Handle selection
             if (ImGui::IsItemClicked()) {
@@ -199,7 +200,7 @@ namespace RDE {
     void EditorLayer::register_component_uis() {
         ComponentUIRegistry::RegisterComponent<TransformComponent>("Transform", [](Entity entity) {
             UI::DrawComponent<TransformComponent>("Transform", entity, [](auto &component) {
-                ImGui::DragFloat3("Translation", glm::value_ptr(component.translation), 0.1f);
+                ImGui::DragFloat3("Translation", glm::value_ptr(component.position), 0.1f);
                 glm::vec3 rotation_degrees = glm::degrees(component.rotation);
                 if (ImGui::DragFloat3("Rotation", glm::value_ptr(rotation_degrees), 1.0f)) {
                     component.rotation.z = glm::radians(rotation_degrees.z);
@@ -236,40 +237,46 @@ namespace RDE {
             });
         });
         ComponentUIRegistry::RegisterComponent<ArcballControllerComponent>(
-                "ArcBall Controller", [](Entity entity) {
-                    UI::DrawComponent<ArcballControllerComponent>("ArcBall Controller", entity, [](auto &component) {
-                        ImGui::InputFloat3("Focal Point", glm::value_ptr(component.focal_point));
-                        ImGui::DragFloat("Distance", &component.distance, 0.1f, 0.1f, 100.0f);
-                        ImGui::Text("is_rotating %i", &component.is_rotating);
-                        ImGui::Text("is_panning %i", &component.is_panning);
+            "ArcBall Controller", [](Entity entity) {
+                UI::DrawComponent<ArcballControllerComponent>("ArcBall Controller", entity, [](auto &component) {
+                    ImGui::InputFloat3("Focal Point", glm::value_ptr(component.focal_point));
+                    ImGui::DragFloat("Distance", &component.distance, 0.1f, 0.1f, 100.0f);
+                    ImGui::Text("width %i", component.width);
+                    ImGui::Text("height %i", component.height);
 
-                        ImGui::Text("start_rotation %f, %f, %f", &component.start_rotation.x,
-                                    component.start_rotation.y, component.start_rotation.z);
-                        ImGui::Text("rotation_start_point_3d %f, %f, %f", &component.rotation_start_point_3d.x,
-                                    component.rotation_start_point_3d.y, component.rotation_start_point_3d.z);
-                        ImGui::Text("last_mouse_position %f, %f", &component.last_mouse_position.x,
-                                    component.last_mouse_position.y);
-                    });
+                    ImGui::Text("last_point_2d %f, %f", component.last_point_2d.x, component.last_point_2d.y);
+                    ImGui::Text("last_point_3d %f, %f, %f", component.last_point_3d.x,
+                                component.last_point_3d.y, component.last_point_3d.z);
+                    ImGui::Text("last_point_ok %i", component.last_point_ok);
                 });
+            });
         ComponentUIRegistry::RegisterComponent<CameraComponent>(
-                "Camera", [](Entity entity) {
-                    UI::DrawComponent<CameraComponent>("Camera", entity, [](auto &component) {
-                        ImGui::Checkbox("Primary Camera", &component.primary);
-                        if (component.camera) {
-                            const auto proj = component.camera->get_projection_matrix();
-                            ImGui::Text("Projection Matrix:");
-                            std::stringstream ss;
-                            ss << glm::to_string(proj);
-                            ImGui::Text("  %s", ss.str().c_str());
-                        }
-                    });
+            "Camera", [&](Entity entity) {
+                UI::DrawComponent<CameraComponent>("Camera", entity, [&](auto &component) {
+                    bool is_primary = m_scene->get_registry().all_of<PrimaryCameraTag>(entity);
+                    ImGui::Checkbox("Primary Camera", &is_primary);
+
+                    const auto &projection_matrix = component.projection_matrix;
+                    ImGui::Text("Projection Matrix:");
+                    std::stringstream ss_proj;
+                    ss_proj << glm::to_string(projection_matrix);
+                    ImGui::Text("  %s", ss_proj.str().c_str());
+                    ImGui::Spacing();
+                    ImGui::Separator();
+                    ImGui::Spacing();
+                    const auto &view_matrix = component.view_matrix;
+                    ImGui::Text("View Matrix:");
+                    std::stringstream ss_view;
+                    ss_view << glm::to_string(view_matrix);
+                    ImGui::Text("  %s", ss_view.str().c_str());
                 });
+            });
     }
 
     void EditorLayer::save_scene(const std::string &filepath) {
         SceneSerializer serializer(m_scene);
         serializer.serialize(FileIO::GetPath(filepath),
-                // This is our serialization lambda (the "hook")
+                             // This is our serialization lambda (the "hook")
                              [](YAML::Emitter &out, Entity entity) {
                                  if (entity.has_component<SpriteRendererComponent>()) {
                                      out << YAML::Key << "SpriteRendererComponent";
@@ -279,9 +286,9 @@ namespace RDE {
                                      out << YAML::Key << "Color" << YAML::Value << src.color;
                                      if (src.texture)
                                          out << YAML::Key << "TexturePath" << YAML::Value
-                                             << src.texture->get_path();
+                                                 << src.texture->get_path();
                                      out << YAML::Key << "TilingFactor" << YAML::Value
-                                         << src.tiling_factor;
+                                             << src.tiling_factor;
 
                                      out << YAML::EndMap; // SpriteRendererComponent
                                  }
@@ -292,7 +299,7 @@ namespace RDE {
         m_selected_entity = {};
         SceneSerializer serializer(m_scene);
         serializer.deserialize(FileIO::GetPath(filepath),
-                // This is our deserialization lambda (the "hook")
+                               // This is our deserialization lambda (the "hook")
                                [](const YAML::Node &entity_node, Entity entity) {
                                    auto sprite_component = entity_node["SpriteRendererComponent"];
                                    if (sprite_component) {
@@ -300,7 +307,7 @@ namespace RDE {
                                        src.color = sprite_component["Color"].as<glm::vec4>();
                                        if (sprite_component["TexturePath"]) {
                                            std::string path = sprite_component["TexturePath"].as<
-                                                   std::string>();
+                                               std::string>();
                                            src.texture = RDE::Texture2D::Create(path);
                                        }
                                        src.tiling_factor = sprite_component["TilingFactor"].as<float>();

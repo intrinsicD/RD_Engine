@@ -2,7 +2,7 @@
 
 #include <glad/gl.h>
 #include "GlfwWindow.h"
-#include "Log.h"
+#include "../../../common/include/Log.h"
 #include "Events/ApplicationEvent.h"
 #include "Events/MouseEvent.h"
 #include "Events/KeyEvent.h"

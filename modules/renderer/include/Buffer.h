@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include "Log.h"
+#include "../../common/include/Log.h"
 
 namespace RDE {
     enum class ShaderDataType {

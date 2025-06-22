@@ -1,8 +1,8 @@
 // RDE_Project/modules/platform/opengl/OpenGLShader.cpp
 #include "OpenGLShader.h"
 #include "OpenGLDebug.h"
-#include "Log.h"
-#include "FileIO.h"
+#include "../../../common/include/Log.h"
+#include "../../../common/include/FileIO.h"
 
 namespace RDE {
 // Factory function implementation is here

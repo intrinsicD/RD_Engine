@@ -2,7 +2,7 @@
 #include "RenderCommand.h"
 #include "VertexArray.h"
 #include "Shader.h"
-#include "FileIO.h"
+#include "../../common/include/FileIO.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 

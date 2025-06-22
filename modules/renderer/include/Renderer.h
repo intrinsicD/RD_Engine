@@ -2,7 +2,6 @@
 #pragma once
 
 #include "RenderCommand.h"
-#include "OrthographicCamera.h"
 #include "Shader.h"
 #include "Texture.h"
 

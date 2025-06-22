@@ -4,6 +4,8 @@
 add_executable(Sandbox SandboxApp.cpp)
 
 target_sources(Sandbox PRIVATE
+        src/systems/InputSystem.cpp
+        src/systems/RenderSystem.cpp
         src/systems/CameraSystem.cpp
         src/ui/ComponentUIRegistry.cpp
         src/EditorLayer.cpp

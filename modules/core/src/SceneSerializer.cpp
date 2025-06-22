@@ -1,8 +1,8 @@
 #include "SceneSerializer.h"
 #include "Entity.h"
-#include "Components/TagComponent.h"
-#include "Components/TransformComponent.h"
-#include "Serialization.h"
+#include "EntityComponents/TagComponent.h"
+#include "EntityComponents/TransformComponent.h"
+#include "YamlUtils.h"
 #include "Log.h"
 
 #include <fstream>
@@ -31,7 +31,7 @@ namespace RDE {
     // TransformComponent
     YAML::Emitter &operator<<(YAML::Emitter &out, const TransformComponent &tc) {
         out << YAML::BeginMap;
-        out << YAML::Key << "Translation" << YAML::Value << tc.translation;
+        out << YAML::Key << "Translation" << YAML::Value << tc.position;
         out << YAML::Key << "Rotation" << YAML::Value << tc.rotation;
         out << YAML::Key << "Scale" << YAML::Value << tc.scale;
         out << YAML::EndMap;
@@ -130,7 +130,7 @@ namespace RDE {
                 auto transform_component = entity_node["TransformComponent"];
                 if (transform_component) {
                     auto &tc = deserialized_entity.add_component<TransformComponent>();
-                    tc.translation = transform_component["Translation"].as<glm::vec3>();
+                    tc.position = transform_component["Translation"].as<glm::vec3>();
                     tc.rotation = transform_component["Rotation"].as<glm::vec3>();
                     tc.scale = transform_component["Scale"].as<glm::vec3>();
                 }

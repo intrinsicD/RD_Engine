@@ -3,7 +3,7 @@
 #pragma once
 
 #include "Application.h"
-#include "Log.h"
+#include "../../common/include/Log.h"
 #include "RenderCommand.h"
 #include "Renderer2D.h"
 
@@ -21,9 +21,7 @@ int main(int argc, char **argv) {
     auto app = RDE::CreateApplication();
     RDE_CORE_ASSERT(app, "Client application is null!");
 
-    RDE::Renderer2D::Init();
     app->run();
-    RDE::Renderer2D::Shutdown();
 
     delete app; // This triggers all destructors in the correct order.
 

@@ -2,8 +2,8 @@
 // Created by alex on 18.06.25.
 //
 
-#include "FileIO.h"
-#include "Log.h"
+#include "../include/FileIO.h"
+#include "../include/Log.h"
 
 #include <fstream>
 #include <sstream>

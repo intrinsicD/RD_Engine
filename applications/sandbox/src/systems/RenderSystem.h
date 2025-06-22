@@ -1,10 +1,13 @@
 #pragma once
 
 #include "ISystem.h"
+#include <memory>
 
 namespace RDE {
     class Scene; // Forward declare
     class Event;
+    class Entity;
+    class IRenderer;
 
     class RenderSystem : public ISystem {
     public:
@@ -21,5 +24,9 @@ namespace RDE {
         void on_post_update(Scene *scene, float delta_time) override;
 
         void on_event(Scene *scene, Event &e) override;
+
+        void set_renderer(Scene *scene, std::shared_ptr<IRenderer> renderer);
+
+        Entity get_primary_camera(Scene *scene);
     };
 }

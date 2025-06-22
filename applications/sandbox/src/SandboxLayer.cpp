@@ -3,12 +3,15 @@
 #include "systems/RenderSystem.h"
 #include "systems/InputSystem.h"
 
+#include "../../../modules/assets/include/AssetManager.h"
 #include "RenderCommand.h"
 #include "Renderer.h"
+#include "../../../modules/platform/opengl/src/OpenGLRenderer.h"
 
 namespace RDE {
     SandboxLayer::SandboxLayer() : Layer("SandboxLayer") {
         m_scene = std::make_shared<Scene>();
+        m_scene->get_registry().ctx().emplace<AssetManager>();
         m_update_systems.push_back(std::make_unique<InputSystem>());
         m_input_system = reinterpret_cast<InputSystem *>(m_update_systems.back().get());
         m_update_systems.push_back(std::make_unique<CameraSystem>());
@@ -16,6 +19,7 @@ namespace RDE {
 
         m_render_systems.push_back(std::make_unique<RenderSystem>());
         m_render_system = reinterpret_cast<RenderSystem *>(m_render_systems.back().get());
+        m_render_system->set_renderer(m_scene.get(), std::make_shared<OpenGLRenderer>());
     }
 
     void SandboxLayer::on_attach() {

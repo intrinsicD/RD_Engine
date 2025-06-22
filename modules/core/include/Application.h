@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "Log.h"
+#include "../../common/include/Log.h"
 #include "Window.h"
 #include "Events/Event.h"
 #include "Events/ApplicationEvent.h"

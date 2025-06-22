@@ -1,12 +1,13 @@
 // RDE_Project/modules/renderer/include/Renderer/Shader.h
 #pragma once
 
+#include "../../assets/include/IAsset.h"
 #include <string>
 #include <memory>
 #include <glm/glm.hpp> // Include glm
 
 namespace RDE {
-    class Shader {
+    class Shader : public IAsset{
     public:
         virtual ~Shader() = default;
 

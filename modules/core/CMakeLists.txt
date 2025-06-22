@@ -18,11 +18,9 @@ set(IMGUI_SOURCES
 add_library(Core
         src/Application.cpp
         src/Entity.cpp
-        src/FileIO.cpp
         src/ImGuiLayer.cpp
         src/Layer.cpp
         src/LayerStack.cpp
-        src/Log.cpp
         src/Scene.cpp
         src/SceneSerializer.cpp
         ${IMGUI_SOURCES}
@@ -50,12 +48,13 @@ target_compile_definitions(Core
 find_package(OpenGL REQUIRED)
 target_link_libraries(Core
         PUBLIC
-        spdlog::spdlog
         glfw
         glad_gl_core  # Use the glad target provided by FetchContent
         OpenGL::GL
         EnTT::EnTT
         yaml-cpp
+        RDE::Common
+        RDE::Assets
 )
 
 get_target_property(GLAD_INCLUDES glad_gl_core INCLUDE_DIRECTORIES)

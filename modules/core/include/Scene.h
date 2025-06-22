@@ -22,6 +22,10 @@ namespace RDE {
 
         entt::registry &get_registry() { return m_registry; }
 
+        auto &get_context() {
+            return m_registry.ctx();
+        }
+
     private:
         entt::registry m_registry;
 

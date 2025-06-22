@@ -1,7 +1,7 @@
 // RDE_Project/modules/core/src/Application.cpp
 
 #include "Application.h"
-#include "Log.h"
+#include "../../common/include/Log.h"
 
 #include <chrono>
 

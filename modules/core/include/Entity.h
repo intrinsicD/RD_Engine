@@ -2,7 +2,7 @@
 #pragma once
 
 #include "Scene.h"
-#include "Log.h"
+#include "../../common/include/Log.h"
 #include <entt/entt.hpp>
 
 namespace RDE {

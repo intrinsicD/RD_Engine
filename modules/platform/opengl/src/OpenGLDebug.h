@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "Log.h"
+#include "../../../common/include/Log.h"
 
 #include <spdlog/fmt/fmt.h>
 #include <glad/gl.h>
@@ -49,6 +49,25 @@ namespace RDE {
             RDE_CORE_ERROR("[OpenGL Error] ({0}): {1} at {2}:{3}", error, error_str, file, line);
         }
         return !error_found; // Return true if NO error was found
+    }
+
+    static const char *GLGetShaderTypeString(GLenum shader_type) {
+        switch (shader_type) {
+            case GL_VERTEX_SHADER:
+                return "Vertex Shader";
+            case GL_FRAGMENT_SHADER:
+                return "Fragment Shader";
+            case GL_GEOMETRY_SHADER:
+                return "Geometry Shader";
+            case GL_TESS_CONTROL_SHADER:
+                return "Tessellation Control Shader";
+            case GL_TESS_EVALUATION_SHADER:
+                return "Tessellation Evaluation Shader";
+            case GL_COMPUTE_SHADER:
+                return "Compute Shader";
+            default:
+                return "Unknown Shader Type";
+        }
     }
 
     // The main macro definition.

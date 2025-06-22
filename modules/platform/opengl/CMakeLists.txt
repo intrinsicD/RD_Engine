@@ -3,6 +3,7 @@
 add_library(OpenGLPlatform
         src/OpenGLShader.cpp
         src/OpenGLBuffer.cpp
+        src/OpenGLRenderer.cpp
         src/OpenGLVertexArray.cpp
         src/OpenGLGraphicsAPI.cpp
         src/OpenGLTexture.cpp

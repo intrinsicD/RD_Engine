@@ -1,6 +1,6 @@
 // RDE_Project/modules/core/src/Log.cpp
 
-#include "Log.h"
+#include "../include/Log.h"
 
 namespace RDE {
     // Definition for static members

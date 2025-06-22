@@ -15,15 +15,10 @@ target_include_directories(Renderer
 
 target_sources(Renderer
         PRIVATE
-        src/EditorCamera.cpp
-        src/Mesh.cpp
         src/Renderer.cpp
         src/Renderer2D.cpp
         src/Renderer3D.cpp
         src/RenderCommand.cpp
-        src/PerspectiveCamera.cpp
-        src/OrthographicCamera.cpp
-        src/OrthographicCameraController.cpp
 )
 
 target_link_libraries(Renderer

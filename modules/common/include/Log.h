@@ -2,7 +2,7 @@
 
 #pragma once // Modern alternative to include guards.
 
-#include "Base.h" // Include base definitions
+#include "../../core/include/Base.h"
 
 #include <memory>
 
