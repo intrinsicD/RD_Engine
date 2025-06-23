@@ -3,29 +3,19 @@
 #pragma once
 
 #include "events/Event.h"
+#include "ApplicationConfig.h"
 #include <string>
 #include <functional>
 #include <memory>
 
+
 namespace RDE {
-    struct WindowProps {
-        std::string title;
-        unsigned int width;
-        unsigned int height;
-
-        WindowProps(const std::string &p_title = "RD_Engine",
-                    unsigned int p_width = 1280,
-                    unsigned int p_height = 720)
-                : title(p_title), width(p_width), height(p_height) {
-        }
-    };
-
-// Interface representing a desktop system based Window
-    class Window {
+    // Interface representing a desktop system based Window
+    class IWindow {
     public:
         using EventCallbackFn = std::function<void(Event &)>;
 
-        virtual ~Window() = default;
+        virtual ~IWindow() = default;
 
         virtual void on_update() = 0;
 
@@ -44,6 +34,6 @@ namespace RDE {
 
         // A factory method to create the appropriate window based on the platform.
         // For now, we only have a GLFW implementation.
-        static std::unique_ptr<Window> Create(const WindowProps &props = WindowProps());
+        static std::unique_ptr<IWindow> Create(const Config::WindowConfig &window_config = Config::WindowConfig());
     };
 }

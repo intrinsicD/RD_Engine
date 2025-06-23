@@ -1,8 +1,10 @@
-//
-// Created by alex on 6/23/25.
-//
+#pragma once
 
-#ifndef CAMERACOMPONENT_H
-#define CAMERACOMPONENT_H
+#include <glm/glm.hpp>
 
-#endif //CAMERACOMPONENT_H
+namespace RDE::Components {
+    struct CameraComponent {
+        glm::mat4 view_matrix = glm::mat4(1.0f);
+        glm::mat4 projection_matrix = glm::mat4(1.0f);
+    };
+}

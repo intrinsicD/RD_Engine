@@ -1,8 +1,15 @@
-//
-// Created by alex on 6/23/25.
-//
+#pragma once
 
-#ifndef AABBCOMPONENT_H
-#define AABBCOMPONENT_H
+#include <glm/glm.hpp>
 
-#endif //AABBCOMPONENT_H
+namespace RDE::Components {
+    struct AABBLocalComponent {
+        glm::vec3 min;
+        glm::vec3 max;
+    };
+
+    struct AABBWorldComponent {
+        glm::vec3 min;
+        glm::vec3 max;
+    };
+}

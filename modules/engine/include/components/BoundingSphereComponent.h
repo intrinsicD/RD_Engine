@@ -1,8 +1,10 @@
-//
-// Created by alex on 6/23/25.
-//
+#pragma once
 
-#ifndef BOUNDINGSPHERECOMPONENT_H
-#define BOUNDINGSPHERECOMPONENT_H
+#include <glm/glm.hpp>
 
-#endif //BOUNDINGSPHERECOMPONENT_H
+namespace RDE::Components {
+    struct BoundingSphereComponent {
+        float radius = 0.0f; // Radius of the bounding sphere
+        glm::vec3 center = {0.0f, 0.0f, 0.0f}; // Center of the bounding sphere
+    };
+}

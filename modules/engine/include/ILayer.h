@@ -1,16 +1,15 @@
-// RDE_Project/modules/core/include/Layer.h
-
 #pragma once
 
-#include "Base.h"
 #include "events/Event.h"
 
-namespace RDE {
-    class Layer {
-    public:
-        Layer(const std::string &name = "Layer");
+#include <string>
 
-        virtual ~Layer() = default;
+namespace RDE {
+    class ILayer {
+    public:
+        ILayer(const std::string &name = "Layer");
+
+        virtual ~ILayer() = default;
 
         // Called when the layer is pushed onto the layer stack.
         virtual void on_attach() {

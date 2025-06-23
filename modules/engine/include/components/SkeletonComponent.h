@@ -1,8 +1,11 @@
-//
-// Created by alex on 6/23/25.
-//
+#pragma once
+#include <vector>
 
-#ifndef SKELETONCOMPONENT_H
-#define SKELETONCOMPONENT_H
-
-#endif //SKELETONCOMPONENT_H
+namespace RDE::Components {
+    struct BoneInfo {
+        //TODO
+    };
+    struct SkeletonComponent {
+        std::vector<BoneInfo> bones;
+    };
+}

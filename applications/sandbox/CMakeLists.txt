@@ -4,7 +4,6 @@
 add_executable(Sandbox SandboxApp.cpp)
 
 target_sources(Sandbox PRIVATE
-        src/systems/InputSystem.cpp
         src/systems/RenderSystem.cpp
         src/systems/CameraSystem.cpp
         src/ui/ComponentUIRegistry.cpp
@@ -12,9 +11,12 @@ target_sources(Sandbox PRIVATE
         src/SandboxLayer.cpp
 )
 
+find_package(Threads REQUIRED)
+
 target_link_libraries(Sandbox
         PRIVATE
-        RDE::Core
+        Threads::Threads
+        RDE::Engine
         RDE::Renderer
         RDE::Platform::Glfw
         RDE::Platform::OpenGL

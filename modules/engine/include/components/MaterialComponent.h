@@ -1,8 +1,29 @@
-//
-// Created by alex on 6/23/25.
-//
+#pragma once
 
-#ifndef MATERIALCOMPONENT_H
-#define MATERIALCOMPONENT_H
+#include "AssetManager.h"
 
-#endif //MATERIALCOMPONENT_H
+#include <variant>
+
+namespace RDE::Components {
+    using MaterialParameter = std::variant<float, int, glm::vec2, glm::vec3, glm::vec4, std::string>;
+
+    struct MaterialComponent {
+        MaterialParameter ambient;
+        MaterialParameter diffuse;
+        MaterialParameter specular;
+        MaterialParameter emissive;
+        MaterialParameter shininess;
+        MaterialParameter alpha;
+
+        AssetHandle program_handle;
+
+        enum class PrimitiveTopology {
+            Points,
+            Lines,
+            LineStrip,
+            Triangles,
+            TriangleStrip,
+            TriangleFan
+        } primitive_topology = PrimitiveTopology::Triangles;
+    };
+}

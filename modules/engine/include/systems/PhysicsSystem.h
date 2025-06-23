@@ -1,8 +1,18 @@
-//
-// Created by alex on 6/23/25.
-//
+#pragma once
 
-#ifndef PHYSICSSYSTEM_H
-#define PHYSICSSYSTEM_H
+#include "ISystem.h"
 
-#endif //PHYSICSSYSTEM_H
+namespace RDE {
+    class PhysicsSystem : public ISystem {
+    public:
+        PhysicsSystem() = default;
+
+        ~PhysicsSystem() override = default;
+
+        void on_attach(Scene *scene) override;
+
+        void on_detach(Scene *scene) override;
+
+        void on_update(Scene *scene, float delta_time) override;
+    };
+}

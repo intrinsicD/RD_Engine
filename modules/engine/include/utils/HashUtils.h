@@ -12,11 +12,12 @@ namespace RDE {
      * @param value The new value to hash and combine.
      */
     template<class T>
-    inline void HashCombine(std::size_t &seed, const T &value) {
+    void HashCombine(std::size_t &seed, const T &value) {
         std::hash < T > hasher;
         seed ^= hasher(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     }
 }
+
 
 // Now, provide the hash specializations for third-party types (glm) here.
 // Because this is a header file in 'common' and will be included by many

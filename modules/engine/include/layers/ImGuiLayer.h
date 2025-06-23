@@ -1,9 +1,10 @@
 // RDE_Project/modules/core/include/ImGuiLayer.h
 #pragma once
-#include "../Layer.h"
+
+#include "ILayer.h"
 
 namespace RDE {
-    class ImGuiLayer : public Layer {
+    class ImGuiLayer : public ILayer {
     public:
         ImGuiLayer();
 

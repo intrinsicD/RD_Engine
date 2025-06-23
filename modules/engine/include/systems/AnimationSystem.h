@@ -1,8 +1,18 @@
-//
-// Created by alex on 6/23/25.
-//
+#pragma once
 
-#ifndef ANIMATIONSYSTEM_H
-#define ANIMATIONSYSTEM_H
+#include "ISystem.h"
 
-#endif //ANIMATIONSYSTEM_H
+namespace RDE {
+    class AnimationSystem : public ISystem {
+    public:
+        AnimationSystem() = default;
+
+        ~AnimationSystem() override = default;
+
+        void on_attach(Scene *scene) override;
+
+        void on_detach(Scene *scene) override;
+
+        void on_update(Scene *scene, float delta_time) override;
+    };
+}

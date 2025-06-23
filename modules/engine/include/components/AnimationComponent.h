@@ -1,8 +1,11 @@
-//
-// Created by alex on 6/23/25.
-//
+#pragma once
+#include "AssetManager.h"
 
-#ifndef ANIMATIONCOMPONENTN_H
-#define ANIMATIONCOMPONENTN_H
-
-#endif //ANIMATIONCOMPONENTN_H
+namespace RDE::Components {
+    struct AnimationComponent {
+        AssetHandle animation_handle;
+        float current_time = 0.0f; // Current time in the animation
+        float playback_speed = 1.0f; // Speed of playback, can be negative for reverse playback
+        bool is_looping = false; // Whether the animation should loop
+    };
+}

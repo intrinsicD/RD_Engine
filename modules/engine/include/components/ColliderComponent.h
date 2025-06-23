@@ -1,8 +1,10 @@
-//
-// Created by alex on 6/23/25.
-//
+#pragma once
+#include "glm/vec3.hpp"
 
-#ifndef COLLIDERCOMPONENT_H
-#define COLLIDERCOMPONENT_H
-
-#endif //COLLIDERCOMPONENT_H
+namespace RDE::Components {
+    struct ColliderComponent {
+        enum class ShapeType { Box, Sphere, Capsule, ConvexMesh, TriangleMesh } type = ShapeType::Box;
+        glm::vec3 offset = glm::vec3(0.0f);
+        AssetHandle physics_material;
+    };
+}

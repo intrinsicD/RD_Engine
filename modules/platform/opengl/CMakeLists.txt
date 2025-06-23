@@ -14,7 +14,7 @@ add_library(RDE::Platform::OpenGL ALIAS OpenGLPlatform)
 # This module needs to know where the abstract Renderer interfaces are.
 target_include_directories(OpenGLPlatform
         PUBLIC
-        # No public headers.
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
         PRIVATE
         ${PROJECT_SOURCE_DIR}/modules/renderer/include
         ${stb_SOURCE_DIR}
@@ -22,13 +22,13 @@ target_include_directories(OpenGLPlatform
 
 # This module implements the renderer, so it links against the graphics libraries.
 find_package(OpenGL REQUIRED)
+find_package(Threads REQUIRED)
 
 target_link_libraries(OpenGLPlatform
         PUBLIC
-        # It implements the Renderer interface.
         RDE::Renderer
-        # It needs glad for the OpenGL functions.
+        RDE::Engine
+        Threads::Threads
         glad_gl_core
         OpenGL::GL
-        RDE::Core
 )

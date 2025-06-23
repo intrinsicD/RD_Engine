@@ -1,8 +1,18 @@
-//
-// Created by alex on 6/23/25.
-//
+#pragma once
 
-#ifndef TRANSFORMSYSTEM_H
-#define TRANSFORMSYSTEM_H
+#include "ISystem.h"
 
-#endif //TRANSFORMSYSTEM_H
+namespace RDE {
+    class TransformSystem : public ISystem {
+    public:
+        TransformSystem() = default;
+
+        ~TransformSystem() override = default;
+
+        void on_attach(Scene *scene) override;
+
+        void on_detach(Scene *scene) override;
+
+        void on_update(Scene *scene, float delta_time) override;
+    };
+}

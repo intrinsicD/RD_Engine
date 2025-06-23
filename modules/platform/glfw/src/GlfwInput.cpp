@@ -1,6 +1,7 @@
 // RDE_Project/modules/platform/glfw/GlfwInput.cpp
 #include "Input.h"
 #include "Application.h"
+#include "IWindow.h"
 #include <GLFW/glfw3.h>
 
 namespace RDE {

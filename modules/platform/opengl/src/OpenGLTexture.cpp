@@ -1,6 +1,6 @@
 #include "OpenGLTexture.h"
 #include "OpenGLDebug.h"
-#include "../../../common/include/Log.h"
+#include "../../../engine/include/Log.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 

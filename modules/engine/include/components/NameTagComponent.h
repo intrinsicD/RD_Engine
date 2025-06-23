@@ -1,8 +1,9 @@
-//
-// Created by alex on 6/23/25.
-//
+#pragma once
 
-#ifndef NAMETAGCOMPONENT_H
-#define NAMETAGCOMPONENT_H
+#include <string>
 
-#endif //NAMETAGCOMPONENT_H
+namespace RDE::Components {
+    struct NameTagComponent {
+        std::string name;
+    };
+}

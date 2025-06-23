@@ -4,7 +4,7 @@
 #include <GLFW/glfw3.h>
 
 
-#include "GlfwWindow.h"
+#include "GlfwOpenGLWindow.h"
 #include "Log.h"
 #include "events/ApplicationEvent.h"
 #include "events/MouseEvent.h"
@@ -17,19 +17,19 @@ namespace RDE {
         RDE_CORE_ERROR("GLFW Error ({0}): {1}", error, description);
     }
 
-    std::unique_ptr<IWindow> IWindow::Create(const Config::WindowConfig &window_config, const Config::RendererConfig &renderer_config) {
-        return std::make_unique<GlfwWindow>(window_config, renderer_config);
+    std::unique_ptr<IWindow> IWindow::Create(const Config::WindowConfig &window_config) {
+        return std::make_unique<GlfwOpenGLWindow>(window_config);
     }
 
-    GlfwWindow::GlfwWindow(const Config::WindowConfig &window_config, const Config::RendererConfig &renderer_config){
-        init(window_config, renderer_config);
+    GlfwOpenGLWindow::GlfwOpenGLWindow(const Config::WindowConfig &window_config) {
+        init(window_config);
     }
 
-    GlfwWindow::~GlfwWindow() {
+    GlfwOpenGLWindow::~GlfwOpenGLWindow() {
         shutdown();
     }
 
-    void GlfwWindow::init(const Config::WindowConfig &window_config, const Config::RendererConfig &renderer_config) {
+    void GlfwOpenGLWindow::init(const Config::WindowConfig &window_config) {
         m_data.title = window_config.title;
         m_data.width = window_config.width;
         m_data.height = window_config.height;
@@ -39,29 +39,21 @@ namespace RDE {
         if (!s_glfw_initialized) {
             int success = glfwInit();
             RDE_CORE_ASSERT(success, "Could not initialize GLFW!");
+
             glfwSetErrorCallback(GlfwErrorCallback);
             s_glfw_initialized = true;
         }
 
-        if (renderer_config.api == Config::RendererAPI::OpenGL_4_5) {
-            glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
-            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
-            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-        } else if (renderer_config.api == Config::RendererAPI::Vulkan_1_2) {
-            glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        } else {
-            RDE_CORE_ERROR("Unsupported Renderer API!");
-            return;
-        }
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
         m_window = glfwCreateWindow((int) m_data.width, (int) m_data.height, m_data.title.c_str(), nullptr, nullptr);
 
-        if (renderer_config.api == Config::RendererAPI::OpenGL_4_5) {
-            glfwMakeContextCurrent(m_window);
-            int status = gladLoadGL((GLADloadfunc) glfwGetProcAddress);
-            RDE_CORE_ASSERT(status, "Failed to initialize Glad!");
-        }
+        glfwMakeContextCurrent(m_window);
+        int status = gladLoadGL((GLADloadfunc) glfwGetProcAddress);
+        RDE_CORE_ASSERT(status, "Failed to initialize Glad!");
 
         glfwSetWindowUserPointer(m_window, &m_data);
         set_vsync(true);
@@ -145,33 +137,16 @@ namespace RDE {
         });
     }
 
-    void GlfwWindow::init_opengl() {
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-        m_window = glfwCreateWindow((int) m_data.width, (int) m_data.height, m_data.title.c_str(), nullptr, nullptr);
-        glfwMakeContextCurrent(m_window);
-        /*int status = gladLoadGL((GLADloadfunc) glfwGetProcAddress);
-        RDE_CORE_ASSERT(status, "Failed to initialize Glad!");*/
-    }
-
-    void GlfwWindow::init_vulkan() {
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        m_window = glfwCreateWindow((int) m_data.width, (int) m_data.height, m_data.title.c_str(), nullptr, nullptr);
-        glfwCreateWindowSurface(vulkanInstance, window, nullptr, &surface);
-    }
-
-    void GlfwWindow::shutdown() {
+    void GlfwOpenGLWindow::shutdown() {
         glfwDestroyWindow(m_window);
     }
 
-    void GlfwWindow::on_update() {
+    void GlfwOpenGLWindow::on_update() {
         glfwPollEvents();
         glfwSwapBuffers(m_window);
     }
 
-    void GlfwWindow::set_vsync(bool enabled) {
+    void GlfwOpenGLWindow::set_vsync(bool enabled) {
         if (enabled)
             glfwSwapInterval(1);
         else
@@ -179,7 +154,7 @@ namespace RDE {
         m_data.vsync = enabled;
     }
 
-    bool GlfwWindow::is_vsync() const {
+    bool GlfwOpenGLWindow::is_vsync() const {
         return m_data.vsync;
     }
 }

@@ -1,8 +1,18 @@
-//
-// Created by alex on 6/23/25.
-//
+#pragma once
 
-#ifndef CAMERASYSTEM_H
-#define CAMERASYSTEM_H
+#include "ISystem.h"
 
-#endif //CAMERASYSTEM_H
+namespace RDE {
+    class CameraSystem : public ISystem {
+    public:
+        CameraSystem() = default;
+
+        ~CameraSystem() override = default;
+
+        void on_attach(Scene *scene) override;
+
+        void on_detach(Scene *scene) override;
+
+        void on_update(Scene *scene, float delta_time) override;
+    };
+}

@@ -1,17 +1,16 @@
 #pragma once
 
-#include "Layer.h"
-#include "Scene.h"
+#include "ILayer.h"
 #include "ISystem.h"
+#include "Scene.h"
+#include "AssetManager.h"
+#include "events/ApplicationEvent.h"
 
 #include <memory>
+#include <vector>
 
 namespace RDE {
-    class RenderSystem;
-    class CameraSystem;
-    class InputSystem;
-
-    class SandboxLayer : public Layer {
+    class SandboxLayer : public ILayer {
     public:
         SandboxLayer();
 
@@ -21,19 +20,16 @@ namespace RDE {
 
         void on_event(Event &e) override;
 
-        std::shared_ptr<Scene> get_scene() { return m_scene; }
+        Scene *get_scene() const {
+            return m_scene.get();
+        }
 
     private:
-        std::shared_ptr<Scene> m_scene;
+        void on_window_file_drop(WindowFileDropEvent &e);
+
         // List of systems that will be updated every frame
         //should i really do this?
-        std::vector<std::unique_ptr<ISystem>> m_update_systems;
-        std::vector<std::unique_ptr<ISystem>> m_render_systems;
-
-        //for now keep these systems as pointers, later we can use a systems dependency graph
-        //Should i really do this?
-        RenderSystem *m_render_system = nullptr;
-        CameraSystem *m_camera_system = nullptr;
-        InputSystem *m_input_system = nullptr;
+        std::unique_ptr<Scene> m_scene;
+        std::vector<std::unique_ptr<ISystem> > m_systems;
     };
 }

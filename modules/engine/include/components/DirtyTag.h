@@ -1,8 +1,8 @@
-//
-// Created by alex on 6/23/25.
-//
+#pragma once
 
-#ifndef DIRTYTAG_H
-#define DIRTYTAG_H
+namespace RDE::Components {
+    template<typename T>
+    struct DirtyTag {
 
-#endif //DIRTYTAG_H
+    };
+}

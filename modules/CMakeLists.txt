@@ -1,5 +1,3 @@
-add_subdirectory(assets)
-add_subdirectory(common)
-add_subdirectory(core)
+add_subdirectory(engine)
 add_subdirectory(renderer)
 add_subdirectory(platform)

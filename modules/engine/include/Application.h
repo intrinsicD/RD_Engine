@@ -3,20 +3,23 @@
 #pragma once
 
 #include "Log.h"
-#include "../../core/include/Events/Event.h"
-#include "../../core/include/Events/ApplicationEvent.h"
-#include "../../core/include/LayerStack.h"
-#include "../../core/include/ImGuiLayer.h"
-#include "../../core/include/Window.h"
-#include "../../core/include/Scene.h"
-#include "AssetManager.h"
+#include "events/Event.h"
+#include "events/ApplicationEvent.h"
+#include "ApplicationConfig.h"
 
 namespace RDE {
-    class Renderer;
+    class IWindow;
+    class IRenderer;
+    class AssetManager;
+    class LayerStack;
+    class ILayer;
+    class ImGuiLayer;
+
 
     class Application {
     public:
-        explicit Application(std::unique_ptr<Window> window);
+        explicit Application(const Config::WindowConfig &window_config = {},
+                             const Config::RendererConfig &renderer_config = {});
 
         virtual ~Application();
 
@@ -32,17 +35,15 @@ namespace RDE {
 
         virtual void on_event(Event &e);
 
-        Layer *push_layer(std::shared_ptr<Layer> layer);
+        ILayer *push_layer(std::shared_ptr<ILayer> layer);
 
-        Layer *push_overlay(std::shared_ptr<Layer> overlay);
+        ILayer *push_overlay(std::shared_ptr<ILayer> overlay);
 
         static Application &get();
 
-        Window &get_window() const { return *m_window; }
+        IWindow &get_window() const { return *m_window; }
 
-        Scene &get_scene() const { return *m_scene; }
-
-        Renderer &get_renderer() const { return *m_renderer; }
+        IRenderer &get_renderer() const { return *m_renderer; }
 
         AssetManager &get_asset_manager() const { return *m_asset_manager; }
 
@@ -51,17 +52,16 @@ namespace RDE {
 
         bool on_window_resize(WindowResizeEvent &e);
 
-        std::unique_ptr<Window> m_window;
-        std::unique_ptr<Scene> m_scene;
-        std::unique_ptr<Renderer> m_renderer;
+        std::unique_ptr<IWindow> m_window;
+        std::unique_ptr<IRenderer> m_renderer;
         std::unique_ptr<AssetManager> m_asset_manager;
+        std::unique_ptr<LayerStack> m_layer_stack;
+        ImGuiLayer *m_imgui_layer;
 
         bool m_is_running = true;
         bool m_is_minimized = false;
-        LayerStack m_layer_stack;
-        ImGuiLayer *m_imgui_layer;
     };
 
-// Free function, CamelCase
+    // Free function, CamelCase
     Application *CreateApplication();
 }

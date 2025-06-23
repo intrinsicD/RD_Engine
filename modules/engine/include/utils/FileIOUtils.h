@@ -1,8 +1,9 @@
-//
-// Created by alex on 6/23/25.
-//
+#pragma once
 
-#ifndef FILEIOUTILS_H
-#define FILEIOUTILS_H
+#include <filesystem>
 
-#endif //FILEIOUTILS_H
+namespace RDE::FileIO {
+    std::string ReadFile(const std::filesystem::path &path);
+
+    bool WriteFile(const std::filesystem::path &path, const std::string &content);
+}

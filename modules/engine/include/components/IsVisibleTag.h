@@ -1,8 +1,7 @@
-//
-// Created by alex on 6/23/25.
-//
+#pragma once
 
-#ifndef ISVISIBLETAG_H
-#define ISVISIBLETAG_H
+namespace RDE::Components {
+    struct IsVisibleTag {
 
-#endif //ISVISIBLETAG_H
+    };
+}

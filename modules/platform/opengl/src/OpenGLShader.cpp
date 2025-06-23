@@ -1,8 +1,8 @@
 // RDE_Project/modules/platform/opengl/OpenGLShader.cpp
 #include "OpenGLShader.h"
 #include "OpenGLDebug.h"
-#include "../../../common/include/Log.h"
-#include "../../../common/include/FileIO.h"
+#include "Log.h"
+#include "utils/FileIOUtils.h"
 
 namespace RDE {
 // Factory function implementation is here
@@ -12,8 +12,8 @@ namespace RDE {
 
     std::shared_ptr<Shader>
     Shader::CreateFromFile(const std::string &vertexFilepath, const std::string &fragmentFilepath) {
-        std::string vertexSrc = FileIO::read_file(vertexFilepath);
-        std::string fragmentSrc = FileIO::read_file(fragmentFilepath);
+        std::string vertexSrc = FileIO::ReadFile(vertexFilepath);
+        std::string fragmentSrc = FileIO::ReadFile(fragmentFilepath);
         RDE_CORE_ASSERT(!vertexSrc.empty(), "Vertex shader file is empty or could not be read!");
         RDE_CORE_ASSERT(!fragmentSrc.empty(), "Fragment shader file is empty or could not be read!");
         return std::make_shared<OpenGLShader>(vertexSrc, fragmentSrc);

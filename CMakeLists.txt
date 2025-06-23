@@ -37,10 +37,7 @@ FetchContent_MakeAvailable(spdlog glfw imgui stb EnTT tinyobjloader)
 
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 FetchContent_MakeAvailable(glad glm yaml-cpp)
-glad_add_library(glad_gl_core STATIC
-        API gl:core=4.3              # adjust your OpenGL version here
-        REPRODUCIBLE
-)
+glad_add_library(glad_gl_core STATIC REPRODUCIBLE API gl:core=4.3)
 
 string(REPLACE "\\" "/" PROJECT_SOURCE_DIR_SLASH_FORWARD ${PROJECT_SOURCE_DIR})
 add_compile_definitions(RDE_PROJECT_ROOT_DIR="${PROJECT_SOURCE_DIR_SLASH_FORWARD}")

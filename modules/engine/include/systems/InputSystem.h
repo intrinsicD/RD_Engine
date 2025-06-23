@@ -1,8 +1,20 @@
-//
-// Created by alex on 6/23/25.
-//
+#pragma once
 
-#ifndef INPUTSYSTEM_H
-#define INPUTSYSTEM_H
+#include "ISystem.h"
 
-#endif //INPUTSYSTEM_H
+namespace RDE {
+    class InputSystem : public ISystem{
+    public:
+        InputSystem() = default;
+
+        ~InputSystem() override = default;
+
+        void on_attach(Scene *scene) override;
+
+        void on_pre_update(Scene *scene, float delta_time) override;
+
+        void on_post_update(Scene *scene, float delta_time) override;
+
+        void on_event(Scene *scene, Event &e) override;
+    };
+}

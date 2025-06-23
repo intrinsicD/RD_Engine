@@ -1,8 +1,14 @@
-//
-// Created by alex on 6/23/25.
-//
+#pragma once
 
-#ifndef RENDERABLECOMPONENT_H
-#define RENDERABLECOMPONENT_H
+#include "AssetManager.h"
 
-#endif //RENDERABLECOMPONENT_H
+namespace RDE::Components {
+    struct RenderableComponent {
+        AssetHandle material_handle;
+        AssetHandle geometry_handle;
+
+        enum Type {
+            Mesh, Graph, PointCloud
+        }type;
+    };
+}

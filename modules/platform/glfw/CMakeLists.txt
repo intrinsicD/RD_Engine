@@ -19,14 +19,16 @@ target_include_directories(GlfwPlatform
 find_package(OpenGL REQUIRED)
 
 target_sources(GlfwPlatform PRIVATE
-        src/GlfwWindow.cpp
+        src/GlfwOpenGLWindow.cpp
         src/GlfwInput.cpp
 )
 
+find_package(Threads REQUIRED)
 target_link_libraries(GlfwPlatform
         PUBLIC
         # It needs to link to the same dependencies as Core did for windowing.
-        RDE::Core
+        RDE::Engine
+        Threads::Threads
         glfw
         glad_gl_core
         OpenGL::GL

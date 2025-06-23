@@ -3,12 +3,11 @@
 #include "ui/UIUtils.h"
 #include "ui/ComponentUIRegistry.h"
 
-#include "EntityComponents/TransformComponent.h"
-#include "EntityComponents/MeshComponent.h"
+#include "components/TransformComponent.h"
+#include "components/NameTagComponent.h"
 #include "EntityComponents/SpriteRendererComponent.h"
 #include "EntityComponents/ArcballControllerComponent.h"
 #include "EntityComponents/CameraComponent.h"
-#include "EntityComponents/TagComponent.h"
 
 #include "YamlUtils.h"
 #include "SceneSerializer.h"
@@ -25,11 +24,7 @@
 // ... all your component and ImGui includes ...
 
 namespace RDE {
-    EditorLayer::EditorLayer() : Layer("EditorLayer") {
-    }
-
-    void EditorLayer::set_context(const std::shared_ptr<Scene> &scene) {
-        m_scene = scene;
+    EditorLayer::EditorLayer(Scene *scene) : ILayer("EditorLayer"), m_scene(scene) {
         m_selected_entity = {}; // Reset selection when context changes
     }
 
@@ -59,8 +54,8 @@ namespace RDE {
 
         // Existing loop to display each entity
         m_scene->get_registry().view<entt::entity>().each([&](auto entity_handle) {
-            Entity entity{entity_handle, m_scene.get()};
-            auto &tag = entity.get_component<TagComponent>().tag;
+            Entity entity{entity_handle, m_scene};
+            auto &name = entity.get_component<Components::NameTagComponent>().name;
 
             // Use a unique ID for the TreeNode. The entity handle is perfect for this.
             ImGuiTreeNodeFlags flags = ((m_selected_entity == entity) ? ImGuiTreeNodeFlags_Selected : 0) |
@@ -68,7 +63,7 @@ namespace RDE {
             flags |= ImGuiTreeNodeFlags_SpanAvailWidth; // Makes the node span the full width
 
             // We use TreeNodeEx to have more control and prepare for parenting.
-            bool opened = ImGui::TreeNodeEx((void *) (uint64_t) (uint32_t) entity, flags, "%s", tag.c_str());
+            bool opened = ImGui::TreeNodeEx((void *) (uint64_t) (uint32_t) entity, flags, "%s", name.c_str());
 
             // Handle selection
             if (ImGui::IsItemClicked()) {
@@ -120,8 +115,8 @@ namespace RDE {
         // Only draw properties if an entity is actually selected
         if (m_selected_entity) {
             // Tag Component is special, we won't make it removable.
-            if (m_selected_entity.has_component<TagComponent>()) {
-                auto &tag = m_selected_entity.get_component<TagComponent>().tag;
+            if (m_selected_entity.has_component<Components::NameTagComponent>()) {
+                auto &tag = m_selected_entity.get_component<Components::NameTagComponent>().tag;
                 char buffer[256];
                 memset(buffer, 0, sizeof(buffer));
                 strncpy(buffer, tag.c_str(), sizeof(buffer) - 1); // Copy tag to buffer
@@ -130,11 +125,11 @@ namespace RDE {
                 }
             }
 
-            ComponentUIRegistry::Draw<TransformComponent>(m_scene.get(), m_selected_entity);
-            ComponentUIRegistry::Draw<MeshComponent>(m_scene.get(), m_selected_entity);
-            ComponentUIRegistry::Draw<SpriteRendererComponent>(m_scene.get(), m_selected_entity);
-            ComponentUIRegistry::Draw<ArcballControllerComponent>(m_scene.get(), m_selected_entity);
-            ComponentUIRegistry::Draw<CameraComponent>(m_scene.get(), m_selected_entity);
+            ComponentUIRegistry::Draw<TransformComponent>(m_scene, m_selected_entity);
+            ComponentUIRegistry::Draw<MeshComponent>(m_scene, m_selected_entity);
+            ComponentUIRegistry::Draw<SpriteRendererComponent>(m_scene, m_selected_entity);
+            ComponentUIRegistry::Draw<ArcballControllerComponent>(m_scene, m_selected_entity);
+            ComponentUIRegistry::Draw<CameraComponent>(m_scene, m_selected_entity);
 
             // "Add Component" button
             ImGui::Spacing();
