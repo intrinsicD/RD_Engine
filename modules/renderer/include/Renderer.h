@@ -1,66 +1,49 @@
-// RDE_Project/modules/renderer/include/Renderer/Renderer.h
+// file: Renderer/Renderer.h (An example of the interface)
 #pragma once
 
-#include "RenderCommand.h"
-#include "Shader.h"
-#include "Texture.h"
-
-#include <glm/glm.hpp>
+#include "AssetManager.h"
+#include "EntityComponents/TransformComponent.h"
+#include "EntityComponents/CameraProjectionComponent.h"
+#include "EntityComponents/CameraComponent.h"
+#include <vector>
 
 namespace RDE {
+    struct MeshAsset;
+    struct MaterialAsset;
+
     class Renderer {
     public:
-        static void Init();
-
-        static void Shutdown();
-
-        static void BeginScene(const glm::mat4 &view_projection_matrix);
-
-        static void EndScene();
-
-        static void Begin2DPass();
-
-        static void End2DPass();
-
-        static void Begin3DPass();
-
-        static void End3DPass();
-
-        // Submit geometry for drawing.
-        static void Submit(const std::shared_ptr<VertexArray> &vertex_array,
-                           const glm::mat4 &model_transform = glm::mat4(1.0f));
-
-        // Quads
-        static void DrawScreenSpaceQuad(const glm::mat4 &transform, const glm::vec4 &color);
-
-        static void DrawScreenSpaceQuad(const glm::vec2 &position, const glm::vec2 &size, const glm::vec4 &color);
-
-        static void
-        DrawScreenSpaceQuad(const glm::vec2 &position, const glm::vec2 &size, const std::shared_ptr<Texture2D> &texture,
-                            float tiling_factor = 1.0f, const glm::vec4 &tint_color = {1.0f, 1.0f, 1.0f, 1.0f});
-
-        // Rotated Quads
-        static void DrawScreenSpaceRotatedQuad(const glm::vec2 &position, const glm::vec2 &size, float rotation_radians,
-                                               const glm::vec4 &color);
-
-        static void DrawScreenSpaceRotatedQuad(const glm::vec2 &position, const glm::vec2 &size, float rotation_radians,
-                                               const std::shared_ptr<Texture2D> &texture, float tiling_factor = 1.0f,
-                                               const glm::vec4 &tint_color = {1.0f, 1.0f, 1.0f, 1.0f});
-
-        // Event handling
-        static void OnWindowResize(uint32_t width, uint32_t height);
-
-        // In the future, this will hold view-projection matrices.
-        struct Light {
-            glm::vec3 direction{-0.5f, -0.5f, -0.5f}; // A simple directional light
-            glm::vec3 color{1.0f, 1.0f, 1.0f};
+        struct DrawCommand {
+            MaterialAsset *material;
+            MeshAsset *mesh;
+            glm::mat4 transform; // Model matrix for the mesh
         };
 
-        struct SceneData {
-            glm::mat4 view_projection_matrix;
-            Light main_light;
-        };
+        virtual ~Renderer() = default;
 
-        static SceneData *GetSceneData();
+        virtual void initialize() = 0;
+
+        virtual void shutdown() = 0;
+
+        virtual bool compile_shader(ShaderAsset *shader_asset) = 0;
+
+        virtual bool upload_mesh(MeshAsset *mesh_asset) = 0;
+
+        virtual bool upload_texture(TextureAsset *texture_asset) = 0;
+
+        virtual bool upload_camera(const CameraComponent *camera) = 0;
+
+        virtual void bind_material(const MaterialAsset *material) = 0;
+
+        // --- Scene Drawing Interface ---
+        virtual void begin_scene(const TransformComponent &camera_transform,
+                                 const CameraProjectionComponent &camera_projection,
+                                 const CameraComponent &camera_cache) = 0;
+
+        virtual void submit(const std::vector<DrawCommand> &commands) = 0;
+
+        virtual void end_scene() = 0;
+
+        static std::unique_ptr<Renderer> Create();
     };
 }

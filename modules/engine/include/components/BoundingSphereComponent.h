@@ -1,0 +1,8 @@
+//
+// Created by alex on 6/23/25.
+//
+
+#ifndef BOUNDINGSPHERECOMPONENT_H
+#define BOUNDINGSPHERECOMPONENT_H
+
+#endif //BOUNDINGSPHERECOMPONENT_H

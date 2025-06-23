@@ -1,0 +1,8 @@
+//
+// Created by alex on 6/23/25.
+//
+
+#ifndef ANIMATIONCOMPONENTN_H
+#define ANIMATIONCOMPONENTN_H
+
+#endif //ANIMATIONCOMPONENTN_H

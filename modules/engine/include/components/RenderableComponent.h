@@ -1,0 +1,8 @@
+//
+// Created by alex on 6/23/25.
+//
+
+#ifndef RENDERABLECOMPONENT_H
+#define RENDERABLECOMPONENT_H
+
+#endif //RENDERABLECOMPONENT_H
