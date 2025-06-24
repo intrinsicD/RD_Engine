@@ -1,5 +1,6 @@
 #pragma once
-#include "AssetManager.h"
+
+#include "assets/AssetHandle.h"
 
 namespace RDE::Components {
     struct AnimationComponent {

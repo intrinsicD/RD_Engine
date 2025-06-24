@@ -7,7 +7,8 @@
 namespace RDE {
     class ILayer {
     public:
-        ILayer(const std::string &name = "Layer");
+        ILayer(const std::string &name = "Layer") : m_debug_name(name) {
+        }
 
         virtual ~ILayer() = default;
 

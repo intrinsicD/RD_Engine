@@ -11,7 +11,10 @@ namespace RDE {
     public:
         Entity() = default;
 
-        Entity(entt::entity handle, Scene *scene);
+        Entity(entt::entity handle, Scene *scene) : m_handle(handle), m_scene(scene) {
+            RDE_CORE_ASSERT(m_scene, "Scene cannot be null!");
+            RDE_CORE_ASSERT(m_handle != entt::null, "Entity handle cannot be null!");
+        }
 
         template<typename T, typename... Args>
         T &add_component(Args &&... args) {

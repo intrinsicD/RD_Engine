@@ -3,7 +3,6 @@
 #include "ILayer.h"
 #include "ISystem.h"
 #include "Scene.h"
-#include "AssetManager.h"
 #include "events/ApplicationEvent.h"
 
 #include <memory>
@@ -25,7 +24,7 @@ namespace RDE {
         }
 
     private:
-        void on_window_file_drop(WindowFileDropEvent &e);
+        bool on_window_file_drop(WindowFileDropEvent &e);
 
         // List of systems that will be updated every frame
         //should i really do this?

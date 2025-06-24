@@ -1,6 +1,6 @@
 #include "systems/TransformSystem.h"
-#include "components/DirtyTag.h"
 #include "components/TransformComponent.h"
+#include "components/DirtyTag.h"
 #include "Scene.h"
 #include "Entity.h"
 

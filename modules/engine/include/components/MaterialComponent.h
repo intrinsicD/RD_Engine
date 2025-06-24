@@ -1,6 +1,6 @@
 #pragma once
 
-#include "AssetManager.h"
+#include "assets/AssetHandle.h"
 
 #include <variant>
 

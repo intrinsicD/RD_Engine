@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Events/Event.h"
+#include "events/Event.h"
 
 namespace RDE {
     class WindowResizeEvent : public Event {

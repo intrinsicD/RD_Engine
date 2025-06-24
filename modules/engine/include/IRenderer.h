@@ -32,11 +32,11 @@ namespace RDE {
         }
     };
 
-    using GeometryHandle = Handle<HandleType::Geometry>;
-    using TextureHandle = Handle<HandleType::Texture>;
-    using MaterialHandle = Handle<HandleType::Material>;
-    using ProgramHandle = Handle<HandleType::Program>;
-    using BufferHandle = Handle<HandleType::Buffer>;
+    using GpuGeometryHandle = Handle<HandleType::Geometry>;
+    using GpuTextureHandle = Handle<HandleType::Texture>;
+    using GpuMaterialHandle = Handle<HandleType::Material>;
+    using GpuProgramHandle = Handle<HandleType::Program>;
+    using GpuBufferHandle = Handle<HandleType::Buffer>;
 
     struct RendererConfig {
         void *window_handle = nullptr; // Handle to the window where rendering will occur
@@ -86,13 +86,13 @@ namespace RDE {
         PrimitiveTopologyType topology = PrimitiveTopologyType::Triangles;
 
         // A material can have multiple shader programs for different stages.
-        std::unordered_map<ShaderType, ProgramHandle> programs;
+        std::unordered_map<ShaderType, GpuProgramHandle> programs;
 
         // A material can have textures...
-        std::unordered_map<std::string, TextureHandle> textures;
+        std::unordered_map<std::string, GpuTextureHandle> textures;
         // ...and it can also have generic storage and uniform buffers!
-        std::unordered_map<std::string, BufferHandle> storage_buffers;
-        std::unordered_map<std::string, BufferHandle> uniform_buffers;
+        std::unordered_map<std::string, GpuBufferHandle> storage_buffers;
+        std::unordered_map<std::string, GpuBufferHandle> uniform_buffers;
     };
 
     struct ShaderData {
@@ -111,26 +111,26 @@ namespace RDE {
     };
 
     struct RenderObject {
-        GeometryHandle geometry;
-        MaterialHandle material;
+        GpuGeometryHandle geometry;
+        GpuMaterialHandle material;
         glm::mat4 model_matrix; // Model matrix for transforming the object in world space
         // Additional properties like texture handles, custom data, etc. can be added here
     };
 
     struct InstancedRenderObject {
-        GeometryHandle geometry;
-        MaterialHandle material;
+        GpuGeometryHandle geometry;
+        GpuMaterialHandle material;
 
-        BufferHandle transform_buffer;
+        GpuBufferHandle transform_buffer;
         uint32_t instance_count = 1;
     };
 
     struct IndirectRenderObject {
-        MaterialHandle material; // The material (and thus PSO) to use for all draws.
+        GpuMaterialHandle material; // The material (and thus PSO) to use for all draws.
 
         // A buffer containing an array of draw arguments. The GPU will read from this.
         // Each element in the buffer might be { vertex_count, instance_count, first_vertex, first_instance }.
-        BufferHandle arguments_buffer;
+        GpuBufferHandle arguments_buffer;
 
         uint32_t draw_count; // The number of draw commands in the arguments_buffer.
     };
@@ -171,25 +171,25 @@ namespace RDE {
 
         // --- 4. RESOURCE FACTORY ---
         // The renderer is the ONLY one who can create GPU resources.
-        virtual GeometryHandle create_geometry(const GeometryData &geometry_data) = 0;
+        virtual GpuGeometryHandle create_geometry(const GeometryData &geometry_data) = 0;
 
-        virtual TextureHandle create_texture(const TextureData &texture_data) = 0;
+        virtual GpuTextureHandle create_texture(const TextureData &texture_data) = 0;
 
-        virtual MaterialHandle create_material(const MaterialData &material_data) = 0;
+        virtual GpuMaterialHandle create_material(const MaterialData &material_data) = 0;
 
-        virtual ProgramHandle create_program(const ShaderData &shader_data) = 0;
+        virtual GpuProgramHandle create_program(const ShaderData &shader_data) = 0;
 
-        virtual BufferHandle create_buffer(const BufferData &buffer_data) = 0;
+        virtual GpuBufferHandle create_buffer(const BufferData &buffer_data) = 0;
 
-        virtual void destroy_geometry(GeometryHandle handle) = 0;
+        virtual void destroy_geometry(GpuGeometryHandle handle) = 0;
 
-        virtual void destroy_texture(TextureHandle handle) = 0;
+        virtual void destroy_texture(GpuTextureHandle handle) = 0;
 
-        virtual void destroy_material(MaterialHandle handle) = 0;
+        virtual void destroy_material(GpuMaterialHandle handle) = 0;
 
-        virtual void destroy_program(ProgramHandle handle) = 0;
+        virtual void destroy_program(GpuProgramHandle handle) = 0;
 
-        virtual void destroy_buffer(BufferHandle handle) = 0;
+        virtual void destroy_buffer(GpuBufferHandle handle) = 0;
 
         // --- 5. EVENT HANDLING ---
         // Called when the window resizes, as this requires recreating the swapchain.

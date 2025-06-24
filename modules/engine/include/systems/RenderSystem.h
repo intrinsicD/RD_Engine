@@ -13,6 +13,8 @@ namespace RDE {
 
         void on_detach(Scene *scene) override;
 
+        void on_pre_update(Scene *scene, float delta_time) override;
+
         void on_update(Scene *scene, float delta_time) override;
     };
 }

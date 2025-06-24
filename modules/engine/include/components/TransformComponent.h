@@ -2,7 +2,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include "glm/gtc/quaternion.hpp"
+#include <glm/gtc/quaternion.hpp>
 
 namespace RDE::Components {
     struct Transform {
@@ -11,7 +11,5 @@ namespace RDE::Components {
         glm::vec3 scale = glm::vec3(1.0f);
 
         glm::mat4 model_matrix = glm::mat4(1.0f); // Default to identity matrix
-
-
     };
 }

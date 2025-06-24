@@ -1,27 +1,29 @@
 #include "EditorLayer.h"
+#include "Application.h"
 
 #include "ui/UIUtils.h"
 #include "ui/ComponentUIRegistry.h"
 
-#include "components/TransformComponent.h"
+#include "components/AABBComponent.h"
+#include "components/AnimationComponent.h"
+#include "components/BoundingSphereComponent.h"
+#include "components/CameraComponent.h"
+#include "components/ColliderComponent.h"
+#include "components/IsPrimaryTag.h"
+#include "components/MaterialComponent.h"
 #include "components/NameTagComponent.h"
-#include "EntityComponents/SpriteRendererComponent.h"
-#include "EntityComponents/ArcballControllerComponent.h"
-#include "EntityComponents/CameraComponent.h"
+#include "components/RenderableComponent.h"
+#include "components/RigidBodyComponent.h"
+#include "components/SkeletonComponent.h"
+#include "components/TransformComponent.h"
 
-#include "YamlUtils.h"
-#include "SceneSerializer.h"
-#include "FileIO.h"
+#include "utils/FileIOUtils.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/string_cast.hpp>
 
 #include <yaml-cpp/yaml.h> // For YAML serialization/deserialization
-
-#include "EntityComponents/PrimaryCameraTag.h"
-
-// ... all your component and ImGui includes ...
 
 namespace RDE {
     EditorLayer::EditorLayer(Scene *scene) : ILayer("EditorLayer"), m_scene(scene) {
@@ -33,10 +35,44 @@ namespace RDE {
     }
 
     void EditorLayer::on_gui_render() {
+        // Render Menu
+        if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("Save As...")) {
+                save_scene();
+            }
+            if (ImGui::MenuItem("Open...")) {
+                IGFD::FileDialogConfig config;
+                config.path = ".";
+                config.path = "/home/alex/Dropbox/Work/Datasets";
+                ImGuiFileDialog::Instance()->OpenDialog("Load Geometry", "Choose File", ".obj,.off,.stl,.ply",
+                                                        config);
+            }
+            ImGui::EndMenu();
+        }
+
+        if (ImGuiFileDialog::Instance()->Display("Load Geometry")) {
+            if (ImGuiFileDialog::Instance()->IsOk()) {
+                auto path = ImGuiFileDialog::Instance()->GetFilePathName();
+                create_renderable_entity_from_asset(path);
+            }
+            ImGuiFileDialog::Instance()->Close();
+        }
+
         // ... Dockspace setup code ...
         draw_scene_hierarchy_panel();
         draw_properties_panel();
         // ... End dockspace ...
+    }
+
+    void EditorLayer::on_event(RDE::Event &e) {
+        EventDispatcher dispatcher(e);
+        dispatcher.dispatch<WindowFileDropEvent>([this](WindowFileDropEvent& event) {
+            for(const auto& path : event.get_files()) {
+                auto ext = FileIO::GetFileExtension(path);
+                create_renderable_entity_from_asset(path);
+            }
+            return true; // We handled the event.
+        });
     }
 
     // Move draw_scene_hierarchy_panel and draw_properties_panel here.
@@ -49,7 +85,11 @@ namespace RDE {
         }
 
         if (ImGui::MenuItem("Open Scene...")) {
-            load_scene();
+            IGFD::FileDialogConfig config;
+            config.path = ".";
+            config.path = "/home/alex/Dropbox/Work/Datasets";
+            ImGuiFileDialog::Instance()->OpenDialog("Load Geometry", "Choose File", ".obj,.off,.stl,.ply",
+                                                    config);
         }
 
         // Existing loop to display each entity
@@ -116,7 +156,7 @@ namespace RDE {
         if (m_selected_entity) {
             // Tag Component is special, we won't make it removable.
             if (m_selected_entity.has_component<Components::NameTagComponent>()) {
-                auto &tag = m_selected_entity.get_component<Components::NameTagComponent>().tag;
+                auto &tag = m_selected_entity.get_component<Components::NameTagComponent>().name;
                 char buffer[256];
                 memset(buffer, 0, sizeof(buffer));
                 strncpy(buffer, tag.c_str(), sizeof(buffer) - 1); // Copy tag to buffer
@@ -125,11 +165,18 @@ namespace RDE {
                 }
             }
 
-            ComponentUIRegistry::Draw<TransformComponent>(m_scene, m_selected_entity);
-            ComponentUIRegistry::Draw<MeshComponent>(m_scene, m_selected_entity);
-            ComponentUIRegistry::Draw<SpriteRendererComponent>(m_scene, m_selected_entity);
-            ComponentUIRegistry::Draw<ArcballControllerComponent>(m_scene, m_selected_entity);
-            ComponentUIRegistry::Draw<CameraComponent>(m_scene, m_selected_entity);
+            ComponentUIRegistry::Draw<Components::AABBLocalComponent>(m_scene, m_selected_entity);
+            ComponentUIRegistry::Draw<Components::AABBWorldComponent>(m_scene, m_selected_entity);
+            ComponentUIRegistry::Draw<Components::AnimationComponent>(m_scene, m_selected_entity);
+            ComponentUIRegistry::Draw<Components::BoundingSphereLocalComponent>(m_scene, m_selected_entity);
+            ComponentUIRegistry::Draw<Components::BoundingSphereWorldComponent>(m_scene, m_selected_entity);
+            ComponentUIRegistry::Draw<Components::CameraComponent>(m_scene, m_selected_entity);
+            ComponentUIRegistry::Draw<Components::ColliderComponent>(m_scene, m_selected_entity);
+            ComponentUIRegistry::Draw<Components::MaterialComponent>(m_scene, m_selected_entity);
+            ComponentUIRegistry::Draw<Components::RenderableComponent>(m_scene, m_selected_entity);
+            ComponentUIRegistry::Draw<Components::RigidBodyComponent>(m_scene, m_selected_entity);
+            ComponentUIRegistry::Draw<Components::SkeletonComponent>(m_scene, m_selected_entity);
+            ComponentUIRegistry::Draw<Components::Transform>(m_scene, m_selected_entity);
 
             // "Add Component" button
             ImGui::Spacing();
@@ -141,47 +188,20 @@ namespace RDE {
                 ImGui::OpenPopup("AddComponent");
 
             if (ImGui::BeginPopup("AddComponent")) {
-                if (ImGui::MenuItem("Sprite Renderer")) {
-                    if (!m_selected_entity.has_component<SpriteRendererComponent>())
-                        m_selected_entity.add_component<SpriteRendererComponent>();
-                    else
-                        // Optional: Log a warning that component already exists
-                        // RDE_CORE_WARN("Entity already has a Sprite Renderer Component!");
-                        ImGui::CloseCurrentPopup();
-                }
-                if (ImGui::MenuItem("Transform")) {
-                    if (!m_selected_entity.has_component<TransformComponent>())
-                        m_selected_entity.add_component<TransformComponent>();
-                    else
-                        // Optional: Log a warning that component already exists
-                        // RDE_CORE_WARN("Entity already has a Transform Component!");
-                        ImGui::CloseCurrentPopup();
-                }
-                if (ImGui::MenuItem("Mesh Renderer")) {
-                    if (!m_selected_entity.has_component<MeshComponent>())
-                        m_selected_entity.add_component<MeshComponent>();
-                    else
-                        // Optional: Log a warning that component already exists
-                        // RDE_CORE_WARN("Entity already has a Mesh Renderer Component!");
-                        ImGui::CloseCurrentPopup();
-                }
-                if (ImGui::MenuItem("Arcball Controller")) {
-                    if (!m_selected_entity.has_component<ArcballControllerComponent>())
-                        m_selected_entity.add_component<ArcballControllerComponent>();
-                    else
-                        // Optional: Log a warning that component already exists
-                        // RDE_CORE_WARN("Entity already has an Arcball Controller Component!");
-                        ImGui::CloseCurrentPopup();
-                }
-                if (ImGui::MenuItem("Camera")) {
-                    if (!m_selected_entity.has_component<CameraComponent>())
-                        m_selected_entity.add_component<CameraComponent>();
-                    else
-                        // Optional: Log a warning that component already exists
-                        // RDE_CORE_WARN("Entity already has a Camera Component!");
-                        ImGui::CloseCurrentPopup();
-                }
-
+                UI::DrawAddComponentPopupMenuItem<Components::AABBLocalComponent>("AABB local", m_selected_entity);
+                UI::DrawAddComponentPopupMenuItem<Components::AABBWorldComponent>("AABB world", m_selected_entity);
+                UI::DrawAddComponentPopupMenuItem<Components::AnimationComponent>("Animation", m_selected_entity);
+                UI::DrawAddComponentPopupMenuItem<Components::BoundingSphereLocalComponent>("Bounding Sphere Local",
+                                                                                            m_selected_entity);
+                UI::DrawAddComponentPopupMenuItem<Components::BoundingSphereWorldComponent>("Bounding Sphere World",
+                                                                                            m_selected_entity);
+                UI::DrawAddComponentPopupMenuItem<Components::CameraComponent>("Camera", m_selected_entity);
+                UI::DrawAddComponentPopupMenuItem<Components::ColliderComponent>("Collider", m_selected_entity);
+                UI::DrawAddComponentPopupMenuItem<Components::MaterialComponent>("Material", m_selected_entity);
+                UI::DrawAddComponentPopupMenuItem<Components::RenderableComponent>("Renderable", m_selected_entity);
+                UI::DrawAddComponentPopupMenuItem<Components::RigidBodyComponent>("Rigid Body", m_selected_entity);
+                UI::DrawAddComponentPopupMenuItem<Components::SkeletonComponent>("Skeleton", m_selected_entity);
+                UI::DrawAddComponentPopupMenuItem<Components::Transform>("Transform", m_selected_entity);
                 // Add other components here in the future
                 // if (ImGui::MenuItem("FutureComponent")) { ... }
 
@@ -193,120 +213,183 @@ namespace RDE {
     }
 
     void EditorLayer::register_component_uis() {
-        ComponentUIRegistry::RegisterComponent<TransformComponent>("Transform", [](Entity entity) {
-            UI::DrawComponent<TransformComponent>("Transform", entity, [](auto &component) {
-                ImGui::DragFloat3("Translation", glm::value_ptr(component.position), 0.1f);
-                glm::vec3 rotation_degrees = glm::degrees(component.rotation);
-                if (ImGui::DragFloat3("Rotation", glm::value_ptr(rotation_degrees), 1.0f)) {
-                    component.rotation.z = glm::radians(rotation_degrees.z);
+        ComponentUIRegistry::RegisterComponent<Components::AABBLocalComponent>("AABB Local", [](Entity entity) {
+            UI::DrawComponent<Components::AABBLocalComponent>("AABB Local", entity, [](auto &component) {
+                ImGui::Text("Min: %s", glm::to_string(component.min).c_str());
+                ImGui::Text("Max: %s", glm::to_string(component.max).c_str());
+            });
+        });
+        ComponentUIRegistry::RegisterComponent<Components::AABBWorldComponent>("AABB World", [](Entity entity) {
+            UI::DrawComponent<Components::AABBWorldComponent>("AABB World", entity, [](auto &component) {
+                ImGui::Text("Min: %s", glm::to_string(component.min).c_str());
+                ImGui::Text("Max: %s", glm::to_string(component.max).c_str());
+            });
+        });
+        ComponentUIRegistry::RegisterComponent<Components::AnimationComponent>("Animation", [](Entity entity) {
+            UI::DrawComponent<Components::AnimationComponent>("Animation", entity, [](auto &component) {
+                ImGui::Text("Animation Handle: %i", component.animation_handle.get_asset_id());
+                ImGui::Text("Current Time: %f", component.current_time);
+                ImGui::Text("Is Looping: %i", component.is_looping);
+                ImGui::DragFloat("Playback Speed", &component.playback_speed, 0.01f, 0.01f, 10.0f);
+            });
+        });
+        ComponentUIRegistry::RegisterComponent<Components::BoundingSphereLocalComponent>("Bounding Sphere Local",
+                                                                                         [](Entity entity) {
+                                                                                             UI::DrawComponent<Components::BoundingSphereLocalComponent>(
+                                                                                                     "Bounding Sphere Local",
+                                                                                                     entity,
+                                                                                                     [](auto &component) {
+                                                                                                         ImGui::Text(
+                                                                                                                 "Center: %s",
+                                                                                                                 glm::to_string(
+                                                                                                                         component.center).c_str());
+                                                                                                         ImGui::DragFloat(
+                                                                                                                 "Radius",
+                                                                                                                 &component.radius,
+                                                                                                                 0.1f,
+                                                                                                                 0.0f,
+                                                                                                                 100.0f);
+                                                                                                     });
+                                                                                         });
+        ComponentUIRegistry::RegisterComponent<Components::BoundingSphereWorldComponent>("Bounding Sphere World",
+                                                                                         [](Entity entity) {
+                                                                                             UI::DrawComponent<Components::BoundingSphereWorldComponent>(
+                                                                                                     "Bounding Sphere World",
+                                                                                                     entity,
+                                                                                                     [](auto &component) {
+                                                                                                         ImGui::Text(
+                                                                                                                 "Center: %s",
+                                                                                                                 glm::to_string(
+                                                                                                                         component.center).c_str());
+                                                                                                         ImGui::DragFloat(
+                                                                                                                 "Radius",
+                                                                                                                 &component.radius,
+                                                                                                                 0.1f,
+                                                                                                                 0.0f,
+                                                                                                                 100.0f);
+                                                                                                     });
+                                                                                         });
+        ComponentUIRegistry::RegisterComponent<Components::CameraComponent>("Camera Cache", [&](Entity entity) {
+            UI::DrawComponent<Components::CameraComponent>("Camera Cache", entity, [&](auto &component) {
+                ImGui::Text("Projection Matrix: %s", glm::to_string(component.projection_matrix).c_str());
+                ImGui::Text("View Matrix: %s", glm::to_string(component.view_matrix).c_str());
+
+                ImGui::Text("Projection Type: %s", std::visit([](auto &&arg) {
+                    using T = std::decay_t<decltype(arg)>;
+                    if constexpr (std::is_same_v<T, Components::CameraComponent::Perspective>) {
+                        return "Perspective";
+                    } else if constexpr (std::is_same_v<T, Components::CameraComponent::Orthographic>) {
+                        return "Orthographic";
+                    } else {
+                        return "Unknown";
+                    }
+                }, component.projection));
+
+                if (std::holds_alternative<Components::CameraComponent::Perspective>(component.projection)) {
+                    auto &perspective = std::get<Components::CameraComponent::Perspective>(component.projection);
+                    ImGui::DragFloat("FOV", &perspective.fov, 0.1f, 1.0f, 180.0f);
+                    ImGui::DragFloat("Aspect Ratio", &perspective.aspect_ratio, 0.01f, 0.1f, 10.0f);
+                    if (ImGui::Button("Make Orthographic")) {
+                        // Convert to orthographic projection
+                        component.projection = Components::CameraComponent::Orthographic{
+                                -1.0f, 1.0f, -1.0f, 1.0f // Default values, can be adjusted
+                        };
+                    }
+                } else if (std::holds_alternative<Components::CameraComponent::Orthographic>(component.projection)) {
+                    auto &orthographic = std::get<Components::CameraComponent::Orthographic>(component.projection);
+                    ImGui::DragFloat("Left", &orthographic.left, 0.1f, -100.0f, 100.0f);
+                    ImGui::DragFloat("Right", &orthographic.right, 0.1f, -100.0f, 100.0f);
+                    ImGui::DragFloat("Bottom", &orthographic.bottom, 0.1f, -100.0f, 100.0f);
+                    ImGui::DragFloat("Top", &orthographic.top, 0.1f, -100.0f, 100.0f);
+                    if (ImGui::Button("Make Perspective")) {
+                        // Convert to perspective projection
+                        component.projection = Components::CameraComponent::Perspective{
+                                45.0f, 1.0f // Default values, can be adjusted
+                        };
+                    }
+                    // Convert to orthographic projection
+                    component.projection = Components::CameraComponent::Orthographic{
+                            -1.0f, 1.0f, -1.0f, 1.0f // Default values, can be adjusted
+                    };
                 }
+
+                ImGui::DragFloat("Z Near", &component.z_near, 0.1f, 0.01f, 100.0f);
+                ImGui::DragFloat("Z Far", &component.z_far, 0.1f, 0.01f, 1000.0f);
+
+                bool is_primary = m_scene->get_registry().all_of<Components::IsPrimaryTag<Components::CameraComponent>>(
+                        entity);
+                if (ImGui::Checkbox("Is Primary", &is_primary)) {
+                    if (is_primary) {
+                        m_scene->get_registry().emplace<Components::IsPrimaryTag<Components::CameraComponent>>(entity);
+                    } else {
+                        m_scene->get_registry().remove<Components::IsPrimaryTag<Components::CameraComponent>>(entity);
+                    }
+                }
+            });
+        });
+
+
+        ComponentUIRegistry::RegisterComponent<Components::ColliderComponent>("Collider", [](Entity entity) {
+            UI::DrawComponent<Components::ColliderComponent>("Collider", entity, [](auto &component) {
+
+                ImGui::Text("Type: %s",
+                            component.type == Components::ColliderComponent::ShapeType::Box ? "Box" :
+                            component.type == Components::ColliderComponent::ShapeType::Sphere ? "Sphere" :
+                            component.type == Components::ColliderComponent::ShapeType::Capsule ? "Capsule" :
+                            component.type == Components::ColliderComponent::ShapeType::ConvexMesh ? "Convex Mesh" :
+                            component.type == Components::ColliderComponent::ShapeType::TriangleMesh ? "Triangle Mesh" :
+                            "Unknown");
+
+                ImGui::DragFloat3("Offset", glm::value_ptr(component.offset), 0.1f, -100.0f, 100.0f);
+
+                // Later: Add a field for the physics asset.
+            });
+        });
+
+        ComponentUIRegistry::RegisterComponent<Components::MaterialComponent>("Material", [](Entity entity) {
+            UI::DrawComponent<Components::MaterialComponent>("Material", entity, [](auto &component) {
+                // Later: Display material properties
+            });
+        });
+        ComponentUIRegistry::RegisterComponent<Components::RenderableComponent>("Renderable", [](Entity entity) {
+            UI::DrawComponent<Components::NameTagComponent>("Renderable", entity, [](auto &component) {
+                // TODO display renderable properties
+            });
+        });
+
+        ComponentUIRegistry::RegisterComponent<Components::RigidBodyComponent>("Rigid Body", [](Entity entity) {
+            UI::DrawComponent<Components::RigidBodyComponent>("Rigid Body", entity, [](auto &component) {
+                //TODO choose body type: Static, Kinematic, Dynamic
+                ImGui::DragFloat3("Velocity", glm::value_ptr(component.velocity), 0.1f, -100.0f, 100.0f);
+                ImGui::DragFloat3("Angular Velocity", glm::value_ptr(component.angular_velocity), 0.1f, -100.0f,
+                                  100.0f);
+                ImGui::DragFloat("Mass", &component.mass, 0.1f, 0.1f, 1000.0f);
+                ImGui::Checkbox("Disable Gravity", &component.disable_gravity);
+            });
+        });
+
+        ComponentUIRegistry::RegisterComponent<Components::SkeletonComponent>("Skeleton", [](Entity entity) {
+            UI::DrawComponent<Components::SkeletonComponent>("Skeleton", entity, [](auto &component) {
+                //TODO display skeleton properties when implemented
+            });
+        });
+
+        ComponentUIRegistry::RegisterComponent<Components::Transform>("Transform", [](Entity entity) {
+            UI::DrawComponent<Components::Transform>("Transform", entity, [](auto &component) {
+                ImGui::DragFloat3("Translation", glm::value_ptr(component.position), 0.1f);
+                glm::vec3 euler_angles = glm::eulerAngles(component.rotation);
+                ImGui::DragFloat3("Rotation (Euler)", glm::value_ptr(euler_angles), 0.1f);
                 ImGui::DragFloat3("Scale", glm::value_ptr(component.scale), 0.1f);
             });
         });
-
-        ComponentUIRegistry::RegisterComponent<SpriteRendererComponent>("Sprite Renderer", [](Entity entity) {
-            UI::DrawComponent<SpriteRendererComponent>("Sprite Renderer", entity, [](auto &component) {
-                ImGui::ColorEdit4("Color", glm::value_ptr(component.color));
-            });
-        });
-
-        ComponentUIRegistry::RegisterComponent<MeshComponent>("Mesh Renderer", [](Entity entity) {
-            UI::DrawComponent<MeshComponent>("Mesh Renderer", entity, [](auto &component) {
-                ImGui::ColorEdit4("Color", glm::value_ptr(component.color));
-
-                ImGui::Text("Texture: %s", component.texture ? component.texture->get_path().c_str() : "None");
-                if (ImGui::Button("Select Mesh")) {
-                    // Open a file dialog to select a mesh asset
-                    // This is a placeholder, actual implementation would depend on your asset management system
-                    // For now, we just log the action
-                    RDE_CORE_INFO("Open mesh selection dialog (not implemented)");
-                }
-                if (ImGui::Button("Select Texture")) {
-                    // Open a file dialog to select a texture asset
-                    // This is a placeholder, actual implementation would depend on your asset management system
-                    // For now, we just log the action
-                    RDE_CORE_INFO("Open texture selection dialog (not implemented)");
-                }
-
-                // Later: Add a field for the mesh asset, texture asset, etc.
-            });
-        });
-        ComponentUIRegistry::RegisterComponent<ArcballControllerComponent>(
-            "ArcBall Controller", [](Entity entity) {
-                UI::DrawComponent<ArcballControllerComponent>("ArcBall Controller", entity, [](auto &component) {
-                    ImGui::InputFloat3("Focal Point", glm::value_ptr(component.focal_point));
-                    ImGui::DragFloat("Distance", &component.distance, 0.1f, 0.1f, 100.0f);
-                    ImGui::Text("width %i", component.width);
-                    ImGui::Text("height %i", component.height);
-
-                    ImGui::Text("last_point_2d %f, %f", component.last_point_2d.x, component.last_point_2d.y);
-                    ImGui::Text("last_point_3d %f, %f, %f", component.last_point_3d.x,
-                                component.last_point_3d.y, component.last_point_3d.z);
-                    ImGui::Text("last_point_ok %i", component.last_point_ok);
-                });
-            });
-        ComponentUIRegistry::RegisterComponent<CameraComponent>(
-            "Camera", [&](Entity entity) {
-                UI::DrawComponent<CameraComponent>("Camera", entity, [&](auto &component) {
-                    bool is_primary = m_scene->get_registry().all_of<PrimaryCameraTag>(entity);
-                    ImGui::Checkbox("Primary Camera", &is_primary);
-
-                    const auto &projection_matrix = component.projection_matrix;
-                    ImGui::Text("Projection Matrix:");
-                    std::stringstream ss_proj;
-                    ss_proj << glm::to_string(projection_matrix);
-                    ImGui::Text("  %s", ss_proj.str().c_str());
-                    ImGui::Spacing();
-                    ImGui::Separator();
-                    ImGui::Spacing();
-                    const auto &view_matrix = component.view_matrix;
-                    ImGui::Text("View Matrix:");
-                    std::stringstream ss_view;
-                    ss_view << glm::to_string(view_matrix);
-                    ImGui::Text("  %s", ss_view.str().c_str());
-                });
-            });
     }
 
     void EditorLayer::save_scene(const std::string &filepath) {
-        SceneSerializer serializer(m_scene);
-        serializer.serialize(FileIO::GetPath(filepath),
-                             // This is our serialization lambda (the "hook")
-                             [](YAML::Emitter &out, Entity entity) {
-                                 if (entity.has_component<SpriteRendererComponent>()) {
-                                     out << YAML::Key << "SpriteRendererComponent";
-                                     out << YAML::BeginMap; // SpriteRendererComponent
 
-                                     auto &src = entity.get_component<SpriteRendererComponent>();
-                                     out << YAML::Key << "Color" << YAML::Value << src.color;
-                                     if (src.texture)
-                                         out << YAML::Key << "TexturePath" << YAML::Value
-                                                 << src.texture->get_path();
-                                     out << YAML::Key << "TilingFactor" << YAML::Value
-                                             << src.tiling_factor;
-
-                                     out << YAML::EndMap; // SpriteRendererComponent
-                                 }
-                             });
     }
 
-    void EditorLayer::load_scene(const std::string &filepath) {
-        m_selected_entity = {};
-        SceneSerializer serializer(m_scene);
-        serializer.deserialize(FileIO::GetPath(filepath),
-                               // This is our deserialization lambda (the "hook")
-                               [](const YAML::Node &entity_node, Entity entity) {
-                                   auto sprite_component = entity_node["SpriteRendererComponent"];
-                                   if (sprite_component) {
-                                       auto &src = entity.add_component<SpriteRendererComponent>();
-                                       src.color = sprite_component["Color"].as<glm::vec4>();
-                                       if (sprite_component["TexturePath"]) {
-                                           std::string path = sprite_component["TexturePath"].as<
-                                               std::string>();
-                                           src.texture = RDE::Texture2D::Create(path);
-                                       }
-                                       src.tiling_factor = sprite_component["TilingFactor"].as<float>();
-                                   }
-                               });
+    void EditorLayer::create_renderable_entity_from_asset(const std::string &filepath) {
+        Application &app = Application::get();
+        auto &asset_manager = app.get_asset_manager();
     }
 }

@@ -9,7 +9,7 @@ struct GLFWwindow;
 namespace RDE {
     class GlfwOpenGLWindow : public IWindow {
     public:
-        GlfwOpenGLWindow(const Config::WindowConfig &window_config);
+        GlfwOpenGLWindow(const WindowConfig &window_config);
 
         ~GlfwOpenGLWindow() override;
 
@@ -28,7 +28,7 @@ namespace RDE {
         void *get_native_window() const override { return m_window; }
 
     private:
-        void init(const Config::WindowConfig &window_config);
+        void init(const WindowConfig &window_config);
 
         void shutdown();
 

@@ -32,25 +32,25 @@ namespace RDE {
 
         void submit_indirect(const IndirectRenderObject &indirect_command) override;
 
-        GeometryHandle create_geometry(const GeometryData &geometry_data) override;
+        GpuGeometryHandle create_geometry(const GeometryData &geometry_data) override;
 
-        TextureHandle create_texture(const TextureData &texture_data) override;
+        GpuTextureHandle create_texture(const TextureData &texture_data) override;
 
-        MaterialHandle create_material(const MaterialData &material_data) override;
+        GpuMaterialHandle create_material(const MaterialData &material_data) override;
 
-        ProgramHandle create_program(const ShaderData &shader_data) override;
+        GpuProgramHandle create_program(const ShaderData &shader_data) override;
 
-        BufferHandle create_buffer(const BufferData &buffer_data) override;
+        GpuBufferHandle create_buffer(const BufferData &buffer_data) override;
 
-        void destroy_geometry(GeometryHandle handle) override;
+        void destroy_geometry(GpuGeometryHandle handle) override;
 
-        void destroy_texture(TextureHandle handle) override;
+        void destroy_texture(GpuTextureHandle handle) override;
 
-        void destroy_material(MaterialHandle handle) override;
+        void destroy_material(GpuMaterialHandle handle) override;
 
-        void destroy_program(ProgramHandle handle) override;
+        void destroy_program(GpuProgramHandle handle) override;
 
-        void destroy_buffer(BufferHandle handle) override;
+        void destroy_buffer(GpuBufferHandle handle) override;
 
         void on_window_resize(uint32_t width, uint32_t height) override;
 
@@ -92,11 +92,11 @@ namespace RDE {
         uint64_t m_next_handle_id = 1; // For generating unique public handles
 
         // The "pools" mapping our public handles to internal OpenGL object IDs.
-        std::unordered_map<GeometryHandle, GLGeometry> m_geometries;
-        std::unordered_map<TextureHandle, GLuint> m_textures;
-        std::unordered_map<MaterialHandle, GLMaterial> m_materials;
-        std::unordered_map<ProgramHandle, GLuint> m_programs;
-        std::unordered_map<BufferHandle, GLBuffer> m_buffers;
+        std::unordered_map<GpuGeometryHandle, GLGeometry> m_geometries;
+        std::unordered_map<GpuTextureHandle, GLuint> m_textures;
+        std::unordered_map<GpuMaterialHandle, GLMaterial> m_materials;
+        std::unordered_map<GpuProgramHandle, GLuint> m_programs;
+        std::unordered_map<GpuBufferHandle, GLBuffer> m_buffers;
 
         // The queue of objects to be rendered this frame.
         std::vector<RenderObject> m_render_queue;

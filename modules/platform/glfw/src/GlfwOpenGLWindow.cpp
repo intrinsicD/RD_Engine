@@ -17,11 +17,11 @@ namespace RDE {
         RDE_CORE_ERROR("GLFW Error ({0}): {1}", error, description);
     }
 
-    std::unique_ptr<IWindow> IWindow::Create(const Config::WindowConfig &window_config) {
+    std::unique_ptr<IWindow> IWindow::Create(const WindowConfig &window_config) {
         return std::make_unique<GlfwOpenGLWindow>(window_config);
     }
 
-    GlfwOpenGLWindow::GlfwOpenGLWindow(const Config::WindowConfig &window_config) {
+    GlfwOpenGLWindow::GlfwOpenGLWindow(const WindowConfig &window_config) {
         init(window_config);
     }
 
@@ -29,7 +29,7 @@ namespace RDE {
         shutdown();
     }
 
-    void GlfwOpenGLWindow::init(const Config::WindowConfig &window_config) {
+    void GlfwOpenGLWindow::init(const WindowConfig &window_config) {
         m_data.title = window_config.title;
         m_data.width = window_config.width;
         m_data.height = window_config.height;
@@ -64,13 +64,17 @@ namespace RDE {
             data.width = width;
             data.height = height;
             WindowResizeEvent event(width, height);
-            data.event_callback(event);
+            if (data.event_callback) {
+                data.event_callback(event);
+            }
         });
 
         glfwSetWindowCloseCallback(m_window, [](GLFWwindow *window) {
             WindowData &data = *(WindowData *) glfwGetWindowUserPointer(window);
             WindowCloseEvent event;
-            data.event_callback(event);
+            if (data.event_callback) {
+                data.event_callback(event);
+            }
         });
 
         glfwSetKeyCallback(m_window, [](GLFWwindow *window, int key, int scancode, int action, int mods) {
@@ -78,17 +82,23 @@ namespace RDE {
             switch (action) {
                 case GLFW_PRESS: {
                     KeyPressedEvent event(key, 0);
-                    data.event_callback(event);
+                    if (data.event_callback) {
+                        data.event_callback(event);
+                    }
                     break;
                 }
                 case GLFW_RELEASE: {
                     KeyReleasedEvent event(key);
-                    data.event_callback(event);
+                    if (data.event_callback) {
+                        data.event_callback(event);
+                    }
                     break;
                 }
                 case GLFW_REPEAT: {
                     KeyPressedEvent event(key, 1);
-                    data.event_callback(event);
+                    if (data.event_callback) {
+                        data.event_callback(event);
+                    }
                     break;
                 }
             }
@@ -100,12 +110,16 @@ namespace RDE {
             switch (action) {
                 case GLFW_PRESS: {
                     MouseButtonPressedEvent event(button);
-                    data.event_callback(event);
+                    if (data.event_callback) {
+                        data.event_callback(event);
+                    }
                     break;
                 }
                 case GLFW_RELEASE: {
                     MouseButtonReleasedEvent event(button);
-                    data.event_callback(event);
+                    if (data.event_callback) {
+                        data.event_callback(event);
+                    }
                     break;
                 }
             }
@@ -115,14 +129,18 @@ namespace RDE {
             WindowData &data = *(WindowData *) glfwGetWindowUserPointer(window);
 
             MouseScrolledEvent event((float) x_offset, (float) y_offset);
-            data.event_callback(event);
+            if (data.event_callback) {
+                data.event_callback(event);
+            }
         });
 
         glfwSetCursorPosCallback(m_window, [](GLFWwindow *window, double x_pos, double y_pos) {
             WindowData &data = *(WindowData *) glfwGetWindowUserPointer(window);
 
             MouseMovedEvent event((float) x_pos, (float) y_pos);
-            data.event_callback(event);
+            if (data.event_callback) {
+                data.event_callback(event);
+            }
         });
 
         glfwSetDropCallback(m_window, [](GLFWwindow *window, int count, const char **filepaths) {
@@ -133,11 +151,14 @@ namespace RDE {
                 files.emplace_back(filepaths[i]);
             }
             WindowFileDropEvent event(files);
-            data.event_callback(event);
+            if (data.event_callback) {
+                data.event_callback(event);
+            }
         });
     }
 
     void GlfwOpenGLWindow::shutdown() {
+        RDE_CORE_INFO("Shutting down window {0}", m_data.title);
         glfwDestroyWindow(m_window);
     }
 

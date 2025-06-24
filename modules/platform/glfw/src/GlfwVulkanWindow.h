@@ -9,8 +9,7 @@ struct GLFWwindow;
 namespace RDE {
     class GlfwVulkanWindow : public IWindow {
     public:
-        GlfwVulkanWindow(const Config::WindowConfig &window_config,
-                   const Config::RendererConfig &renderer_config = Config::RendererConfig());
+        GlfwVulkanWindow(const WindowConfig &window_config = WindowConfig());
 
         ~GlfwVulkanWindow() override;
 
@@ -29,7 +28,7 @@ namespace RDE {
         void *get_native_window() const override { return m_window; }
 
     private:
-        void init(const Config::WindowConfig &window_config, const Config::RendererConfig &renderer_config);
+        void init(const WindowConfig &window_config);
 
         void init_opengl();
 

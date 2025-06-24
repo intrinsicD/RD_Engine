@@ -18,8 +18,7 @@ namespace RDE {
 
     class Application {
     public:
-        explicit Application(const Config::WindowConfig &window_config = {},
-                             const Config::RendererConfig &renderer_config = {});
+        explicit Application(std::unique_ptr<IWindow> window, std::unique_ptr<IRenderer> renderer);
 
         virtual ~Application();
 
@@ -52,11 +51,12 @@ namespace RDE {
 
         bool on_window_resize(WindowResizeEvent &e);
 
+        std::unique_ptr<LayerStack> m_layer_stack;
+        ImGuiLayer *m_imgui_layer;
+
         std::unique_ptr<IWindow> m_window;
         std::unique_ptr<IRenderer> m_renderer;
         std::unique_ptr<AssetManager> m_asset_manager;
-        std::unique_ptr<LayerStack> m_layer_stack;
-        ImGuiLayer *m_imgui_layer;
 
         bool m_is_running = true;
         bool m_is_minimized = false;

@@ -1,12 +1,12 @@
 #pragma once
 
-#include "../../../../modules/engine/include/Entity.h"
+#include "Entity.h"
+#include "Scene.h"
+
 #include <functional>
 #include <string>
 #include <unordered_map>
 #include <typeindex>
-
-#include "EntityComponents/TransformComponent.h"
 
 namespace RDE {
     // A function that draws the UI for a component on a given entity.

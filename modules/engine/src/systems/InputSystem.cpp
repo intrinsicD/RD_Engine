@@ -1,5 +1,7 @@
 #include "systems/InputSystem.h"
 #include "components/MouseContext.h"
+#include "Application.h"
+#include "IWindow.h"
 #include "Input.h"
 #include "Base.h"
 #include "Scene.h"
@@ -25,31 +27,35 @@ namespace RDE {
         };
 
         for (int i = 0; i < button_mappings.size(); ++i) {
-            auto& button_state = mouse_context.buttons[i];
+            auto& button_state = mouse_context.button[i];
             bool was_pressed_last_frame = button_state.is_pressed;
 
             // Poll and update raw down state
             button_state.is_pressed = Input::IsMouseButtonPressed(button_mappings[i]);
 
             // Update transient flags based on state changes
-            button_state.was_pressed_this_frame = !was_pressed_last_frame && button_state.is_pressed;
-            button_state.was_released_this_frame = was_pressed_last_frame && !button_state.is_pressed;
+            button_state.pressed_this_frame = !was_pressed_last_frame && button_state.is_pressed;
+            button_state.released_this_frame = was_pressed_last_frame && !button_state.is_pressed;
 
             // Update dragging state (per button)
-            if (button_state.was_pressed_this_frame) {
-                button_state.is_dragging = false; // Reset drag state on new press
+            if (button_state.pressed_this_frame) {
+                mouse_context.is_dragging_this_frame = false; // Reset drag state on new press
                 button_state.press_position = mouse_context.position;
             }
-            if (button_state.was_released_this_frame) {
-                button_state.is_dragging = false;
+            if (button_state.released_this_frame) {
+                mouse_context.is_dragging_this_frame = false;
                 button_state.release_position = mouse_context.position;
             }
 
             // If a button is held and the mouse is moving, it's a drag operation.
             if (button_state.is_pressed && mouse_context.is_moving_this_frame) {
-                button_state.is_dragging = true;
+                mouse_context.is_dragging_this_frame = true;
             }
         }
+    }
+
+    void InputSystem::on_update(Scene *scene, float delta_time) {
+
     }
 
     void InputSystem::on_post_update(Scene *scene, float delta_time) {
@@ -66,7 +72,7 @@ namespace RDE {
 
     void InputSystem::on_event(Scene *scene, Event &e) {
         EventDispatcher dispatcher(e);
-        dispatcher.dispatch<MouseScrolledEvent>([&](MouseScrolledEvent &event) -> bool {
+        dispatcher.dispatch<MouseScrolledEvent>([scene](MouseScrolledEvent &event) -> bool {
             auto &context = scene->get_context().get<Components::MouseContextComponent>();
             context.scroll_delta_xy = {event.get_x_offset(), event.get_y_offset()};
             context.is_scrolling_this_frame = true;

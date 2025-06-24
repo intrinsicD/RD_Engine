@@ -1,5 +1,7 @@
 #pragma once
-#include "glm/vec3.hpp"
+#include "assets/AssetHandle.h"
+
+#include <glm/vec3.hpp>
 
 namespace RDE::Components {
     struct ColliderComponent {

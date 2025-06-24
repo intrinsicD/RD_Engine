@@ -3,6 +3,7 @@
 #include "ILayer.h"
 #include "Scene.h"
 #include "Entity.h"
+#include "events/ApplicationEvent.h"
 
 namespace RDE {
     class EditorLayer : public ILayer {
@@ -13,6 +14,8 @@ namespace RDE {
 
         void on_gui_render() override;
 
+        void on_event(Event &e);
+
     private:
         void draw_scene_hierarchy_panel();
 
@@ -22,7 +25,7 @@ namespace RDE {
 
         void save_scene(const std::string &filepath = "assets/scenes/MyScene.rde");
 
-        void load_scene(const std::string &filepath = "assets/scenes/MyScene.rde");
+        void create_renderable_entity_from_asset(const std::string &filepath = "assets/scenes/MyScene.rde");
 
         Scene *m_scene;
         Entity m_selected_entity;

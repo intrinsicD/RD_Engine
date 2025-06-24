@@ -57,9 +57,11 @@ namespace RDE {
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+        ImGui::BeginMainMenuBar();
     }
 
     void ImGuiLayer::end() {
+        ImGui::EndMainMenuBar();
         ImGuiIO &io = ImGui::GetIO();
         // TEMPORARY: Should get window size from our own Window class.
         auto &app = Application::get();

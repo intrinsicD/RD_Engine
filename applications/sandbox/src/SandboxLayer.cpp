@@ -1,6 +1,5 @@
 #include "SandboxLayer.h"
 #include "events/ApplicationEvent.h"
-#include "AssetManager.h"
 #include "Entity.h"
 
 #include "systems/AnimationSystem.h"
@@ -17,13 +16,21 @@ namespace RDE {
     SandboxLayer::SandboxLayer() : ILayer("SandboxLayer") {
         m_scene = std::make_unique<Scene>();
 
+        // Initialize the scene with a default camera.
+        m_systems.emplace_back(std::make_unique<InputSystem>());
+
+        // Add systems in the order they should be processed.
+
+        // TransformSystem must be first to ensure all entities have their transforms updated before any other system.
+        m_systems.emplace_back(std::make_unique<TransformSystem>());
+        // AnimationSystem must be before PhysicsSystem to ensure animations are updated before physics calculations.
         m_systems.emplace_back(std::make_unique<AnimationSystem>());
+        // PhysicsSystem must be after TransformSystem to ensure transforms are updated before physics calculations.
+        m_systems.emplace_back(std::make_unique<PhysicsSystem>());
+        // CameraSystem must be after TransformSystem to ensure camera matrices are updated correctly.
         m_systems.emplace_back(std::make_unique<CameraSystem>());
         m_systems.emplace_back(std::make_unique<CullingSystem>());
-        m_systems.emplace_back(std::make_unique<InputSystem>());
-        m_systems.emplace_back(std::make_unique<PhysicsSystem>());
         m_systems.emplace_back(std::make_unique<RenderSystem>());
-        m_systems.emplace_back(std::make_unique<TransformSystem>());
     }
 
     void SandboxLayer::on_attach() {
@@ -55,13 +62,13 @@ namespace RDE {
 
     void SandboxLayer::on_event(Event &e) {
         EventDispatcher dispatcher(e);
-        dispatcher.dispatch<WindowCloseEvent>(RDE_BIND_EVENT_FN(on_window_file_drop));
+        dispatcher.dispatch<WindowFileDropEvent>(RDE_BIND_EVENT_FN(on_window_file_drop));
         for (auto &system: m_systems) {
             system->on_event(m_scene.get(), e);
         }
     }
 
-    void SandboxLayer::on_window_file_drop(WindowFileDropEvent &e) {
+    bool SandboxLayer::on_window_file_drop(WindowFileDropEvent &e) {
         // Get the asset manager from the scene context.
 
         for (const auto &path: e.get_files()) {
@@ -73,5 +80,6 @@ namespace RDE {
         }
 
         e.handled = true; // We've handled the event.
+        return true; // Indicate that the event was handled.
     }
 }

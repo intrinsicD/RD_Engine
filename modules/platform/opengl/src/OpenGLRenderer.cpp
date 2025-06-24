@@ -8,7 +8,6 @@
 #include <iostream>
 
 namespace RDE {
-
     std::unique_ptr<IRenderer> IRenderer::Create(const RendererConfig& config) {
         switch (config.api) {
             case RendererConfig::Api::OpenGL:
@@ -79,9 +78,7 @@ namespace RDE {
     }
 
     void OpenGLRenderer::end_frame() {
-        // In a real app, this would be part of your Windowing code, not here.
-        // For simplicity, we assume we have a handle from the config.
-        glfwSwapBuffers((GLFWwindow *) m_config.window_handle);
+
     }
 
     void OpenGLRenderer::submit(const RenderObject &render_object) {
@@ -107,7 +104,7 @@ namespace RDE {
         m_indirect_render_queue.push_back(indirect_command);
     }
 
-    GeometryHandle OpenGLRenderer::create_geometry(const GeometryData &geometry_data) {
+    GpuGeometryHandle OpenGLRenderer::create_geometry(const GeometryData &geometry_data) {
         GLGeometry new_geo;
         new_geo.index_count = geometry_data.indices.size();
 
@@ -144,13 +141,13 @@ namespace RDE {
         glBindVertexArray(0);
 
         // 7. Store and return handle
-        GeometryHandle handle;
+        GpuGeometryHandle handle;
         handle.id = m_next_handle_id++;
         m_geometries[handle] = new_geo;
         return handle;
     }
 
-    TextureHandle OpenGLRenderer::create_texture(const TextureData &texture_data) {
+    GpuTextureHandle OpenGLRenderer::create_texture(const TextureData &texture_data) {
         GLuint texture_id;
         glGenTextures(1, &texture_id);
         glBindTexture(GL_TEXTURE_2D, texture_id);
@@ -168,22 +165,22 @@ namespace RDE {
             glGenerateMipmap(GL_TEXTURE_2D);
         } else {
             RDE_CORE_ERROR("Texture data is null!");
-            return TextureHandle(); // Return an invalid handle
+            return GpuTextureHandle(); // Return an invalid handle
         }
 
         // Unbind the texture
         glBindTexture(GL_TEXTURE_2D, 0);
 
-        TextureHandle handle;
+        GpuTextureHandle handle;
         handle.id = m_next_handle_id++;
         m_textures[handle] = texture_id;
         return handle;
     }
 
-    MaterialHandle OpenGLRenderer::create_material(const MaterialData &material_data) {
+    GpuMaterialHandle OpenGLRenderer::create_material(const MaterialData &material_data) {
         // For OpenGL, creating a material is simple. We just store its description.
         // The real work happens at draw time.
-        MaterialHandle handle;
+        GpuMaterialHandle handle;
         handle.id = m_next_handle_id++;
         m_materials[handle] = material_data; // Store a copy of the data
         return handle;
@@ -212,7 +209,7 @@ namespace RDE {
     }
 
 
-    ProgramHandle OpenGLRenderer::create_program(const ShaderData &shader_data) {
+    GpuProgramHandle OpenGLRenderer::create_program(const ShaderData &shader_data) {
         GLuint vert_shader = compile_shader(shader_data.sources.at(ShaderType::Vertex), GL_VERTEX_SHADER);
         GLuint frag_shader = compile_shader(shader_data.sources.at(ShaderType::Fragment), GL_FRAGMENT_SHADER);
         GLuint geom_shader = 0;
@@ -265,13 +262,13 @@ namespace RDE {
             glDeleteShader(tess_control_shader);
         }
 
-        ProgramHandle handle;
+        GpuProgramHandle handle;
         handle.id = m_next_handle_id++;
         m_programs[handle] = program_id;
         return handle;
     }
 
-    BufferHandle OpenGLRenderer::create_buffer(const BufferData &buffer_data) {
+    GpuBufferHandle OpenGLRenderer::create_buffer(const BufferData &buffer_data) {
         GLuint buffer_id;
         auto gl_buffer_type = get_gl_buffer_type(buffer_data.type);
         glGenBuffers(1, &buffer_id);
@@ -281,7 +278,7 @@ namespace RDE {
         // Unbind the buffer
         glBindBuffer(gl_buffer_type, 0);
 
-        BufferHandle handle;
+        GpuBufferHandle handle;
         handle.id = m_next_handle_id++;
         m_buffers[handle] = GLBuffer{buffer_id, get_gl_buffer_type(BufferType::Storage)}; // Assuming SSBO - Storage type for simplicity
         return handle;
@@ -326,7 +323,7 @@ namespace RDE {
         }
     }
 
-    void OpenGLRenderer::destroy_geometry(GeometryHandle handle)  {
+    void OpenGLRenderer::destroy_geometry(GpuGeometryHandle handle)  {
         auto it = m_geometries.find(handle);
         if (it != m_geometries.end()) {
             const GLGeometry &geo = it->second;
@@ -339,7 +336,7 @@ namespace RDE {
         }
     }
 
-    void OpenGLRenderer::destroy_texture(TextureHandle handle) {
+    void OpenGLRenderer::destroy_texture(GpuTextureHandle handle) {
         auto it = m_textures.find(handle);
         if (it != m_textures.end()) {
             glDeleteTextures(1, &it->second);
@@ -349,7 +346,7 @@ namespace RDE {
         }
     }
 
-    void OpenGLRenderer::destroy_material(MaterialHandle handle)  {
+    void OpenGLRenderer::destroy_material(GpuMaterialHandle handle)  {
         auto it = m_materials.find(handle);
         if (it != m_materials.end()) {
             //TODO : Handle material cleanup if needed
@@ -359,7 +356,7 @@ namespace RDE {
         }
     }
 
-    void OpenGLRenderer::destroy_program(ProgramHandle handle)  {
+    void OpenGLRenderer::destroy_program(GpuProgramHandle handle)  {
         auto it = m_programs.find(handle);
         if (it != m_programs.end()) {
             //TODO : Handle material cleanup if needed
@@ -369,7 +366,7 @@ namespace RDE {
         }
     }
 
-    void OpenGLRenderer::destroy_buffer(BufferHandle handle)  {
+    void OpenGLRenderer::destroy_buffer(GpuBufferHandle handle)  {
         auto it = m_buffers.find(handle);
         if (it != m_buffers.end()) {
             glDeleteBuffers(1, &it->second.id);
@@ -381,16 +378,11 @@ namespace RDE {
 
     // --- 5. EVENT HANDLING ---
     // Called when the window resizes, as this requires recreating the swapchain.
-    void on_window_resize(uint32_t width, uint32_t height)  {
+    void OpenGLRenderer::on_window_resize(uint32_t width, uint32_t height)  {
         // Update the viewport and any other necessary state
         glViewport(0, 0, width, height);
         // You might also want to update your projection matrix here
         RDE_CORE_INFO("Window resized to {0}x{1}", width, height);
-    }
-
-    // DEVELOPMENT-ONLY: Called to trigger a hot reload of shaders
-    void on_hot_reload_shaders() {
-
     }
 
     GLenum OpenGLRenderer::get_gl_buffer_type(BufferType type) const  {

@@ -3,6 +3,7 @@
 
 #include <glm/glm.hpp>
 #include <cstddef> // For size_t
+#include <functional>
 
 namespace RDE {
     /**
@@ -13,7 +14,7 @@ namespace RDE {
      */
     template<class T>
     void HashCombine(std::size_t &seed, const T &value) {
-        std::hash < T > hasher;
+        std::hash<T> hasher;
         seed ^= hasher(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     }
 }

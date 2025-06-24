@@ -3,13 +3,17 @@
 #pragma once
 
 #include "events/Event.h"
-#include "ApplicationConfig.h"
 #include <string>
 #include <functional>
 #include <memory>
 
 
 namespace RDE {
+    struct WindowConfig {
+        std::string title = "RD_Engine";
+        int width = 1280;
+        int height = 720;
+    };
     // Interface representing a desktop system based Window
     class IWindow {
     public:
@@ -34,6 +38,6 @@ namespace RDE {
 
         // A factory method to create the appropriate window based on the platform.
         // For now, we only have a GLFW implementation.
-        static std::unique_ptr<IWindow> Create(const Config::WindowConfig &window_config = Config::WindowConfig());
+        static std::unique_ptr<IWindow> Create(const WindowConfig &window_config = WindowConfig());
     };
 }

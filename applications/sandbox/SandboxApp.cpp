@@ -11,7 +11,7 @@
 namespace RDE {
     class SandboxApp : public Application {
     public:
-        SandboxApp(const Config::WindowConfig &window_config, const Config::RendererConfig &renderer_config) : Application(window_config, renderer_config) {
+        SandboxApp(std::unique_ptr<IWindow> window, std::unique_ptr<IRenderer> renderer) : Application(std::move(window), std::move(renderer)) {
             RDE_INFO("Sandbox application created!");
             // Push our main layer onto the stack.
             auto sandbox_layer = std::make_shared<SandboxLayer>();
@@ -30,10 +30,15 @@ namespace RDE {
     // This is the function the engine's entry point will call.
     // We return a new instance of our Sandbox application.
     Application *CreateApplication() {
-        Config::WindowConfig window_config = {"SandboxApp", 1280, 720};
-        Config::RendererConfig renderer_config = {Config::RendererAPI::OpenGL_4_5, true}; // Enable VSync
+        WindowConfig window_config = {"SandboxApp", 1280, 720};
+
         auto window = GlfwOpenGLWindow::Create(window_config);
-        auto renderer = OpenGLRenderer::Create(window_config, renderer_config);
-        return new SandboxApp(window_config, renderer_config);
+        RendererConfig renderer_config = {
+                .window_handle = window->get_native_window(),
+                .width = window_config.width,
+                .height = window_config.height,
+                .vsync = true,
+                .api = RendererConfig::Api::OpenGL}; // Enable VSync
+        return new SandboxApp(std::move(window), std::move(OpenGLRenderer::Create(renderer_config)));
     }
 }

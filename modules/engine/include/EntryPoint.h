@@ -14,7 +14,6 @@ extern RDE::Application *RDE::CreateApplication();
 // The engine's main entry point.
 int main(int argc, char **argv) {
     RDE::Log::Initialize();
-    RDE::RenderCommand::Init();
 
     auto app = RDE::CreateApplication();
     RDE_CORE_ASSERT(app, "Client application is null!");

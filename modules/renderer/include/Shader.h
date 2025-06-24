@@ -1,7 +1,8 @@
 // RDE_Project/modules/renderer/include/Renderer/Shader.h
 #pragma once
 
-#include "../../engine/include/IAsset.h"
+#include "assets/IAsset.h"
+
 #include <string>
 #include <memory>
 #include <glm/glm.hpp> // Include glm

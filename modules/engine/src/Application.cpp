@@ -2,28 +2,22 @@
 #include "LayerStack.h"
 #include "Base.h"
 #include "layers/ImGuiLayer.h"
-
-#include "src/GlfwOpenGLWindow.h"
-#include "src/GlfwVulkanWindow.h"
+#include "assets/AssetManager.h"
+#include "IRenderer.h"
+#include "IWindow.h"
 
 namespace RDE {
-    Application::Application(const Config::WindowConfig &window_config,
-                             const Config::RendererConfig &renderer_config): m_window(GlfwOpenGLWindow::Create(
-                                                                                 window_config)),
-                                                                             m_renderer(OpenGLRenderer::Create()),
-                                                                             m_asset_manager(
-                                                                                 std::make_unique<AssetManager>()),
-                                                                             m_is_running(true), m_is_minimized(false) {
-        if (renderer_config.api == Config::RendererAPI::OpenGL_4_5) {
-            m_window = GlfwOpenGLWindow::Create(window_config);
-            m_renderer = OpenGLRenderer::Create(window_config, renderer_config);
-        } else if (renderer_config.api == Config::RendererAPI::Vulkan_1_2) {
-            m_window = GlfwVulkanWindow::Create(window_config);
-            m_renderer = VulkanRenderer::Create(window_config, renderer_config);
-        } else {
-            // Default to OpenGL if no valid API is specified
-            RDE_CORE_ASSERT(false, "Unknown RendererAPI");
-        }
+    static Application *s_instance = nullptr;
+
+    Application::Application(std::unique_ptr<IWindow> window, std::unique_ptr<IRenderer> renderer) :
+            m_layer_stack(std::make_unique<LayerStack>()),
+            m_window(std::move(window)),
+            m_renderer(std::move(renderer)),
+            m_asset_manager(std::make_unique<AssetManager>()),
+            m_is_running(true),
+            m_is_minimized(false) {
+        s_instance = this;
+        m_window->set_event_callback(RDE_BIND_EVENT_FN(Application::on_event));
 
         auto imgui_layer = std::make_shared<ImGuiLayer>();
         m_imgui_layer = imgui_layer.get();
@@ -45,11 +39,11 @@ namespace RDE {
             std::chrono::duration<float> delta_time = current_time - start_time;
             start_time = current_time;
 
-            for (const auto &layer: m_layer_stack)
+            for (const auto &layer: *m_layer_stack)
                 layer->on_update(delta_time.count());
 
             m_imgui_layer->begin();
-            for (const auto &layer: m_layer_stack) {
+            for (const auto &layer: *m_layer_stack) {
                 layer->on_gui_render();
             }
             m_imgui_layer->end();
@@ -73,19 +67,16 @@ namespace RDE {
 
     ILayer *Application::push_layer(std::shared_ptr<ILayer> layer) {
         m_layer_stack->push_layer(layer);
-        layer->on_attach();
         return layer.get();
     }
 
     ILayer *Application::push_overlay(std::shared_ptr<ILayer> overlay) {
         m_layer_stack->push_overlay(overlay);
-        overlay->on_attach();
         return overlay.get();
     }
 
     Application &Application::get() {
-        static Application instance;
-        return instance;
+        return *s_instance;
     }
 
     bool Application::on_window_close(WindowCloseEvent &e) {

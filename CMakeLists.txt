@@ -14,6 +14,9 @@ include(FetchContent)
 FetchContent_Declare(spdlog GIT_REPOSITORY https://github.com/gabime/spdlog.git GIT_TAG v1.14.1)
 FetchContent_Declare(glfw GIT_REPOSITORY https://github.com/glfw/glfw.git GIT_TAG 3.4)
 FetchContent_Declare(imgui GIT_REPOSITORY https://github.com/ocornut/imgui.git GIT_TAG v1.90.8-docking)
+#is this correct? I don't know, but it works for me
+FetchContent_Declare(ImGuiFileDialog GIT_REPOSITORY https://github.com/aiekick/ImGuiFileDialog.git GIT_TAG v0.6.7)
+
 FetchContent_Declare(
         glad
         GIT_REPOSITORY https://github.com/Dav1dde/glad.git
@@ -33,7 +36,7 @@ FetchContent_Declare(
 
 # Make them all available. This command triggers the download and runs each dependency's
 # own CMakeLists.txt, preparing their targets for us to use.
-FetchContent_MakeAvailable(spdlog glfw imgui stb EnTT tinyobjloader)
+FetchContent_MakeAvailable(spdlog glfw imgui ImGuiFileDialog stb EnTT tinyobjloader)
 
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 FetchContent_MakeAvailable(glad glm yaml-cpp)
