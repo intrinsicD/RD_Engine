@@ -1,5 +1,6 @@
 #include "EditorLayer.h"
 #include "Application.h"
+#include "assets/AssetManager.h"
 
 #include "ui/UIUtils.h"
 #include "ui/ComponentUIRegistry.h"
@@ -388,8 +389,27 @@ namespace RDE {
 
     }
 
-    void EditorLayer::create_renderable_entity_from_asset(const std::string &filepath) {
+    void EditorLayer::create_renderable_entity_from_asset(const std::string &file_path) {
         Application &app = Application::get();
         auto &asset_manager = app.get_asset_manager();
+        auto asset_handle = asset_manager.load(file_path);
+        switch (asset_handle.get_type()) {
+            case AssetType::Geometry: {
+                // Create a new entity with the loaded geometry asset.
+                Entity entity = m_scene->create_entity("Renderable Entity");
+                auto &renderable_component = entity.add_component<Components::RenderableComponent>();
+                renderable_component.geometry_handle = asset_handle;
+                renderable_component.material_handle = asset_manager.load("assets/materials/default_material.rde");
+                m_selected_entity = entity; // Select the newly created entity
+                break;
+            }
+            case AssetType::Texture:
+            case AssetType::Material:
+            case AssetType::Shader:
+            case AssetType::Scene:
+            default:
+                RDE_CORE_ERROR("Unsupported asset type for creating renderable entity: {}", asset_handle.get_type());
+                break;
+        }
     }
 }
