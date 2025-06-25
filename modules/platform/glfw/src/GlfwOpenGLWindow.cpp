@@ -162,8 +162,11 @@ namespace RDE {
         glfwDestroyWindow(m_window);
     }
 
-    void GlfwOpenGLWindow::on_update() {
+    void GlfwOpenGLWindow::poll_events() {
         glfwPollEvents();
+    }
+
+    void GlfwOpenGLWindow::on_update() {
         glfwSwapBuffers(m_window);
     }
 

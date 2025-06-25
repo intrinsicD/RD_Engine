@@ -39,7 +39,7 @@ namespace RDE {
         }
     }
 
-    void SandboxLayer::on_update(float delta_time) {
+    void SandboxLayer::on_variable_update(float delta_time) {
         // --- 1. PRE-UPDATE PHASE ---
         // All systems prepare for the main update.
         for (auto &system: m_systems) {

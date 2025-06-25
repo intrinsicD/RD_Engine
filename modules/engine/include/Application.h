@@ -14,6 +14,7 @@ namespace RDE {
     class LayerStack;
     class ILayer;
     class ImGuiLayer;
+    class JobSystem;
 
 
     class Application {
@@ -47,9 +48,9 @@ namespace RDE {
         AssetManager &get_asset_manager() const { return *m_asset_manager; }
 
     protected:
-        bool on_window_close(WindowCloseEvent &e);
+        virtual bool on_initialize();
 
-        bool on_window_resize(WindowResizeEvent &e);
+        virtual void on_shutdown();
 
         std::unique_ptr<LayerStack> m_layer_stack;
         ImGuiLayer *m_imgui_layer;
@@ -57,6 +58,7 @@ namespace RDE {
         std::unique_ptr<IWindow> m_window;
         std::unique_ptr<IRenderer> m_renderer;
         std::unique_ptr<AssetManager> m_asset_manager;
+        std::unique_ptr<JobSystem> m_job_system;
 
         bool m_is_running = true;
         bool m_is_minimized = false;

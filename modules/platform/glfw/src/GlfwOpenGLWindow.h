@@ -13,6 +13,8 @@ namespace RDE {
 
         ~GlfwOpenGLWindow() override;
 
+        void poll_events() override;
+
         void on_update() override;
 
         unsigned int get_width() const override { return m_data.width; }

@@ -15,7 +15,7 @@ namespace RDE {
 
         void on_attach() override;
 
-        void on_update(float delta_time) override;
+        void on_variable_update(float delta_time) override;
 
         void on_event(Event &e) override;
 

@@ -21,6 +21,8 @@ namespace RDE {
 
         virtual ~IWindow() = default;
 
+        virtual void poll_events() = 0;
+
         virtual void on_update() = 0;
 
         virtual unsigned int get_width() const = 0;

@@ -20,16 +20,24 @@ namespace RDE {
         virtual void on_detach() {
         }
 
+        virtual void on_begin_frame() {
+        }
+
+        virtual void on_event(Event &event) {
+        }
+
+        virtual void on_fixed_update(float fixed_timestep) {
+        }
+
         // Called every frame during the main application loop.
-        virtual void on_update(float delta_time) {
+        virtual void on_variable_update(float delta_time) {
+        }
+
+        virtual void on_render_submission() {
         }
 
         // Called every frame to render the GUI.
         virtual void on_gui_render() {
-        }
-
-        // Called when an event is sent to the layer.
-        virtual void on_event(Event &event) {
         }
 
         const std::string &get_name() const { return m_debug_name; }

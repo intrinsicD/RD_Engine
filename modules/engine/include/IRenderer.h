@@ -153,6 +153,8 @@ namespace RDE {
         // This is where the magic happens internally (render graph execution).
         virtual void draw_frame(const CameraData &camera_data) = 0;
 
+        virtual void execute_and_present() = 0;
+
         // Submits the final frame to the window for presentation.
         virtual void end_frame() = 0;
 

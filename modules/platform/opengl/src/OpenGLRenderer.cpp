@@ -104,6 +104,13 @@ namespace RDE {
         m_indirect_render_queue.push_back(indirect_command);
     }
 
+    void OpenGLRenderer::execute_and_present() {
+        // This function would typically execute the render graph and present the frame.
+        // For now, we just draw all submitted objects.
+        draw_frame(CameraData{}); // Pass an empty camera data for now
+        glfwSwapBuffers((GLFWwindow*)m_config.window_handle);
+    }
+
     GpuGeometryHandle OpenGLRenderer::create_geometry(const GeometryData &geometry_data) {
         GLGeometry new_geo;
         new_geo.index_count = geometry_data.indices.size();
