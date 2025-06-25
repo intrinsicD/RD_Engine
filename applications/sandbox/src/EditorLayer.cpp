@@ -408,7 +408,7 @@ namespace RDE {
             case AssetType::Shader:
             case AssetType::Scene:
             default:
-                RDE_CORE_ERROR("Unsupported asset type for creating renderable entity: {}", asset_handle.get_type());
+                RDE_CORE_ERROR("Unsupported asset type for creating renderable entity");
                 break;
         }
     }
