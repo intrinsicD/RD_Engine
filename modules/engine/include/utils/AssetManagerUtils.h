@@ -1,7 +1,7 @@
 #pragma once
 
 #include "assets/AssetManager.h"
-#include "IRenderer.h"
+#include "../../../renderer/include/IRenderer.h"
 
 namespace RDE{
     std::shared_ptr<GeometryData> load_obj(const std::string &path);

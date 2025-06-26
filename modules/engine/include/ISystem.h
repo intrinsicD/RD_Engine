@@ -3,7 +3,8 @@
 namespace RDE {
     class Event;
     class Scene;
-    class GlobalServices;
+    class ApplicationContext;
+    class FrameContext;
 
     // An interface for all systems that operate on the scene.
     // This provides a consistent structure for engine and application logic.
@@ -13,9 +14,12 @@ namespace RDE {
 
         // --- SETUP & TEARDOWN HOOKS ---
         // Called once by the Scene when the system is first added.
-        virtual void on_attach(Scene& scene) {}
+        virtual void on_attach(const ApplicationContext &app_context, const FrameContext &frame_context) {
+        }
+
         // Called once by the Scene just before it is destroyed.
-        virtual void on_detach() {}
+        virtual void on_detach() {
+        }
 
 
         // --- PHASE-BASED UPDATE HOOKS ---
@@ -28,7 +32,8 @@ namespace RDE {
          * @param services The global engine services.
          * @param fixed_timestep The fixed duration for this simulation step (e.g., 1/60th of a second).
          */
-        virtual void on_update_simulation(Scene& scene, const GlobalServices& services, float fixed_timestep) {}
+        virtual void on_update_simulation(const ApplicationContext &app_context, const FrameContext &frame_context) {
+        }
 
         /**
          * @brief Called exactly once per rendered frame.
@@ -39,7 +44,8 @@ namespace RDE {
          * @param services The global engine services.
          * @param frame_context The context for the current frame, containing delta_time.
          */
-        virtual void on_update_presentation(Scene& scene, const GlobalServices& services, const FrameContext& frame_context) {}
+        virtual void on_update_presentation(const ApplicationContext &app_context, const FrameContext &frame_context) {
+        }
 
         /**
          * @brief Called exactly once per frame during the render submission phase.
@@ -48,7 +54,8 @@ namespace RDE {
          * @param scene The scene to be rendered.
          * @param renderer The renderer to submit passes to.
          */
-        virtual void on_submit_render_data(Scene& scene, IRenderer& renderer) {}
+        virtual void on_submit_render_data(Scene &scene, IRenderer &renderer) {
+        }
 
     private:
         Scene *m_scene = nullptr; // Pointer to the scene this system operates on.

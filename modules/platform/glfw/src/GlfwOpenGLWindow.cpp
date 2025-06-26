@@ -17,28 +17,27 @@ namespace RDE {
         RDE_CORE_ERROR("GLFW Error ({0}): {1}", error, description);
     }
 
-    std::unique_ptr<IWindow> IWindow::Create(const WindowConfig &window_config) {
-        return std::make_unique<GlfwOpenGLWindow>(window_config);
+    std::shared_ptr<IWindow> IWindow::Create(const WindowConfig &window_config) {
+        return std::make_shared<GlfwOpenGLWindow>(window_config);
     }
 
-    GlfwOpenGLWindow::GlfwOpenGLWindow(const WindowConfig &window_config) {
-        init(window_config);
+    GlfwOpenGLWindow::GlfwOpenGLWindow(const WindowConfig &window_config) : m_window(nullptr) {
+        m_data.title = window_config.title;
+        m_data.width = window_config.width;
+        m_data.height = window_config.height;
     }
 
     GlfwOpenGLWindow::~GlfwOpenGLWindow() {
         shutdown();
     }
 
-    void GlfwOpenGLWindow::init(const WindowConfig &window_config) {
-        m_data.title = window_config.title;
-        m_data.width = window_config.width;
-        m_data.height = window_config.height;
-
-        RDE_CORE_INFO("Creating window {0} ({1}, {2})", window_config.title, window_config.width, window_config.height);
+    bool GlfwOpenGLWindow::init() {
+        RDE_CORE_INFO("Creating window {0} ({1}, {2})", m_data.title, m_data.width, m_data.height);
 
         if (!s_glfw_initialized) {
             int success = glfwInit();
             RDE_CORE_ASSERT(success, "Could not initialize GLFW!");
+            if (!success) return false;
 
             glfwSetErrorCallback(GlfwErrorCallback);
             s_glfw_initialized = true;
@@ -155,6 +154,7 @@ namespace RDE {
                 data.event_callback(event);
             }
         });
+        return true;
     }
 
     void GlfwOpenGLWindow::shutdown() {

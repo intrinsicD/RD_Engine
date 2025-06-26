@@ -26,16 +26,18 @@
 
 #include <yaml-cpp/yaml.h> // For YAML serialization/deserialization
 
+#include "FrameContext.h"
+
 namespace RDE {
-    EditorLayer::EditorLayer(Scene *scene) : ILayer("EditorLayer"), m_scene(scene) {
+    EditorLayer::EditorLayer() : ILayer("EditorLayer") {
         m_selected_entity = {}; // Reset selection when context changes
     }
 
-    void EditorLayer::on_attach() {
+    void EditorLayer::on_attach(const ApplicationContext &app_context, const FrameContext &frame_context) {
         register_component_uis();
     }
 
-    void EditorLayer::on_gui_render() {
+    void EditorLayer::on_gui_render(const ApplicationContext &app_context, const FrameContext &frame_context) {
         // Render Menu
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Save As...")) {
@@ -53,21 +55,21 @@ namespace RDE {
 
         if (ImGuiFileDialog::Instance()->Display("Load Geometry")) {
             if (ImGuiFileDialog::Instance()->IsOk()) {
-                auto path = ImGuiFileDialog::Instance()->GetFilePathName();
+                const auto path = ImGuiFileDialog::Instance()->GetFilePathName();
                 create_renderable_entity_from_asset(path);
             }
             ImGuiFileDialog::Instance()->Close();
         }
 
         // ... Dockspace setup code ...
-        draw_scene_hierarchy_panel();
-        draw_properties_panel();
+        draw_scene_hierarchy_panel(frame_context.scene);
+        draw_properties_panel(frame_context.scene);
         // ... End dockspace ...
     }
 
-    void EditorLayer::on_event(RDE::Event &e) {
+    void EditorLayer::on_event(Event &e, const ApplicationContext &app_context, const FrameContext &frame_context) {
         EventDispatcher dispatcher(e);
-        dispatcher.dispatch<WindowFileDropEvent>([this](WindowFileDropEvent& event) {
+        dispatcher.dispatch<WindowFileDropEvent>([this](const WindowFileDropEvent& event) {
             for(const auto& path : event.get_files()) {
                 auto ext = FileIO::GetFileExtension(path);
                 create_renderable_entity_from_asset(path);
@@ -79,8 +81,12 @@ namespace RDE {
     // Move draw_scene_hierarchy_panel and draw_properties_panel here.
     // They will now use m_context_scene and m_selected_entity.
     // The logic inside them remains the same as what you wrote.
-    void EditorLayer::draw_scene_hierarchy_panel() {
-        ImGui::Begin("Scene Hierarchy");
+    void EditorLayer::draw_scene_hierarchy_panel(Scene *scene) {
+        ImGui::Begin("Scene Hierarchy Panel");
+        if (!scene) {
+            ImGui::Begin("Scene is null");
+            return;
+        }
         if (ImGui::MenuItem("Save Scene As...")) {
             save_scene();
         }
@@ -94,8 +100,8 @@ namespace RDE {
         }
 
         // Existing loop to display each entity
-        m_scene->get_registry().view<entt::entity>().each([&](auto entity_handle) {
-            Entity entity{entity_handle, m_scene};
+        scene->get_registry().view<entt::entity>().each([&](auto entity_handle) {
+            Entity entity{entity_handle, scene};
             auto &name = entity.get_component<Components::NameTagComponent>().name;
 
             // Use a unique ID for the TreeNode. The entity handle is perfect for this.
@@ -127,7 +133,7 @@ namespace RDE {
 
             // Defer deletion to the end of the loop to avoid iterator invalidation issues.
             if (entity_deleted) {
-                m_scene->destroy_entity(entity);
+                scene->destroy_entity(entity);
                 if (m_selected_entity == entity)
                     m_selected_entity = {}; // Reset selection if deleted
             }
@@ -144,14 +150,17 @@ namespace RDE {
         // The explicit "Create Entity" button, always accessible.
         // This is the robust replacement for the flawed BeginPopupContextWindow call.
         if (ImGui::Button("Create Entity")) {
-            m_selected_entity = m_scene->create_entity("New Entity");
+            m_selected_entity = scene->create_entity("New Entity");
         }
 
         ImGui::End();
     }
 
-    void EditorLayer::draw_properties_panel() {
-        ImGui::Begin("Properties");
+    void EditorLayer::draw_properties_panel(Scene *scene) {
+        ImGui::Begin("Properties Panel");
+        if (!scene) {
+            ImGui::Begin("Scene is null");
+        }
 
         // Only draw properties if an entity is actually selected
         if (m_selected_entity) {
@@ -166,18 +175,18 @@ namespace RDE {
                 }
             }
 
-            ComponentUIRegistry::Draw<Components::AABBLocalComponent>(m_scene, m_selected_entity);
-            ComponentUIRegistry::Draw<Components::AABBWorldComponent>(m_scene, m_selected_entity);
-            ComponentUIRegistry::Draw<Components::AnimationComponent>(m_scene, m_selected_entity);
-            ComponentUIRegistry::Draw<Components::BoundingSphereLocalComponent>(m_scene, m_selected_entity);
-            ComponentUIRegistry::Draw<Components::BoundingSphereWorldComponent>(m_scene, m_selected_entity);
-            ComponentUIRegistry::Draw<Components::CameraComponent>(m_scene, m_selected_entity);
-            ComponentUIRegistry::Draw<Components::ColliderComponent>(m_scene, m_selected_entity);
-            ComponentUIRegistry::Draw<Components::MaterialComponent>(m_scene, m_selected_entity);
-            ComponentUIRegistry::Draw<Components::RenderableComponent>(m_scene, m_selected_entity);
-            ComponentUIRegistry::Draw<Components::RigidBodyComponent>(m_scene, m_selected_entity);
-            ComponentUIRegistry::Draw<Components::SkeletonComponent>(m_scene, m_selected_entity);
-            ComponentUIRegistry::Draw<Components::Transform>(m_scene, m_selected_entity);
+            ComponentUIRegistry::Draw<Components::AABBLocalComponent>(scene, m_selected_entity);
+            ComponentUIRegistry::Draw<Components::AABBWorldComponent>(scene, m_selected_entity);
+            ComponentUIRegistry::Draw<Components::AnimationComponent>(scene, m_selected_entity);
+            ComponentUIRegistry::Draw<Components::BoundingSphereLocalComponent>(scene, m_selected_entity);
+            ComponentUIRegistry::Draw<Components::BoundingSphereWorldComponent>(scene, m_selected_entity);
+            ComponentUIRegistry::Draw<Components::CameraComponent>(scene, m_selected_entity);
+            ComponentUIRegistry::Draw<Components::ColliderComponent>(scene, m_selected_entity);
+            ComponentUIRegistry::Draw<Components::MaterialComponent>(scene, m_selected_entity);
+            ComponentUIRegistry::Draw<Components::RenderableComponent>(scene, m_selected_entity);
+            ComponentUIRegistry::Draw<Components::RigidBodyComponent>(scene, m_selected_entity);
+            ComponentUIRegistry::Draw<Components::SkeletonComponent>(scene, m_selected_entity);
+            ComponentUIRegistry::Draw<Components::Transform>(scene, m_selected_entity);
 
             // "Add Component" button
             ImGui::Spacing();
@@ -213,7 +222,11 @@ namespace RDE {
         ImGui::End();
     }
 
-    void EditorLayer::register_component_uis() {
+    void EditorLayer::register_component_uis(Scene *scene) {
+        if (!scene) {
+            RDE_CORE_ERROR("Scene is null, cannot register component UIs.");
+            return;
+        }
         ComponentUIRegistry::RegisterComponent<Components::AABBLocalComponent>("AABB Local", [](Entity entity) {
             UI::DrawComponent<Components::AABBLocalComponent>("AABB Local", entity, [](auto &component) {
                 ImGui::Text("Min: %s", glm::to_string(component.min).c_str());
@@ -317,13 +330,13 @@ namespace RDE {
                 ImGui::DragFloat("Z Near", &component.z_near, 0.1f, 0.01f, 100.0f);
                 ImGui::DragFloat("Z Far", &component.z_far, 0.1f, 0.01f, 1000.0f);
 
-                bool is_primary = m_scene->get_registry().all_of<Components::IsPrimaryTag<Components::CameraComponent>>(
+                bool is_primary = scene->get_registry().all_of<Components::IsPrimaryTag<Components::CameraComponent>>(
                         entity);
                 if (ImGui::Checkbox("Is Primary", &is_primary)) {
                     if (is_primary) {
-                        m_scene->get_registry().emplace<Components::IsPrimaryTag<Components::CameraComponent>>(entity);
+                        scene->get_registry().emplace<Components::IsPrimaryTag<Components::CameraComponent>>(entity);
                     } else {
-                        m_scene->get_registry().remove<Components::IsPrimaryTag<Components::CameraComponent>>(entity);
+                        scene->get_registry().remove<Components::IsPrimaryTag<Components::CameraComponent>>(entity);
                     }
                 }
             });
@@ -389,14 +402,17 @@ namespace RDE {
 
     }
 
-    void EditorLayer::create_renderable_entity_from_asset(const std::string &file_path) {
-        Application &app = Application::get();
-        auto &asset_manager = app.get_asset_manager();
-        auto asset_handle = asset_manager.load(file_path);
+    void EditorLayer::create_renderable_entity_from_asset(const std::string &file_path, Scene *scene, AssetManager *asset_manager) {
+        if (!scene || !asset_manager) {
+            RDE_CORE_ERROR("Scene or AssetManager is null, cannot create renderable entity");
+            return;
+        }
+        auto &assets = *asset_manager;
+        auto asset_handle = assets.load(file_path);
         switch (asset_handle.get_type()) {
             case AssetType::Geometry: {
                 // Create a new entity with the loaded geometry asset.
-                Entity entity = m_scene->create_entity("Renderable Entity");
+                Entity entity = scene->create_entity("Renderable Entity");
                 auto &renderable_component = entity.add_component<Components::RenderableComponent>();
                 renderable_component.geometry_handle = asset_handle;
                 renderable_component.material_handle = asset_manager.load("assets/materials/default_material.rde");

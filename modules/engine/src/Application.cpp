@@ -4,7 +4,7 @@
 #include "Base.h"
 #include "layers/ImGuiLayer.h"
 #include "assets/AssetManager.h"
-#include "IRenderer.h"
+#include "../../renderer/include/IRenderer.h"
 #include "IWindow.h"
 #include "JobSystem.h"
 #include "Ticker.h"
@@ -23,6 +23,11 @@ namespace RDE {
         auto imgui_layer = std::make_shared<ImGuiLayer>();
         m_imgui_layer = imgui_layer.get();
         push_overlay(imgui_layer);
+        auto job_system = std::make_shared<JobSystem>();
+        auto asset_manager = std::make_shared<AssetManager>();
+        auto input_manager = std::make_shared<InputManager>();
+        auto layers = std::make_shared<LayerStack>();
+        m_engine = std::make_unique<Engine>(window, renderer, job_system, asset_manager, input_manager, layers);
     }
 
     Application::~Application() {

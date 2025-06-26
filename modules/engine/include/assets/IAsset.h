@@ -1,7 +1,7 @@
 #pragma once
 
 #include "assets/AssetHandle.h"
-#include "IRenderer.h"
+#include "../../../renderer/include/IRenderer.h"
 
 namespace RDE {
 

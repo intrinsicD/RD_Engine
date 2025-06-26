@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ISystem.h"
+#include "../../../renderer/include/RenderPacket.h"
 
 namespace RDE {
     class RenderSystem : public ISystem {
@@ -16,5 +17,7 @@ namespace RDE {
         void on_pre_update(Scene *scene, float delta_time) override;
 
         void on_update(Scene *scene, float delta_time) override;
+
+        RenderPacket collect_renderables(Scene *scene);
     };
 }

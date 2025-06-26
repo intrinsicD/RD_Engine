@@ -1,7 +1,7 @@
 // RDE_Project/modules/platform/opengl/src/OpenGLRenderer.h
 #pragma once
 
-#include "IRenderer.h"
+#include "../../../renderer/include/IRenderer.h"
 #include <glad/gl.h> // Or your preferred OpenGL loader
 #include <unordered_map>
 

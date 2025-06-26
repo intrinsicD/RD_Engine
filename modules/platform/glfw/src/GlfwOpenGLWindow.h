@@ -13,6 +13,8 @@ namespace RDE {
 
         ~GlfwOpenGLWindow() override;
 
+        bool init() override;
+
         void poll_events() override;
 
         void on_update() override;
@@ -32,11 +34,9 @@ namespace RDE {
         void close() override;
 
     private:
-        void init(const WindowConfig &window_config);
-
         void shutdown();
 
-        GLFWwindow *m_window;
+        GLFWwindow *m_window = nullptr;
 
         struct WindowData {
             std::string title;

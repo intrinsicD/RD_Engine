@@ -21,6 +21,8 @@ namespace RDE {
 
         virtual ~IWindow() = default;
 
+        virtual bool init() = 0;
+
         virtual void poll_events() = 0;
 
         virtual void on_update() = 0;
@@ -42,6 +44,6 @@ namespace RDE {
 
         // A factory method to create the appropriate window based on the platform.
         // For now, we only have a GLFW implementation.
-        static std::unique_ptr<IWindow> Create(const WindowConfig &window_config = WindowConfig());
+        static std::shared_ptr<IWindow> Create(const WindowConfig &window_config = WindowConfig());
     };
 }

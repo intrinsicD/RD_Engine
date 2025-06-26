@@ -1,10 +1,19 @@
 #pragma once
 
-#include "events/Event.h"
-
 #include <string>
 
 namespace RDE {
+    struct ApplicationContext;
+    struct FrameContext;
+
+    class Event;
+
+    /*
+     * The Layer's Job: To manipulate the state of the Scene.
+     * It creates entities, moves them, changes their components, and responds to game events.
+     * It describes what the world should look like.
+     */
+
     class ILayer {
     public:
         ILayer(const std::string &name = "Layer") : m_debug_name(name) {
@@ -12,29 +21,22 @@ namespace RDE {
 
         virtual ~ILayer() = default;
 
-        // Called when the layer is pushed onto the layer stack.
-        virtual void on_attach() {
+        virtual void on_attach(const ApplicationContext &, const FrameContext &) {
         }
 
-        // Called when the layer is popped from the layer stack.
-        virtual void on_detach() {
+        virtual void on_detach(const ApplicationContext &, const FrameContext &) {
         }
 
-        virtual void on_event(Event &event) {
+        virtual void on_variable_update(const ApplicationContext &, const FrameContext &) {
         }
 
-        virtual void on_fixed_update(float fixed_timestep) {
+        virtual void on_fixed_update(const ApplicationContext &, const FrameContext &) {
         }
 
-        // Called every frame during the main application loop.
-        virtual void on_variable_update(float delta_time) {
+        virtual void on_gui_render(const ApplicationContext &context, const FrameContext &frame_context) {
         }
 
-        virtual void on_render_submission() {
-        }
-
-        // Called every frame to render the GUI.
-        virtual void on_gui_render() {
+        virtual void on_event(Event &event, const ApplicationContext &context, const FrameContext &frame_context) {
         }
 
         const std::string &get_name() const { return m_debug_name; }
