@@ -3,6 +3,7 @@
 namespace RDE {
     class Event;
     class Scene;
+    class GlobalServices;
 
     // An interface for all systems that operate on the scene.
     // This provides a consistent structure for engine and application logic.
@@ -10,22 +11,46 @@ namespace RDE {
     public:
         virtual ~ISystem() = default;
 
-        // Called once when the system is attached to the application/layer.
-        virtual void on_attach(Scene *scene) {}
+        // --- SETUP & TEARDOWN HOOKS ---
+        // Called once by the Scene when the system is first added.
+        virtual void on_attach(Scene& scene) {}
+        // Called once by the Scene just before it is destroyed.
+        virtual void on_detach() {}
 
-        // Called once when the system is detached.
-        virtual void on_detach(Scene *scene) {}
 
-        // Optional: Called before the main update loop for all systems.
-        virtual void on_pre_update(Scene *scene, float delta_time) {}
+        // --- PHASE-BASED UPDATE HOOKS ---
 
-        // Called every frame to perform the system's logic.
-        virtual void on_update(Scene *scene, float delta_time) = 0;
+        /**
+         * @brief Called 0, 1, or N times per frame on a fixed timestep.
+         * Ideal for physics, deterministic gameplay logic, and anything that
+         * needs to be decoupled from the rendering frame rate for stability.
+         * @param scene The scene to operate on.
+         * @param services The global engine services.
+         * @param fixed_timestep The fixed duration for this simulation step (e.g., 1/60th of a second).
+         */
+        virtual void on_update_simulation(Scene& scene, const GlobalServices& services, float fixed_timestep) {}
 
-        // Optional: Called after the main update loop for all systems.
-        virtual void on_post_update(Scene *scene, float delta_time) {}
+        /**
+         * @brief Called exactly once per rendered frame.
+         * Ideal for logic that needs to run before rendering but is not
+         * physics-critical, such as camera updates, animation interpolation,
+         * or visual effects.
+         * @param scene The scene to operate on.
+         * @param services The global engine services.
+         * @param frame_context The context for the current frame, containing delta_time.
+         */
+        virtual void on_update_presentation(Scene& scene, const GlobalServices& services, const FrameContext& frame_context) {}
 
-        // Called to allow the system to process an event.
-        virtual void on_event(Scene *scene, Event &e) {}
+        /**
+         * @brief Called exactly once per frame during the render submission phase.
+         * The system's job is to tell the renderer WHAT to draw by submitting
+         * render passes to the renderer's RenderGraph.
+         * @param scene The scene to be rendered.
+         * @param renderer The renderer to submit passes to.
+         */
+        virtual void on_submit_render_data(Scene& scene, IRenderer& renderer) {}
+
+    private:
+        Scene *m_scene = nullptr; // Pointer to the scene this system operates on.
     };
 }

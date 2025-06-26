@@ -16,21 +16,7 @@ namespace RDE {
     SandboxLayer::SandboxLayer() : ILayer("SandboxLayer") {
         m_scene = std::make_unique<Scene>();
 
-        // Initialize the scene with a default camera.
-        m_systems.emplace_back(std::make_unique<InputSystem>());
 
-        // Add systems in the order they should be processed.
-
-        // TransformSystem must be first to ensure all entities have their transforms updated before any other system.
-        m_systems.emplace_back(std::make_unique<TransformSystem>());
-        // AnimationSystem must be before PhysicsSystem to ensure animations are updated before physics calculations.
-        m_systems.emplace_back(std::make_unique<AnimationSystem>());
-        // PhysicsSystem must be after TransformSystem to ensure transforms are updated before physics calculations.
-        m_systems.emplace_back(std::make_unique<PhysicsSystem>());
-        // CameraSystem must be after TransformSystem to ensure camera matrices are updated correctly.
-        m_systems.emplace_back(std::make_unique<CameraSystem>());
-        m_systems.emplace_back(std::make_unique<CullingSystem>());
-        m_systems.emplace_back(std::make_unique<RenderSystem>());
     }
 
     void SandboxLayer::on_attach() {
