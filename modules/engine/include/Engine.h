@@ -7,6 +7,7 @@
 #include "IWindow.h"
 #include "assets/AssetManager.h"
 #include "JobSystem.h"
+#include "InputManager.h"
 #include "Ticker.h"
 #include "events/ApplicationEvent.h"
 
@@ -40,11 +41,11 @@ namespace RDE {
             } else {
                 m_window->set_event_callback(RDE_BIND_EVENT_FN(Engine::on_event));
             }
-            if (m_renderer && !m_renderer->init(m_window.get())) {
+            if (m_renderer && !m_renderer->init(m_window->get_native_window())) {
                 RDE_CORE_ERROR("Renderer failed to initialize. Only compute is available.");
                 return false;
             }
-            if (m_job_system && !m_job_system->init()) {
+            if (!m_job_system) {
                 RDE_CORE_ERROR("JobSystem failed to initialize. Compute is now single-threaded.");
             }
             if (!m_asset_manager) {
@@ -59,22 +60,27 @@ namespace RDE {
                 RDE_CORE_ERROR("InputManager failed to initialize.");
                 return false;
             }
+            RDE_CORE_INFO("Engine initialized successfully.");
+            return true;
         }
 
         void on_shutdown() {
+            m_is_running = false;
+
             if (m_job_system) {
-                RDE_CORE_INFO("Waiting for all jobs to finish before shutdown...");
+                RDE_CORE_INFO("Waiting for all jobs to finish...");
                 m_job_system->wait_for_all();
+            }
+            if (m_layer_stack) {
+                RDE_CORE_INFO("Detaching all layers...");
+                m_layer_stack.reset();
             }
             if (m_renderer) {
                 RDE_CORE_INFO("Shutting down renderer...");
                 m_renderer->shutdown();
             }
-            if (m_layer_stack) {
-                m_layer_stack.reset();
-            }
             if (m_window) {
-                RDE_CORE_INFO("Shutting down window...");
+                RDE_CORE_INFO("Closing window...");
                 m_window->close();
             }
             RDE_CORE_INFO("Engine shutdown complete.");
@@ -94,35 +100,33 @@ namespace RDE {
             Ticker ticker;
             while (m_is_running) {
                 float delta_time = ticker.tick();
-                time_accumulator += delta_time;
 
-                m_input_manager->process_events(); // Poll for input events, this will call the input manager's event handlers and afterwards set the input state for this frame.
-                m_renderer->begin_frame(); // This is where you would begin the frame for the renderer, like clearing buffers, etc. Really? why not put that into a render pass?
-
-                for (auto &layer: *m_layer_stack) {
-                    layer->on_begin_frame(); // Layers can reset their own per-frame state
+                m_input_manager->process_input(); // Poll and process input events, this will call the input manager's event handlers and afterwards set the input state for this frame.
+                for (auto &e: m_input_manager->fetch_events()) {
+                    on_event(e);
                 }
 
                 if (m_is_minimized) {
-                    // Let background jobs run freely
                     time_accumulator = 0.0f;
                     std::this_thread::sleep_for(std::chrono::milliseconds(100));
                     continue;
                 }
 
+                time_accumulator += delta_time;
                 while (time_accumulator >= fixed_timestep) {
                     // This is the "tick" for physics and deterministic gameplay logic.
                     for (auto &layer: *m_layer_stack) {
-                        layer->on_fixed_update(
-                                fixed_timestep); // This is where you would update the physics and game logic
+                        layer->on_fixed_update(fixed_timestep);
                     }
                     time_accumulator -= fixed_timestep;
                 }
 
                 for (const auto &layer: *m_layer_stack) {
-                    layer->on_variable_update(
-                            delta_time); // This is where you would update the game logic that is not physics-related, like animations, AI, etc.
+                    // This is where you would update the game logic that is not physics-related, like animations, AI, etc.
+                    layer->on_variable_update(delta_time);
                 }
+
+                m_renderer->begin_frame(); // Begin the frame for rendering, i.e. waiting for unfinished gpu jobs to finish...
 
                 for (auto &layer: *m_layer_stack) {
                     layer->on_render_submission(); // This is where you would submit the render commands to the renderer
@@ -159,6 +163,7 @@ namespace RDE {
             m_layer_stack->push_overlay(overlay);
             return overlay.get();
         }
+
     public:
         std::shared_ptr<IWindow> m_window;
         std::shared_ptr<IRenderer> m_renderer;

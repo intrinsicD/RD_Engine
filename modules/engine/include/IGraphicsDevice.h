@@ -1,0 +1,8 @@
+//
+// Created by alex on 26.06.25.
+//
+
+#ifndef RD_ENGINE_IGRAPHICSDEVICE_H
+#define RD_ENGINE_IGRAPHICSDEVICE_H
+
+#endif //RD_ENGINE_IGRAPHICSDEVICE_H

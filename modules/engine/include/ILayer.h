@@ -20,9 +20,6 @@ namespace RDE {
         virtual void on_detach() {
         }
 
-        virtual void on_begin_frame() {
-        }
-
         virtual void on_event(Event &event) {
         }
 

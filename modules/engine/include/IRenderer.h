@@ -7,21 +7,29 @@
 #include <glm/glm.hpp>
 
 namespace RDE {
-    enum class HandleType : uint8_t { Geometry, Texture, Material, Program, Buffer };
+    enum class HandleType : uint8_t {
+        Geometry, Texture, Material, Program, Buffer
+    };
 
     enum class ShaderType : uint8_t {
         Vertex, Fragment, Geometry, Compute, TessellationControl, TessellationEvaluation
     };
 
-    enum class BufferType : uint8_t { Uniform, Storage, Indirect };
+    enum class BufferType : uint8_t {
+        Uniform, Storage, Indirect
+    };
 
-    enum class PrimitiveTopologyType : uint8_t { Points, Lines, LineStrip, Triangles, TriangleStrip, TriangleFan };
+    enum class PrimitiveTopologyType : uint8_t {
+        Points, Lines, LineStrip, Triangles, TriangleStrip, TriangleFan
+    };
 
     template<HandleType T>
     class Handle {
     public:
         uint64_t id = 0;
+
         bool is_valid() const { return id != 0; }
+
         // Add comparison operators for use in maps, etc.
         bool operator==(const Handle &other) const {
             return id == other.id;
@@ -132,7 +140,7 @@ namespace RDE {
         // Each element in the buffer might be { vertex_count, instance_count, first_vertex, first_instance }.
         GpuBufferHandle arguments_buffer;
 
-        uint32_t draw_count; // The number of draw commands in the arguments_buffer.
+        uint32_t draw_count = 1; // The number of draw commands in the arguments_buffer.
     };
 
     class IRenderer {
@@ -140,7 +148,7 @@ namespace RDE {
         virtual ~IRenderer() = default;
 
         // --- 1. LIFECYCLE & CONFIGURATION ---
-        virtual bool init(const RendererConfig &config) = 0;
+        virtual bool init(void *native_window_ptr) = 0;
 
         virtual void shutdown() = 0;
 
@@ -153,11 +161,12 @@ namespace RDE {
         // This is where the magic happens internally (render graph execution).
         virtual void draw_frame(const CameraData &camera_data) = 0;
 
-        virtual void execute_and_present() = 0;
+        virtual void execute_render_commands() = 0;
+
+        virtual void present_frame() = 0;
 
         // Submits the final frame to the window for presentation.
         virtual void end_frame() = 0;
-
 
         // --- 3. DATA SUBMISSION ---
         // Submits a single renderable object for this frame.

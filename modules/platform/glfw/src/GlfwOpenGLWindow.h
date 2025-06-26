@@ -29,6 +29,8 @@ namespace RDE {
 
         void *get_native_window() const override { return m_window; }
 
+        void close() override;
+
     private:
         void init(const WindowConfig &window_config);
 

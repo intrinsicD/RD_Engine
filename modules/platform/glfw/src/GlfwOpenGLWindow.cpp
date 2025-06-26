@@ -181,4 +181,8 @@ namespace RDE {
     bool GlfwOpenGLWindow::is_vsync() const {
         return m_data.vsync;
     }
+
+    void GlfwOpenGLWindow::close() {
+        glfwSetWindowShouldClose(m_window, true);
+    }
 }

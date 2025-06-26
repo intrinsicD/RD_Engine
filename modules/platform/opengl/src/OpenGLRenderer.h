@@ -32,7 +32,9 @@ namespace RDE {
 
         void submit_indirect(const IndirectRenderObject &indirect_command) override;
 
-        void execute_and_present() override;
+        void execute_render_commands() override;
+
+        void present_frame() override;
 
         GpuGeometryHandle create_geometry(const GeometryData &geometry_data) override;
 

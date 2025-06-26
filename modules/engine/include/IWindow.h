@@ -38,6 +38,8 @@ namespace RDE {
 
         virtual void *get_native_window() const = 0;
 
+        virtual void close() = 0;
+
         // A factory method to create the appropriate window based on the platform.
         // For now, we only have a GLFW implementation.
         static std::unique_ptr<IWindow> Create(const WindowConfig &window_config = WindowConfig());

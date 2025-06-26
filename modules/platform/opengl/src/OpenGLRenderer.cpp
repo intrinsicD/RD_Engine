@@ -104,10 +104,11 @@ namespace RDE {
         m_indirect_render_queue.push_back(indirect_command);
     }
 
-    void OpenGLRenderer::execute_and_present() {
-        // This function would typically execute the render graph and present the frame.
-        // For now, we just draw all submitted objects.
+    void OpenGLRenderer::execute_render_commands() {
         draw_frame(CameraData{}); // Pass an empty camera data for now
+    }
+
+    void OpenGLRenderer::present_frame() {
         glfwSwapBuffers((GLFWwindow*)m_config.window_handle);
     }
 
