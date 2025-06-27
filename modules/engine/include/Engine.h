@@ -8,6 +8,7 @@
 namespace RDE {
     class Scene;
     class Event;
+    class ImGuiLayer;
 
     struct FrameContext;
 
@@ -17,7 +18,8 @@ namespace RDE {
                    std::unique_ptr<IRenderer> renderer,
                    std::unique_ptr<JobSystem> job_system,
                    std::unique_ptr<AssetManager> asset_manager,
-                   std::unique_ptr<InputManager> input_manager);
+                   std::unique_ptr<InputManager> input_manager,
+                   std::unique_ptr<RenderPipelineManager> render_pipeline_manager);
 
         ~Engine();
 
@@ -58,15 +60,17 @@ namespace RDE {
         std::shared_ptr<Scene> get_scene() const { return m_scene; }
 
     private:
-        void on_event(Event &e, const ApplicationContext &context, const FrameContext &frame_context);
+        void on_event(Event &e);
 
         std::unique_ptr<IWindow> m_window;
         std::unique_ptr<IRenderer> m_renderer;
         std::unique_ptr<JobSystem> m_job_system;
         std::unique_ptr<AssetManager> m_asset_manager;
         std::unique_ptr<InputManager> m_input_manager;
+        std::unique_ptr<RenderPipelineManager> m_render_pipeline_manager;
 
         std::unique_ptr<LayerStack> m_layer_stack;
+        std::shared_ptr<ImGuiLayer> m_imgui_layer;
 
         std::shared_ptr<Scene> m_scene;
 
@@ -74,6 +78,7 @@ namespace RDE {
         bool m_is_minimized = false;
 
         std::unique_ptr<ApplicationContext> m_app_context;
+        std::unique_ptr<FrameContext> m_frame_context;
     };
 
     std::unique_ptr<Engine> CreateEngine();

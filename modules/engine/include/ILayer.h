@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <utility>
 
 namespace RDE {
     struct ApplicationContext;
@@ -16,7 +17,7 @@ namespace RDE {
 
     class ILayer {
     public:
-        ILayer(const std::string &name = "Layer") : m_debug_name(name) {
+        explicit ILayer(std::string name = "Layer") : m_debug_name(std::move(name)) {
         }
 
         virtual ~ILayer() = default;
@@ -39,7 +40,7 @@ namespace RDE {
         virtual void on_event(Event &event, const ApplicationContext &context, const FrameContext &frame_context) {
         }
 
-        const std::string &get_name() const { return m_debug_name; }
+        [[nodiscard]] const std::string &get_name() const { return m_debug_name; }
 
     protected:
         std::string m_debug_name;

@@ -1,110 +1,42 @@
-// RDE_Project/modules/platform/opengl/src/OpenGLRenderer.h
 #pragma once
 
-#include "../../../renderer/include/IRenderer.h"
-#include <glad/gl.h> // Or your preferred OpenGL loader
-#include <unordered_map>
+#include "IRenderer.h"
+#include <memory>
 
 namespace RDE {
-    // This is the concrete implementation for OpenGL.
-    class OpenGLRenderer final : public IRenderer {
+
+    // Forward declarations to keep this header clean
+    class OpenGLDevice;
+
+    class OpenGLCommandBuffer;
+
+    class IWindow;
+
+    class OpenGLRenderer : public IRenderer {
     public:
         explicit OpenGLRenderer(const RendererConfig &config);
 
         ~OpenGLRenderer() override;
 
         // --- IRenderer Interface Implementation ---
-        bool init(const RendererConfig &config) override;
+        bool init() override;
 
         void shutdown() override;
 
-        bool begin_frame() override;
+        void on_window_resize(int width, int height) override;
 
-        void draw_frame(const CameraData &camera_data) override;
+        void begin_frame() override;
 
-        void end_frame() override;
-
-        void submit(const RenderObject &render_object) override;
-
-        void submit_batch(const std::vector<RenderObject> &render_objects) override;
-
-        void submit_instanced(const InstancedRenderObject &instanced_object) override;
-
-        void submit_indirect(const IndirectRenderObject &indirect_command) override;
-
-        void execute_render_commands() override;
+        void submit(const RenderPacket &packet) override;
 
         void present_frame() override;
 
-        GpuGeometryHandle create_geometry(const GeometryData &geometry_data) override;
-
-        GpuTextureHandle create_texture(const TextureData &texture_data) override;
-
-        GpuMaterialHandle create_material(const MaterialData &material_data) override;
-
-        GpuProgramHandle create_program(const ShaderData &shader_data) override;
-
-        GpuBufferHandle create_buffer(const BufferData &buffer_data) override;
-
-        void destroy_geometry(GpuGeometryHandle handle) override;
-
-        void destroy_texture(GpuTextureHandle handle) override;
-
-        void destroy_material(GpuMaterialHandle handle) override;
-
-        void destroy_program(GpuProgramHandle handle) override;
-
-        void destroy_buffer(GpuBufferHandle handle) override;
-
-        void on_window_resize(uint32_t width, uint32_t height) override;
-
     private:
-        // --- Internal OpenGL-specific data structures ---
-        // A VAO is essential in modern OpenGL. It bundles all the state needed to draw a mesh:
-        // which VBO, which EBO, and how the vertex attributes are laid out.
-        struct GLGeometry {
-            GLuint vao = 0; // Vertex Array Object
-            GLuint vbo = 0; // Vertex Buffer Object
-            GLuint ebo = 0; // Element Buffer Object
-            GLsizei index_count = 0;
-        };
-
-        struct GLBuffer {
-            GLuint id = 0;
-            GLenum type; // Type of buffer (Vertex, Index, etc.)
-        };
-
-        struct GLTexture {
-            GLuint id = 0;
-            unsigned int width = 0;
-            unsigned int height = 0;
-        };
-
-        // In OpenGL, a Material is just a CPU-side description of the state
-        // that needs to be set before drawing.
-        using GLMaterial = MaterialData;
-
-        // --- Private Helper Functions ---
-        GLuint compile_shader(const std::string &source, GLenum type);
-
-        GLenum get_gl_topology(PrimitiveTopologyType topology) const;
-
-        GLenum get_gl_buffer_type(BufferType type) const;
-
-        // --- Member Variables ---
         RendererConfig m_config;
-        uint64_t m_next_handle_id = 1; // For generating unique public handles
+        IWindow *m_window; // Non-owning pointer, lifetime managed by Engine
 
-        // The "pools" mapping our public handles to internal OpenGL object IDs.
-        std::unordered_map<GpuGeometryHandle, GLGeometry> m_geometries;
-        std::unordered_map<GpuTextureHandle, GLuint> m_textures;
-        std::unordered_map<GpuMaterialHandle, GLMaterial> m_materials;
-        std::unordered_map<GpuProgramHandle, GLuint> m_programs;
-        std::unordered_map<GpuBufferHandle, GLBuffer> m_buffers;
-
-        // The queue of objects to be rendered this frame.
-        std::vector<RenderObject> m_render_queue;
-        std::vector<InstancedRenderObject> m_instanced_render_queue;
-        std::vector<IndirectRenderObject> m_indirect_render_queue;
+        std::unique_ptr<OpenGLDevice> m_device;
+        std::unique_ptr<OpenGLCommandBuffer> m_command_buffer;
     };
+
 }

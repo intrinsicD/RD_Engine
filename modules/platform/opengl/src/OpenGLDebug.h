@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "../../../engine/include/Log.h"
+#include "Log.h"
 
 #include <spdlog/fmt/fmt.h>
 #include <glad/gl.h>
@@ -46,7 +46,7 @@ namespace RDE {
                     error_str = "UNKNOWN_ERROR";
                     break;
             }
-            RDE_CORE_ERROR("[OpenGL Error] ({0}): {1} at {2}:{3}", error, error_str, file, line);
+            RDE_CORE_ERROR("[OpenGL Error] ({}): {} at {}:{}", error, error_str, file, line);
         }
         return !error_found; // Return true if NO error was found
     }

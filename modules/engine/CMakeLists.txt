@@ -35,12 +35,12 @@ target_sources(Engine
         src/systems/PhysicsSystem.cpp
         src/systems/RenderSystem.cpp
         src/systems/TransformSystem.cpp
-        src/Application.cpp
         src/Engine.cpp
         src/utils/FileIOUtils.cpp
         src/utils/AssetManagerUtils.cpp
         src/Log.cpp
         src/Scene.cpp
+        src/InputManager.cpp
         ${IMGUI_SOURCES}
 )
 

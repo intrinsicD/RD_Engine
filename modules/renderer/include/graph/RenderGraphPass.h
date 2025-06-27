@@ -7,8 +7,8 @@
 
 namespace RDE {
     class RGBuilder;
-    class ICommandBuffer; // Forward declaration of the command buffer interface
-    class RenderPacket; // Forward declaration of the command buffer interface
+    class ICommandBuffer;
+    class RenderPacket;
 
     // A single node in the RenderGraph
     class RGPass {
@@ -17,16 +17,23 @@ namespace RDE {
         using ExecuteFunc = std::function<void(ICommandBuffer &, const RenderPacket &)>;
 
         RGPass(std::string name, SetupFunc setup, ExecuteFunc execute)
-            : m_name(std::move(name)), m_setup(std::move(setup)), m_execute(std::move(execute)) {
+                : m_name(std::move(name)),
+                  m_setup(std::move(setup)),
+                  m_execute(std::move(execute)) {
         }
 
-        void execute(ICommandBuffer &cmd, const RenderPacket &packet) { m_execute(cmd, packet); }
-
-        // Friend classes to access private members
-        friend class RenderGraph;
-        friend class RGBuilder;
+        void execute(ICommandBuffer &cmd, const RenderPacket &packet) {
+            if (m_execute) {
+                m_execute(cmd, packet);
+            }
+        }
 
     private:
+        // Friend classes to access private members
+        friend class RenderGraph;
+
+        friend class RGBuilder;
+
         std::string m_name;
         SetupFunc m_setup;
         ExecuteFunc m_execute;
@@ -34,6 +41,7 @@ namespace RDE {
         std::vector<RGResourceHandle> m_reads;
         std::vector<RGResourceHandle> m_writes;
 
-        uint32_t m_ref_count = 0;
+        uint32_t m_index = -1;      // Index into the RenderGraph's pass array.
+        bool m_is_culled = true;    // Passes start as culled and are un-culled if they are active.
     };
 }

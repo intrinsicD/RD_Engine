@@ -21,6 +21,8 @@ target_sources(OpenGLPlatform PRIVATE
         src/OpenGLVertexArray.cpp
         src/OpenGLGraphicsAPI.cpp
         src/OpenGLTexture.cpp
+        src/OpenGLDevice.cpp
+        src/OpenGLCommandBuffer.cpp
 )
 
 # This module implements the renderer, so it links against the graphics libraries.

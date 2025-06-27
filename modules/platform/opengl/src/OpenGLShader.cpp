@@ -47,7 +47,7 @@ namespace RDE {
             GL_CHECK_ERROR();
             glDeleteShader(vs);
             GL_CHECK_ERROR();
-            RDE_CORE_ERROR("Vertex shader compilation failure: {0}", infoLog.data());
+            RDE_CORE_ERROR("Vertex shader compilation failure: {}", infoLog.data());
             RDE_CORE_ASSERT(false, "Vertex shader compilation failure!");
             return;
         }
@@ -74,7 +74,7 @@ namespace RDE {
             GL_CHECK_ERROR();
             glDeleteShader(vs);
             GL_CHECK_ERROR();
-            RDE_CORE_ERROR("Fragment shader compilation failure: {0}", infoLog.data());
+            RDE_CORE_ERROR("Fragment shader compilation failure: {}", infoLog.data());
             RDE_CORE_ASSERT(false, "Fragment shader compilation failure!");
             return;
         }
@@ -102,7 +102,7 @@ namespace RDE {
             GL_CHECK_ERROR();
             glDeleteShader(fs);
             GL_CHECK_ERROR();
-            RDE_CORE_ERROR("Shader link failure: {0}", infoLog.data());
+            RDE_CORE_ERROR("Shader link failure: {}", infoLog.data());
             RDE_CORE_ASSERT(false, "Shader link failure!");
             return;
         }
@@ -113,7 +113,7 @@ namespace RDE {
         glDetachShader(program, fs);
         GL_CHECK_ERROR();
         m_renderer_id = program;
-        RDE_CORE_INFO("Successfully created OpenGL Shader (ID: {0})", m_renderer_id);
+        RDE_CORE_INFO("Successfully created OpenGL Shader (ID: {})", m_renderer_id);
     }
 
     OpenGLShader::~OpenGLShader() {

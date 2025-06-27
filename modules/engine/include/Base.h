@@ -39,7 +39,7 @@
     #define RDE_CORE_ASSERT(check, ...) \
     do { \
     if (!(check)) { \
-    RDE_CORE_ERROR("Assertion Failed: {0}", __VA_ARGS__); \
+    RDE_CORE_ERROR("Assertion Failed: {}", __VA_ARGS__); \
     RDE_DEBUG_BREAK(); \
     } \
     } while(false)
@@ -48,7 +48,7 @@
     #define RDE_ASSERT(check, ...) \
     do { \
     if (!(check)) { \
-    RDE_ERROR("Assertion Failed: {0}", __VA_ARGS__); \
+    RDE_ERROR("Assertion Failed: {}", __VA_ARGS__); \
     RDE_DEBUG_BREAK(); \
     } \
     } while(false)

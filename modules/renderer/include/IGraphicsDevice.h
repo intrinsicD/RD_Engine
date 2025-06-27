@@ -5,8 +5,6 @@
 #include <cstdint>
 
 namespace RDE {
-
-
     class IGraphicsDevice {
     public:
         virtual ~IGraphicsDevice() = default;
@@ -15,23 +13,21 @@ namespace RDE {
 
         virtual GpuTextureHandle create_texture(const TextureDesc &texture_data) = 0;
 
-        virtual GpuMaterialHandle create_material(const MaterialDesc &material_data) = 0;
-
         virtual GpuProgramHandle create_program(const ProgramDesc &desc) = 0;
 
-        virtual GpuShaderHandle create_shader(const ShaderModuleDesc &desc) = 0;
-
         virtual GpuBufferHandle create_buffer(const BufferDesc &buffer_data) = 0;
+
+        virtual GpuPipelineHandle create_graphics_pipeline(const GraphicsPipelineDesc& desc) = 0;
 
         virtual void destroy_geometry(GpuGeometryHandle handle) = 0;
 
         virtual void destroy_texture(GpuTextureHandle handle) = 0;
 
-        virtual void destroy_material(GpuMaterialHandle handle) = 0;
-
         virtual void destroy_program(GpuProgramHandle handle) = 0;
 
         virtual void destroy_buffer(GpuBufferHandle handle) = 0;
+
+        virtual void destroy_graphics_pipeline(GpuPipelineHandle handle) = 0;
     };
 }
 

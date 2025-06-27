@@ -8,7 +8,10 @@
 #include "assets/AssetManager.h"
 #include "JobSystem.h"
 #include "InputManager.h"
+#include "IRenderer.h"
+#include "RenderPipelineManager.h"
 #include "Ticker.h"
+#include "ImGuiLayer.h"
 #include "events/ApplicationEvent.h"
 
 #include <exception>
@@ -18,24 +21,30 @@ namespace RDE {
                    std::unique_ptr<IRenderer> renderer,
                    std::unique_ptr<JobSystem> job_system,
                    std::unique_ptr<AssetManager> asset_manager,
-                   std::unique_ptr<InputManager> input_manager
+                   std::unique_ptr<InputManager> input_manager,
+                   std::unique_ptr<RenderPipelineManager> render_pipeline_manager
     )
-        : m_window(std::move(window)),
-          m_renderer(std::move(renderer)),
-          m_job_system(std::move(job_system)),
-          m_asset_manager(std::move(asset_manager)),
-          m_input_manager(std::move(input_manager)) {
-
-        m_layer_stack = std::make_unique<LayerStack>();
+            : m_window(std::move(window)),
+              m_renderer(std::move(renderer)),
+              m_job_system(std::move(job_system)),
+              m_asset_manager(std::move(asset_manager)),
+              m_input_manager(std::move(input_manager)),
+              m_render_pipeline_manager(std::move(render_pipeline_manager)) {
 
         m_app_context = std::make_unique<ApplicationContext>();
+        m_frame_context = std::make_unique<FrameContext>();
+
+        m_layer_stack = std::make_unique<LayerStack>(*m_app_context, *m_frame_context);
+        m_imgui_layer = std::make_shared<ImGuiLayer>();
+        m_layer_stack->push_overlay(m_imgui_layer);
+
         *m_app_context = {
-            .window = m_window.get(),
-            .renderer = m_renderer.get(),
-            .job_system = m_job_system.get(),
-            .asset_manager = m_asset_manager.get(),
-            .input_manager = m_input_manager.get(),
-            .layer_stack = m_layer_stack.get()
+                .window = m_window.get(),
+                .renderer = m_renderer.get(),
+                .job_system = m_job_system.get(),
+                .asset_manager = m_asset_manager.get(),
+                .input_manager = m_input_manager.get(),
+                .layer_stack = m_layer_stack.get()
         };
 
         if (m_window && !m_window->init()) {
@@ -48,10 +57,10 @@ namespace RDE {
 
         m_window->set_event_callback(RDE_BIND_EVENT_FN(Engine::on_event));
 
-        if (m_input_manager && !m_input_manager->init(*m_app_context)) {
+        if (m_input_manager && !m_input_manager->init()) {
             throw std::runtime_error("InputManager failed to initialize.");
         }
-        if (m_renderer && !m_renderer->init(*m_app_context)) {
+        if (m_renderer && !m_renderer->init()) {
             throw std::runtime_error("Renderer failed to initialize.");
         }
 
@@ -90,10 +99,10 @@ namespace RDE {
         // Main loop
         Ticker ticker;
         ApplicationContext &app_context = *m_app_context;
+        FrameContext &frame_context = *m_frame_context;
         while (m_is_running) {
             float delta_time = ticker.tick();
 
-            FrameContext frame_context;
             frame_context.delta_time = delta_time;
             frame_context.fixed_time_step = fixed_timestep;
             frame_context.total_time += delta_time;
@@ -103,7 +112,7 @@ namespace RDE {
             m_input_manager->process_input();
             // Poll and process input events, this will call the input manager's event handlers and afterwards set the input state for this frame.
             for (auto &e: m_input_manager->fetch_events()) {
-                on_event(e, app_context, frame_context);
+                on_event(e);
             }
 
             if (m_is_minimized) {
@@ -127,33 +136,18 @@ namespace RDE {
                 layer->on_variable_update(app_context, frame_context);
             }
 
-            m_renderer->begin_frame(); // Prepares for a new frame, gets swapchain image, etc.
-
-            // 1. Build a list of things to render from the scene
-            //    This can be done in parallel by a system.
-            RenderPacket render_packet = m_scene->collect_renderables();
-
-            // 2. Build the Render Graph
-            //    The engine or renderer builds a graph based on the render packet.
-            //    Layers can add their own passes (e.g., the EditorLayer adds a grid pass).
-            RenderGraph render_graph("MainFrameGraph");
-            setup_gbuffer_pass(render_graph, render_packet);
-            setup_lighting_pass(render_graph, render_packet);
-            for (auto& layer : *m_layer_stack) {
-                layer->on_setup_render_graph(render_graph); // e.g., ImGui layer adds its UI pass
+            ImGuiLayer::begin(app_context, frame_context);
+            for (const auto &layer: *m_layer_stack) {
+                // This is where you would render the GUI for each layer. Special case for ImGui.
+                layer->on_gui_render(app_context, frame_context);
             }
+            ImGuiLayer::end(app_context, frame_context);
 
-            // 3. Compile and Execute the graph
-            //    This step turns the high-level graph into a low-level command buffer.
-            //    It optimizes, allocates resources, and records all commands.
-            m_renderer->execute_graph(render_graph);
-
-            // 4. Present
-            m_renderer->present_frame();
+            m_render_pipeline_manager->execute_frame(m_scene.get(), m_renderer.get());
         }
     }
 
-    void Engine::on_event(Event &e, const ApplicationContext &app_context, const FrameContext &frame_context) {
+    void Engine::on_event(Event &e) {
         EventDispatcher dispatcher(e);
         dispatcher.dispatch<WindowCloseEvent>([this](WindowCloseEvent &) {
             m_is_running = false;
@@ -174,11 +168,17 @@ namespace RDE {
             return false;
         });
 
+        dispatcher.dispatch<MouseScrolledEvent>([this](MouseScrolledEvent &e) {
+            m_input_manager->on_mouse_scroll_event(e);
+
+            return false;
+        });
+
         for (auto it = m_layer_stack->rbegin(); it != m_layer_stack->rend(); ++it) {
             if (e.handled) {
                 break;
             }
-            (*it)->on_event(e, app_context, frame_context);
+            (*it)->on_event(e, *m_app_context, *m_frame_context);
         }
     }
 }

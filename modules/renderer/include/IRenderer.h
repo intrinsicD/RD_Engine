@@ -13,7 +13,7 @@ namespace RDE {
 
         virtual void shutdown() = 0;
 
-        virtual void on_window_resize(int width, int height) = 0;
+        virtual void on_window_resize(unsigned int width, unsigned int height) = 0;
 
         virtual void begin_frame() = 0; // Still useful for starting frame logic, getting swapchain image
 

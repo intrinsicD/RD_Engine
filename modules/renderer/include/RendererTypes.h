@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <vector>
 #include <string>
+#include <glm/glm.hpp>
 
 // Forward declare to avoid including heavy headers
 namespace RDE {
@@ -11,7 +12,7 @@ namespace RDE {
 
 namespace RDE {
     enum class GpuHandleType : uint8_t {
-        Geometry, Texture, Material, Program, Buffer
+        Geometry, Texture, Material, Program, Shader, Buffer, Pipeline
     };
 
     enum class ShaderType : uint8_t {
@@ -43,7 +44,9 @@ namespace RDE {
     using GpuTextureHandle = GpuHandle<GpuHandleType::Texture>;
     using GpuMaterialHandle = GpuHandle<GpuHandleType::Material>;
     using GpuProgramHandle = GpuHandle<GpuHandleType::Program>;
+    using GpuShaderHandle = GpuHandle<GpuHandleType::Shader>;
     using GpuBufferHandle = GpuHandle<GpuHandleType::Buffer>;
+    using GpuPipelineHandle = GpuHandle<GpuHandleType::Pipeline>;
 
     // --- Core Enums ---
 
@@ -206,9 +209,37 @@ namespace RDE {
      */
     struct RendererConfig {
         IWindow *window = nullptr;
-        bool vsync = true;
-        // Add other global settings here
         int width = 800; // Default width of the rendering window
         int height = 600; // Default height of the rendering window
+        bool vsync = true;
+    };
+
+    /**
+ * @brief Describes a collection of buffers that form a renderable mesh.
+ */
+    struct GeometryDesc {
+        GpuBufferHandle vertex_buffer;
+        GpuBufferHandle index_buffer;
+        uint32_t index_count;
+        // Potentially add vertex_count, offsets, etc. if needed
+        std::string debug_name;
+    };
+
+/**
+ * @brief Describes the data inputs for a shader (the "look" of an object).
+ * This is a simplified version. A real material system might use a shader reflection
+ * system to be more generic.
+ */
+    struct MaterialDesc {
+        GpuProgramHandle program; // The shader program this material will be used with
+
+        // Example parameters - extend as needed
+        std::vector<std::pair<std::string, GpuTextureHandle>> textures; // Pair of "sampler name" and texture handle
+        glm::vec4 base_color_factor = glm::vec4(1.0f);
+        float metallic_factor = 1.0f;
+        float roughness_factor = 1.0f;
+        // ... other PBR parameters
+
+        std::string debug_name;
     };
 }

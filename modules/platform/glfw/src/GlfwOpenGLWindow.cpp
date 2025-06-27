@@ -3,7 +3,6 @@
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 
-
 #include "GlfwOpenGLWindow.h"
 #include "Log.h"
 #include "events/ApplicationEvent.h"
@@ -14,7 +13,7 @@ namespace RDE {
     static bool s_glfw_initialized = false;
 
     static void GlfwErrorCallback(int error, const char *description) {
-        RDE_CORE_ERROR("GLFW Error ({0}): {1}", error, description);
+        RDE_CORE_ERROR("GLFW Error ({}): {}", error, description);
     }
 
     std::shared_ptr<IWindow> IWindow::Create(const WindowConfig &window_config) {
@@ -32,7 +31,7 @@ namespace RDE {
     }
 
     bool GlfwOpenGLWindow::init() {
-        RDE_CORE_INFO("Creating window {0} ({1}, {2})", m_data.title, m_data.width, m_data.height);
+        RDE_CORE_INFO("Creating window {} ({}, {})", m_data.title, m_data.width, m_data.height);
 
         if (!s_glfw_initialized) {
             int success = glfwInit();
@@ -158,7 +157,7 @@ namespace RDE {
     }
 
     void GlfwOpenGLWindow::shutdown() {
-        RDE_CORE_INFO("Shutting down window {0}", m_data.title);
+        RDE_CORE_INFO("Shutting down window {}", m_data.title);
         glfwDestroyWindow(m_window);
     }
 
@@ -167,7 +166,7 @@ namespace RDE {
     }
 
     void GlfwOpenGLWindow::on_update() {
-        glfwSwapBuffers(m_window);
+
     }
 
     void GlfwOpenGLWindow::set_vsync(bool enabled) {
@@ -184,5 +183,9 @@ namespace RDE {
 
     void GlfwOpenGLWindow::close() {
         glfwSetWindowShouldClose(m_window, true);
+    }
+
+    void GlfwOpenGLWindow::swap_buffers() {
+        glfwSwapBuffers(m_window);
     }
 }

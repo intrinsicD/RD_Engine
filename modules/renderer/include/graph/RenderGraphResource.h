@@ -8,6 +8,13 @@ namespace RDE {
     // The index points to the RenderGraph's internal resource list.
     struct RGResourceHandle {
         uint32_t index = -1;
+
         bool is_valid() const { return index != -1; }
+
+        bool operator==(const RGResourceHandle &other) const { return index == other.index; }
+
+        bool operator!=(const RGResourceHandle &other) const { return index != other.index; }
+
+        bool operator<(const RGResourceHandle &other) const { return index < other.index; } // For std::map
     };
 }

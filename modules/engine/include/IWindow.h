@@ -42,6 +42,8 @@ namespace RDE {
 
         virtual void close() = 0;
 
+        virtual void swap_buffers() = 0;
+
         // A factory method to create the appropriate window based on the platform.
         // For now, we only have a GLFW implementation.
         static std::shared_ptr<IWindow> Create(const WindowConfig &window_config = WindowConfig());

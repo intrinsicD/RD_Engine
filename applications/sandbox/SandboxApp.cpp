@@ -38,11 +38,10 @@ namespace RDE {
         auto window = std::make_unique<GlfwOpenGLWindow>(window_config);
 
         RendererConfig renderer_config = {
-            .window_handle = window->get_native_window(),
+            .window = window.get(),
             .width = window_config.width,
             .height = window_config.height,
             .vsync = true,
-            .api = RendererConfig::Api::OpenGL
         }; // Enable VSync
         auto renderer = std::make_unique<OpenGLRenderer>(renderer_config);
         auto job_system = std::make_unique<JobSystem>();

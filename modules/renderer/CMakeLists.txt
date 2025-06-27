@@ -8,14 +8,21 @@ add_library(RDE::Renderer ALIAS Renderer)
 # Anything that links to this library will automatically get its include path.
 target_include_directories(Renderer
         PUBLIC
-        include
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${glm_SOURCE_DIR}
 )
 
 target_sources(Renderer
         PRIVATE
+        src/graph/RenderGraph.cpp
+        src/graph/RenderGraphBuilder.cpp
+        src/RenderPipelineManager.cpp
         src/RenderCommand.cpp
+
+        src/passes/ForwardOpaquePass.cpp
+        src/passes/ImGuiPass.cpp
+
+        src/pipelines/ForwardPipeline.cpp
 )
 
 target_link_libraries(Renderer

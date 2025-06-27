@@ -33,6 +33,8 @@ namespace RDE {
 
         void close() override;
 
+        void swap_buffers() override;
+
     private:
         void shutdown();
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RenderGraphResource.h"
+#include "RendererTypes.h"
 
 namespace RDE {
     class RenderGraph;

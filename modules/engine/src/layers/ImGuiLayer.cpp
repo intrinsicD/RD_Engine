@@ -1,10 +1,10 @@
 // RDE_Project/modules/core/src/ImGuiLayer.cpp
 
-#include "layers/ImGuiLayer.h"
-#include "Application.h"
+#include "ImGuiLayer.h"
 #include "IWindow.h"
-#include <imgui.h>
+#include "ApplicationContext.h"
 
+#include <imgui.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <GLFW/glfw3.h>
@@ -13,10 +13,7 @@ namespace RDE {
     ImGuiLayer::ImGuiLayer() : ILayer("ImGuiLayer") {
     }
 
-    ImGuiLayer::~ImGuiLayer() {
-    }
-
-    void ImGuiLayer::on_attach() {
+    void ImGuiLayer::on_attach(const ApplicationContext &app_context, const FrameContext &frame_context) {
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO &io = ImGui::GetIO();
@@ -32,20 +29,18 @@ namespace RDE {
             style.Colors[ImGuiCol_WindowBg].w = 1.0f;
         }
 
-        auto &app = Application::get();
-        auto &window = app.get_window();
-
+        auto &window = *app_context.window;
         ImGui_ImplGlfw_InitForOpenGL(static_cast<GLFWwindow *>(window.get_native_window()), true);
         ImGui_ImplOpenGL3_Init("#version 410");
     }
 
-    void ImGuiLayer::on_detach() {
+    void ImGuiLayer::on_detach(const ApplicationContext &, const FrameContext &) {
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
     }
 
-    void ImGuiLayer::on_event(Event &e) {
+    void ImGuiLayer::on_event(Event &e, const ApplicationContext &, const FrameContext &) {
         ImGuiIO &io = ImGui::GetIO();
         // Block events from layers below if ImGui is using the mouse/keyboard
         e.handled |= e.IsInCategory(EventCategoryMouse) & io.WantCaptureMouse;
@@ -53,32 +48,32 @@ namespace RDE {
     }
 
 
-    void ImGuiLayer::begin() {
+    void ImGuiLayer::begin(const ApplicationContext &, const FrameContext &) {
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         ImGui::BeginMainMenuBar();
     }
 
-    void ImGuiLayer::end() {
+    void ImGuiLayer::end(const ApplicationContext &app_context, const FrameContext &) {
         ImGui::EndMainMenuBar();
         ImGuiIO &io = ImGui::GetIO();
-        // TEMPORARY: Should get window size from our own Window class.
-        auto &app = Application::get();
-        auto &window = app.get_window();
 
-        int width, height;
-        glfwGetWindowSize(static_cast<GLFWwindow *>(window.get_native_window()), &width, &height);
+        auto &window = *app_context.window;
+        unsigned int width = window.get_width();
+        unsigned int height = window.get_height();
         io.DisplaySize = ImVec2((float) width, (float) height);
 
         ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        //this is now handled in the imgui pass
+
+/*        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
             GLFWwindow *backup_current_context = glfwGetCurrentContext();
             ImGui::UpdatePlatformWindows();
             ImGui::RenderPlatformWindowsDefault();
             glfwMakeContextCurrent(backup_current_context);
-        }
+        }*/
     }
 }
