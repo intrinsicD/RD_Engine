@@ -1,37 +1,35 @@
 #pragma once
 
-#include "AssetID.h"
+#include <entt/fwd.hpp>
 
 namespace RDE {
+    class AssetManager;
+
     class AssetHandle {
     public:
-        explicit AssetHandle(AssetID id = INVALID_ASSET_ID, AssetType type = AssetType::None) : m_asset_id(id),
-            m_type(type) {
-        }
+        AssetHandle();
 
-        AssetID get_asset_id() const {
-            return m_asset_id;
-        }
+        [[nodiscard]] bool is_valid() const ;
 
-        bool is_valid() const {
-            return m_asset_id != INVALID_ASSET_ID;
-        }
-
-        AssetType get_type() const {
-            return m_type;
+        [[nodiscard]] operator bool() const {
+            return is_valid();
         }
 
         // Overloads for use as a key in maps/sets
-        bool operator==(const AssetHandle &other) const {
-            return m_asset_id == other.m_asset_id;
-        }
+        bool operator==(const AssetHandle &other) const;
 
-        bool operator!=(const AssetHandle &other) const {
-            return m_asset_id != other.m_asset_id;
-        }
+        bool operator!=(const AssetHandle &other) const;
 
+        // Define a hash function so it can be used in maps
+        struct Hasher {
+            size_t operator()(const AssetHandle& handle) const;
+        };
     private:
-        AssetID m_asset_id;
-        AssetType m_type;
+        friend class AssetManager;
+
+        AssetHandle(entt::entity asset_id, entt::registry *registry);
+
+        entt::registry *m_registry;
+        entt::entity m_asset_id;
     };
 }

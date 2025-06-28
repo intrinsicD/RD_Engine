@@ -41,6 +41,7 @@ target_sources(Engine
         src/Log.cpp
         src/Scene.cpp
         src/InputManager.cpp
+        src/assets/AssetHandle.cpp
         ${IMGUI_SOURCES}
 )
 

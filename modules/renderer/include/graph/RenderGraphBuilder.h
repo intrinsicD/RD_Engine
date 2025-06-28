@@ -11,7 +11,7 @@ namespace RDE {
     // This is a "façade" that limits what a pass can do during setup.
     class RGBuilder {
     public:
-        RGBuilder(RenderGraph& graph, class RGPass& pass);
+        RGBuilder(RenderGraph& graph, RGPass& pass);
 
         // Declares that this pass reads from a resource.
         void read(RGResourceHandle handle);
