@@ -1,35 +1,28 @@
 #pragma once
 
-#include <entt/fwd.hpp>
+#include <entt/entity/entity.hpp>
+#include <memory>
 
 namespace RDE {
+    // Forward declare to break circular dependency
     class AssetManager;
 
-    class AssetHandle {
-    public:
-        AssetHandle();
+    // The AssetID is a shared pointer to the asset's entity ID.
+    // Its custom deleter is the magic that links its lifetime back to the AssetManager.
+    // When the last shared_ptr is destroyed, the deleter is invoked automatically.
+    using AssetID = std::shared_ptr<entt::entity>;
 
-        [[nodiscard]] bool is_valid() const ;
+    // A strongly-typed wrapper around the untyped AssetID.
+    // The AssetType is just a "tag" (like struct MeshTag;), it's not stored.
+    template <typename AssetType>
+    struct AssetHandle {
+        AssetID internal_handle;
 
-        [[nodiscard]] operator bool() const {
-            return is_valid();
-        }
+        operator bool() const { return internal_handle && *internal_handle != entt::null; }
 
-        // Overloads for use as a key in maps/sets
-        bool operator==(const AssetHandle &other) const;
-
-        bool operator!=(const AssetHandle &other) const;
-
-        // Define a hash function so it can be used in maps
-        struct Hasher {
-            size_t operator()(const AssetHandle& handle) const;
-        };
+        AssetHandle() = default;
     private:
         friend class AssetManager;
-
-        AssetHandle(entt::entity asset_id, entt::registry *registry);
-
-        entt::registry *m_registry;
-        entt::entity m_asset_id; //TODO think if we need to store the registry here or not and if this should be a shared_ptr or not!?!?
+        explicit AssetHandle(AssetID handle) : internal_handle(std::move(handle)) {}
     };
 }

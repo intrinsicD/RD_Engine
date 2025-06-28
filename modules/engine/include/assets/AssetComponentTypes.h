@@ -59,6 +59,6 @@ namespace RDE {
     };
 
     struct AssetPrefab {
-        std::vector<AssetHandle> children;
+        std::vector<AssetID> children;
     };
 }
