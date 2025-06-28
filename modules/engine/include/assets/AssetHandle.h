@@ -30,6 +30,6 @@ namespace RDE {
         AssetHandle(entt::entity asset_id, entt::registry *registry);
 
         entt::registry *m_registry;
-        entt::entity m_asset_id;
+        entt::entity m_asset_id; //TODO think if we need to store the registry here or not and if this should be a shared_ptr or not!?!?
     };
 }

@@ -3,23 +3,18 @@
 #include "IAsset.h"
 
 #include <memory>
+#include <entt/fwd.hpp>
 
 namespace RDE{
     class IAssetLoader {
     public:
         virtual ~IAssetLoader() = default;
 
-        virtual std::shared_ptr<IAsset> load(const std::string &path) = 0;
+        virtual void load(const std::string &uri, entt::registry &asset_registry, entt::entity asset_id) = 0;
 
-        AssetType get_asset_type() const { return m_asset_type; }
+        const std::vector<std::string> &get_supported_extension() const { return m_supported_extension; }
 
-        const std::string &get_extension() const { return m_extension; }
-
-        std::shared_ptr<IAsset> operator()(const std::string &path) {
-            return load(path);
-        }
     private:
-        AssetType m_asset_type; // The type of asset this loader handles, e.g., Texture, Mesh, etc.
-        std::string m_extension; // The file extension this loader handles, e.g., ".png", ".obj", etc.
+        std::vector<std::string> m_supported_extension; // The file extension this loader handles, e.g., ".png", ".obj", etc.
     };
 }
