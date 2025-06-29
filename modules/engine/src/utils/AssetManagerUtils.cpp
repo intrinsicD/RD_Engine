@@ -1,5 +1,5 @@
 #include "utils/AssetManagerUtils.h"
-#include "Log.h"
+#include "../../../log/include/Log.h"
 #include <tiny_obj_loader.h>
 
 namespace RDE{

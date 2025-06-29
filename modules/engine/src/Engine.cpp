@@ -2,7 +2,7 @@
 
 #include "FrameContext.h"
 #include "LayerStack.h"
-#include "Log.h"
+#include "../../log/include/Log.h"
 #include "Scene.h"
 #include "IWindow.h"
 #include "assets/AssetManager.h"

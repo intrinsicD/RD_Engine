@@ -1,7 +1,7 @@
 #include "graph/RenderGraph.h"
-#include "graph/RenderGraphBuilder.h"
+#include "graph/RenderPassBuilder.h"
 #include "RenderPacket.h"
-#include "ICommandBuffer.h"
+#include "../../include/ral/CommandBuffer.h"
 
 namespace RDE {
 

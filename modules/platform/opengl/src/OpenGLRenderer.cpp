@@ -3,7 +3,7 @@
 #include "OpenGLDebug.h"
 #include "OpenGLCommandBuffer.h"
 #include "graph/RenderGraph.h"
-#include "graph/RenderGraphBuilder.h"
+#include "graph/RenderPassBuilder.h"
 #include "IWindow.h" // For swap_buffers
 
 #include <iostream>

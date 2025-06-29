@@ -1,14 +1,15 @@
 #pragma once
 
-#include "Properties.h"
+//#include "Properties.h"
 #include "AssetHandle.h"
 
 #include <string>
+#include <vector>
 
 namespace RDE {
     using GpuHandle = unsigned int;
     // Placeholder for GPU resource handle. TODO: Need proper GpuHandle from the IGraphicsDevice here
-
+    class PropertyContainer{};
 
     struct AssetFilepath {
         std::string path;

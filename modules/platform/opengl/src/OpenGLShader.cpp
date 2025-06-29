@@ -1,7 +1,7 @@
 // RDE_Project/modules/platform/opengl/OpenGLShader.cpp
 #include "OpenGLShader.h"
 #include "OpenGLDebug.h"
-#include "Log.h"
+#include "../../../log/include/Log.h"
 #include "utils/FileIOUtils.h"
 
 namespace RDE {

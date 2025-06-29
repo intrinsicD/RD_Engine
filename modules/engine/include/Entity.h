@@ -2,7 +2,7 @@
 #pragma once
 
 #include "Scene.h"
-#include "Log.h"
+#include "../../log/include/Log.h"
 
 #include <entt/entt.hpp>
 

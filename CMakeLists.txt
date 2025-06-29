@@ -33,10 +33,15 @@ FetchContent_Declare(
         GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
         GIT_TAG 0.8.0 # Can be a tag (yaml-cpp-x.x.x), a commit hash, or a branch name (master)
 )
-
+FetchContent_Declare(stb GIT_REPOSITORY https://github.com/nothings/stb.git GIT_TAG master)
+FetchContent_Declare(
+        efsw
+        GIT_REPOSITORY https://github.com/SpartanJ/efsw.git
+        GIT_TAG        1.4.1 # A recent, stable commit
+)
 # Make them all available. This command triggers the download and runs each dependency's
 # own CMakeLists.txt, preparing their targets for us to use.
-FetchContent_MakeAvailable(spdlog glfw imgui ImGuiFileDialog stb EnTT tinyobjloader)
+FetchContent_MakeAvailable(spdlog glfw imgui ImGuiFileDialog stb EnTT tinyobjloader stb efsw)
 
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 FetchContent_MakeAvailable(glad glm yaml-cpp)

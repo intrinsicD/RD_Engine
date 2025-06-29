@@ -1,4 +1,4 @@
-#include "graph/RenderGraphBuilder.h"
+#include "graph/RenderPassBuilder.h"
 #include "graph/RenderGraph.h"
 #include "graph/RenderGraphPass.h"
 #include "graph/RenderGraphResource.h"

@@ -2,7 +2,7 @@
 #include "Application.h"
 #include "../../../renderer/include/IRenderer.h"
 #include "Scene.h"
-#include "Log.h"
+#include "../../../log/include/Log.h"
 
 #include "components/CameraComponent.h"
 #include "components/TransformComponent.h"

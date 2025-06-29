@@ -1,6 +1,6 @@
 #pragma once
 
-#include "IGraphicsDevice.h"
+#include "../../../renderer/include/ral/Device.h"
 #include <unordered_map>
 #include <vector>
 

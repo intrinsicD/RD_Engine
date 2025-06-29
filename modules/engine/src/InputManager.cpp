@@ -1,6 +1,6 @@
 #include "InputManager.h"
 #include "IWindow.h"
-#include "Log.h"
+#include "../../log/include/Log.h"
 #include "Input.h"
 
 namespace RDE{

@@ -1,5 +1,5 @@
 #include "systems/AnimationSystem.h"
-#include "Log.h"
+#include "../../../log/include/Log.h"
 
 namespace RDE {
     void AnimationSystem::on_attach(Scene *scene) {

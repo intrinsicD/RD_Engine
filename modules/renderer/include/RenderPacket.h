@@ -1,6 +1,6 @@
 #pragma once
 
-#include "IGraphicsDevice.h"
+#include "RendererTypes.h"
 
 #include <glm/glm.hpp>
 #include <vector>

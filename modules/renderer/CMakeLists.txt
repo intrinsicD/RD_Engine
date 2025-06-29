@@ -15,17 +15,14 @@ target_include_directories(Renderer
 target_sources(Renderer
         PRIVATE
         src/graph/RenderGraph.cpp
-        src/graph/RenderGraphBuilder.cpp
         src/RenderPipelineManager.cpp
-        src/RenderCommand.cpp
-
         src/passes/ForwardOpaquePass.cpp
         src/passes/ImGuiPass.cpp
-
         src/pipelines/ForwardPipeline.cpp
 )
 
 target_link_libraries(Renderer
         PUBLIC
+        RDE::Core
         RDE::Engine
 )

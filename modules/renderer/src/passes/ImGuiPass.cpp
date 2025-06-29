@@ -1,5 +1,5 @@
 #include "graph/RenderGraph.h"
-#include "graph/RenderGraphBuilder.h"
+#include "graph/RenderPassBuilder.h"
 #include "imgui.h"
 #include "backends/imgui_impl_opengl3.h" // For the rendering function
 #include <GLFW/glfw3.h>

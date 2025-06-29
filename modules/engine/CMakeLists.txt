@@ -38,10 +38,8 @@ target_sources(Engine
         src/Engine.cpp
         src/utils/FileIOUtils.cpp
         src/utils/AssetManagerUtils.cpp
-        src/Log.cpp
         src/Scene.cpp
         src/InputManager.cpp
-        src/assets/AssetHandle.cpp
         ${IMGUI_SOURCES}
 )
 
@@ -49,6 +47,7 @@ target_link_libraries(Engine
         PUBLIC
         EnTT
         spdlog
+        RDE::Core
         RDE::Platform::Glfw
         RDE::Platform::OpenGL
         yaml-cpp

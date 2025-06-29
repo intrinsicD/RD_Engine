@@ -1,7 +1,7 @@
 // RDE_Project/applications/sandbox/SandboxApp.cpp
 
 #include "Engine.h"
-#include "Log.h"
+#include "../../modules/log/include/Log.h"
 #include "src/GlfwOpenGLWindow.h"
 #include "src/EditorLayer.h"
 #include "src/SandboxLayer.h"

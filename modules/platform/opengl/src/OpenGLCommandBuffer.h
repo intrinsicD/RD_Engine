@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ICommandBuffer.h"
+#include "../../../renderer/include/ral/CommandBuffer.h"
 #include "OpenGLDevice.h" // We need the concrete device to look up resources
 
 namespace RDE {

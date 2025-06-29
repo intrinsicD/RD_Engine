@@ -1,0 +1,64 @@
+#pragma once
+
+#include "AssetHandle.h"
+#include <entt/entity/registry.hpp>
+
+namespace RDE {
+    class AssetDatabase {
+    public:
+        AssetDatabase() = default;
+
+        ~AssetDatabase() = default;
+
+        template<typename AssetComponentType, typename AssetConcept>
+        AssetComponentType &get(AssetHandle<AssetConcept> &handle) {
+            if (!handle) throw std::runtime_error("Attempted to use an invalid asset handle.");
+            return m_registry.get<AssetComponentType>(handle.internal_handle->entity_id);
+        }
+
+        // try_get version for safe access
+        template<typename AssetComponentType, typename AssetConcept>
+        AssetComponentType *try_get(AssetHandle<AssetConcept> &handle) {
+            if (!handle) {
+                return nullptr;
+            }
+            const entt::entity entity = handle.internal_handle->entity_id;
+            if (!m_registry.valid(entity)) {
+                return nullptr;
+            }
+            return m_registry.try_get<AssetComponentType>(entity);
+        }
+
+        entt::registry &get_registry() {
+            return m_registry;
+        }
+
+        const entt::registry &get_registry() const {
+            return m_registry;
+        }
+
+    private:
+        friend class AssetManager;
+
+        entt::entity create_asset() {
+            // Create a new entity in the registry for the asset
+            return m_registry.create();
+        }
+
+        void destroy_asset(entt::entity entity) {
+            m_registry.destroy(entity);
+        }
+
+        template<typename... Args>
+        auto emplace(entt::entity entity, Args &&... args) {
+            return m_registry.emplace<Args...>(entity, std::forward<Args>(args)...);
+        }
+
+        template<typename... Args>
+        auto emplace_or_replace(entt::entity entity, Args &&... args) {
+            return m_registry.emplace_or_replace<Args...>(entity, std::forward<Args>(args)...);
+        }
+
+        entt::registry m_registry;
+    };
+}

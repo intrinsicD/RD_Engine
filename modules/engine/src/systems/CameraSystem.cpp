@@ -1,5 +1,5 @@
 #include "systems/CameraSystem.h"
-#include "Log.h"
+#include "../../../log/include/Log.h"
 
 namespace RDE{
     void CameraSystem::on_attach(Scene *scene) {

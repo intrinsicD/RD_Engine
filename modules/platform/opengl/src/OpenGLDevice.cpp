@@ -1,6 +1,6 @@
 #include "OpenGLDevice.h"
 #include "OpenGLDebug.h"
-#include "Log.h"
+#include "../../../log/include/Log.h"
 
 namespace RDE {
 

@@ -1,5 +1,5 @@
 #include "systems/CullingSystem.h"
-#include "Log.h"
+#include "../../../log/include/Log.h"
 
 namespace RDE{
     void CullingSystem::on_attach(Scene *scene) {
