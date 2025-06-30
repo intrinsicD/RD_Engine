@@ -18,8 +18,7 @@ namespace RDE {
                    std::unique_ptr<IRenderer> renderer,
                    std::unique_ptr<JobSystem> job_system,
                    std::unique_ptr<AssetManager> asset_manager,
-                   std::unique_ptr<InputManager> input_manager,
-                   std::unique_ptr<RenderPipelineManager> render_pipeline_manager);
+                   std::unique_ptr<InputManager> input_manager);
 
         ~Engine();
 
@@ -67,7 +66,6 @@ namespace RDE {
         std::unique_ptr<JobSystem> m_job_system;
         std::unique_ptr<AssetManager> m_asset_manager;
         std::unique_ptr<InputManager> m_input_manager;
-        std::unique_ptr<RenderPipelineManager> m_render_pipeline_manager;
 
         std::unique_ptr<LayerStack> m_layer_stack;
         std::shared_ptr<ImGuiLayer> m_imgui_layer;

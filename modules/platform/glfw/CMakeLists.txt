@@ -15,7 +15,7 @@ target_include_directories(GlfwPlatform
 )
 
 target_sources(GlfwPlatform PRIVATE
-        src/GlfwOpenGLWindow.cpp
+        src/GlfwVulkanWindow.cpp
         src/GlfwInput.cpp
 )
 

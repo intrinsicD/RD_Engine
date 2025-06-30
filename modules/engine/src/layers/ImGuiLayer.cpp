@@ -30,7 +30,7 @@ namespace RDE {
         }
 
         auto &window = *app_context.window;
-        ImGui_ImplGlfw_InitForOpenGL(static_cast<GLFWwindow *>(window.get_native_window()), true);
+        ImGui_ImplGlfw_InitForOpenGL(static_cast<GLFWwindow *>(window.get_native_handle()), true);
         ImGui_ImplOpenGL3_Init("#version 410");
     }
 

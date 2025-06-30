@@ -1,7 +1,7 @@
 #pragma once
 
 #include "RenderGraphResource.h"
-#include "RendererTypes.h"
+#include "ral/CommandBuffer.h"
 
 #include <functional>
 

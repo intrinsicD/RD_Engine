@@ -1,13 +1,13 @@
 // RDE_Project/applications/sandbox/SandboxApp.cpp
 
 #include "Engine.h"
-#include "../../modules/log/include/Log.h"
+#include "Log.h"
 #include "src/GlfwOpenGLWindow.h"
 #include "src/EditorLayer.h"
 #include "src/SandboxLayer.h"
 #include "OpenGLRenderer.h"
 #include "JobSystem.h"
-#include "assets/AssetManager.h"
+#include "AssetManager.h"
 #include "InputManager.h"
 #include "EntryPoint.h"
 
@@ -35,7 +35,7 @@ namespace RDE {
     std::unique_ptr<Engine> CreateEngine() {
         WindowConfig window_config = {"SandboxApp", 1280, 720};
 
-        auto window = std::make_unique<GlfwOpenGLWindow>(window_config);
+        auto window = GlfwOpenGLWindow::Create(window_config);
 
         RendererConfig renderer_config = {
             .window = window.get(),

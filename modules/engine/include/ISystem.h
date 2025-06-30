@@ -47,16 +47,6 @@ namespace RDE {
         virtual void on_update_presentation(const ApplicationContext &app_context, const FrameContext &frame_context) {
         }
 
-        /**
-         * @brief Called exactly once per frame during the render submission phase.
-         * The system's job is to tell the renderer WHAT to draw by submitting
-         * render passes to the renderer's RenderGraph.
-         * @param scene The scene to be rendered.
-         * @param renderer The renderer to submit passes to.
-         */
-        virtual void on_submit_render_data(Scene &scene, IRenderer &renderer) {
-        }
-
     private:
         Scene *m_scene = nullptr; // Pointer to the scene this system operates on.
     };

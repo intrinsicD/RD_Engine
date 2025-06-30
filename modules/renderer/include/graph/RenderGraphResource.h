@@ -7,8 +7,8 @@ namespace RDE {
     // It doesn't correspond to a real GpuTextureHandle until the graph is executed.
     // The index points to the RenderGraph's internal resource list.
 
-    struct RGBufferDescription;
-    struct RGTextureDescription;
+    struct RGBufferDescription{};
+    struct RGTextureDescription{};
 
 
     template <typename T>

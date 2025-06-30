@@ -28,16 +28,8 @@ target_include_directories(Engine
 target_sources(Engine
         PRIVATE
         src/layers/ImGuiLayer.cpp
-        src/systems/AnimationSystem.cpp
-        src/systems/CameraSystem.cpp
-        src/systems/CullingSystem.cpp
-        src/systems/InputSystem.cpp
-        src/systems/PhysicsSystem.cpp
-        src/systems/RenderSystem.cpp
-        src/systems/TransformSystem.cpp
         src/Engine.cpp
         src/utils/FileIOUtils.cpp
-        src/utils/AssetManagerUtils.cpp
         src/Scene.cpp
         src/InputManager.cpp
         ${IMGUI_SOURCES}
@@ -47,9 +39,10 @@ target_link_libraries(Engine
         PUBLIC
         EnTT
         spdlog
+        RDE::AssetSystem
+        RDE::Renderer
         RDE::Core
         RDE::Platform::Glfw
-        RDE::Platform::OpenGL
         yaml-cpp
         tinyobjloader
 )

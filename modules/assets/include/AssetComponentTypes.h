@@ -2,13 +2,12 @@
 
 //#include "Properties.h"
 #include "AssetHandle.h"
+#include "ral/Common.h"
 
 #include <string>
 #include <vector>
 
 namespace RDE {
-    using GpuHandle = unsigned int;
-    // Placeholder for GPU resource handle. TODO: Need proper GpuHandle from the IGraphicsDevice here
     class PropertyContainer{};
 
     struct AssetFilepath {
@@ -34,25 +33,24 @@ namespace RDE {
     };
 
     struct AssetGpuTexture {
-        GpuHandle texture_id;
+        RAL::TextureHandle texture_id;
     };
 
     struct AssetGpuBuffer {
-        GpuHandle buffer_id;
-        size_t size; // Size in bytes
-        int usage; // Usage hint (e.g., STATIC_DRAW, DYNAMIC_DRAW)
-        int type; // Type of buffer (e.g., ARRAY_BUFFER, ELEMENT_ARRAY_BUFFER)
+        RAL::BufferHandle buffer_id;
     };
 
     struct AssetGpuGeometry {
-        GpuHandle vao_id; // Vertex Array Object ID
-        GpuHandle vbo_id; // Vertex Buffer Object ID
-        GpuHandle ebo_id; // Element Buffer Object ID (optional)
-        size_t element_count; // Number of indices (if using indexed rendering)
+        RAL::BufferHandle vertex_buffer;
+        RAL::BufferHandle index_buffer; // Optional
+
+        uint32_t vertex_count = 0;
+        uint32_t index_count = 0;   // Use this instead of element_count for clarity
+        RAL::IndexType index_type = RAL::IndexType::UINT32; // Store the index type
     };
 
-    struct AssetShaderProgram {
-        GpuHandle program_id;
+    struct AssetGpuPipeline {
+        RAL::PipelineHandle pipeline_id; //the shader program handle
     };
 
     struct AssetTextSource {

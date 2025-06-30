@@ -1,19 +1,16 @@
 #include "InputManager.h"
 #include "IWindow.h"
-#include "../../log/include/Log.h"
+#include "Log.h"
 #include "Input.h"
 
-namespace RDE{
-    bool InputManager::init() {
-        // Initialize input handling here, e.g., set up GLFW callbacks if using GLFW.
-        if(!window) {
-            RDE_CORE_ERROR("InputManager: Window is not initialized!");
-            return false;
+namespace RDE {
+    InputManager::InputManager(void *window_handle) : m_window_handle(window_handle) {
+        if (!m_window_handle) {
+            RDE_CORE_ERROR("InputManager initialized with a null window handle!");
         }
-        return true; // Return true if initialization is successful.
     }
-
-    void ResetMouseThisFrame(Mouse &mouse) {
+    void InputManager::begin_frame() {
+// --- 1. Reset transient flags from the PREVIOUS frame ---
         mouse.is_moving_this_frame = false;
         mouse.is_scrolling_this_frame = false;
         mouse.scroll_delta_xy = {0.0f, 0.0f};
@@ -22,66 +19,63 @@ namespace RDE{
             button.pressed_this_frame = false;
             button.released_this_frame = false;
         }
-    }
-    
-    void SetMouseThisFrame(Mouse &mouse) {
-        glm::vec2 prev_position = mouse.position;
-        mouse.position = Input::GetMousePosition();
-        mouse.delta = mouse.position - prev_position;
 
-        mouse.is_moving_this_frame = (glm::length(mouse.delta) > 0.001f);
-        const std::array<int, 3> button_mappings = {
-                RDE_MOUSE_BUTTON_LEFT, RDE_MOUSE_BUTTON_RIGHT, RDE_MOUSE_BUTTON_MIDDLE
-        };
+        // --- 2. Poll continuous state for the CURRENT frame ---
+        glm::vec2 last_frame_position = mouse.position;
 
-        for (int i = 0; i < button_mappings.size(); ++i) {
+        // Assume IWindow has a static method to get the main window handle for polling.
+        mouse.position = Input::GetMousePosition(m_window_handle);
+
+        // Calculate delta based on this frame's poll vs last frame's poll.
+        mouse.delta = mouse.position - last_frame_position;
+
+        if (glm::length(mouse.delta) > 0.001f) {
+            mouse.is_moving_this_frame = true;
+        }
+
+        // --- 3. Poll button states and derive complex state (like dragging) ---
+        bool any_button_pressed = false;
+        for (int i = 0; i < 3; ++i) {
             auto& button_state = mouse.button[i];
-            bool was_pressed_last_frame = button_state.is_pressed;
+            bool was_pressed = button_state.is_pressed;
 
-            // Poll and update raw down state
-            button_state.is_pressed = Input::IsMouseButtonPressed(button_mappings[i]);
+            // Poll for the raw "is down" state
+            button_state.is_pressed = Input::IsMouseButtonPressed(m_window_handle, i);
 
-            // Update transient flags based on state changes
-            button_state.pressed_this_frame = !was_pressed_last_frame && button_state.is_pressed;
-            button_state.released_this_frame = was_pressed_last_frame && !button_state.is_pressed;
+            // Derive transient flags from the change in state
+            button_state.pressed_this_frame = button_state.is_pressed && !was_pressed;
+            button_state.released_this_frame = !button_state.is_pressed && was_pressed;
 
-            // Update dragging state (per button)
             if (button_state.pressed_this_frame) {
-                mouse.is_dragging_this_frame = false; // Reset drag state on new press
                 button_state.press_position = mouse.position;
             }
             if (button_state.released_this_frame) {
-                mouse.is_dragging_this_frame = false;
                 button_state.release_position = mouse.position;
             }
 
-            // If a button is held and the mouse is moving, it's a drag operation.
-            if (button_state.is_pressed && mouse.is_moving_this_frame) {
-                mouse.is_dragging_this_frame = true;
+            if (button_state.is_pressed) {
+                any_button_pressed = true;
             }
         }
+
+        // Dragging is a global mouse state: it's true if ANY button
+        // is held down AND the mouse is moving.
+        mouse.is_dragging_this_frame = any_button_pressed && mouse.is_moving_this_frame;
     }
 
-    void InputManager::process_input() {
-        // Process input events here, e.g., polling events from the window.
-        // Clear mouse state and keyboard state before processing new events.
+    void InputManager::end_frame() {
 
-        ResetMouseThisFrame(mouse);
-
-        if(!m_event_queue.empty()){
-            throw std::runtime_error("InputManager: Event queue is not empty, this should not happen!");
-        }
-        if(window) {
-            window->poll_events();
-        }
-
-        SetMouseThisFrame(mouse);
-
-        //TODO Keyboard processing
     }
 
-    bool InputManager::on_mouse_scroll_event(MouseScrolledEvent &event){
-        mouse.scroll_delta_xy = {event.get_x_offset(), event.get_y_offset()};
+    void InputManager::on_event(RDE::Event &e) {
+        EventDispatcher dispatcher(e);
+        // We only care about scroll events here now. All other mouse state
+        // is derived from polling in begin_frame().
+        dispatcher.dispatch<MouseScrolledEvent>(RDE_BIND_EVENT_FN(InputManager::on_mouse_scroll_event));
+    }
+
+    bool InputManager::on_mouse_scroll_event(MouseScrolledEvent &e) {
+        mouse.scroll_delta_xy = {e.get_x_offset(), e.get_y_offset()};
         mouse.is_scrolling_this_frame = true;
         return false;
     }

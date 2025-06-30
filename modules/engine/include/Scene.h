@@ -13,7 +13,7 @@ namespace RDE {
 
     class Scene {
     public:
-        Scene(JobSystem &job_system, IRenderer &renderer, AssetManager &asset_manager);
+        Scene();
 
         ~Scene();
 
@@ -46,10 +46,6 @@ namespace RDE {
     private:
         entt::registry m_registry;
         std::vector<std::unique_ptr<ISystem> > m_systems;
-
-        JobSystem &m_job_system;
-        IRenderer &m_renderer;
-        AssetManager &m_asset_manager;
 
         friend class Entity;
     };

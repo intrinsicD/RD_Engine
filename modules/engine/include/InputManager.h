@@ -1,6 +1,5 @@
 #pragma once
 
-#include "IWindow.h"
 #include "events/MouseEvent.h"
 
 #include <vector>
@@ -34,30 +33,25 @@ namespace RDE {
 
     class InputManager {
     public:
-        explicit InputManager(IWindow *window) : window(window) {};
+        explicit InputManager(void *window_handle);
 
         ~InputManager() = default;
 
-        // Initializes the input manager with the window handle.
-        bool init();
+        void begin_frame();
 
-        // Processes input events.
-        void process_input();
+        void end_frame();
 
-        std::vector<Event> &fetch_events() {
-            return m_event_queue;
-        }
-
-        bool on_mouse_scroll_event(MouseScrolledEvent &event);
+        void on_event(Event &e);
 
         const Mouse &get_mouse() const {
             return mouse;
         }
 
     private:
-        IWindow *window;
-        Mouse mouse; // Mouse state.
+        bool on_mouse_scroll_event(MouseScrolledEvent &event);
 
-        std::vector<Event> m_event_queue; // Queue to store input events.
+        void *m_window_handle = nullptr; // Handle to the main window for polling input.
+
+        Mouse mouse; // Mouse state.
     };
 }

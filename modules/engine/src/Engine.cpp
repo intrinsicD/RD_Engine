@@ -2,14 +2,13 @@
 
 #include "FrameContext.h"
 #include "LayerStack.h"
-#include "../../log/include/Log.h"
+#include "Log.h"
 #include "Scene.h"
 #include "IWindow.h"
-#include "assets/AssetManager.h"
+#include "AssetManager.h"
 #include "JobSystem.h"
 #include "InputManager.h"
 #include "IRenderer.h"
-#include "RenderPipelineManager.h"
 #include "Ticker.h"
 #include "ImGuiLayer.h"
 #include "events/ApplicationEvent.h"
@@ -21,15 +20,13 @@ namespace RDE {
                    std::unique_ptr<IRenderer> renderer,
                    std::unique_ptr<JobSystem> job_system,
                    std::unique_ptr<AssetManager> asset_manager,
-                   std::unique_ptr<InputManager> input_manager,
-                   std::unique_ptr<RenderPipelineManager> render_pipeline_manager
+                   std::unique_ptr<InputManager> input_manager
     )
             : m_window(std::move(window)),
               m_renderer(std::move(renderer)),
               m_job_system(std::move(job_system)),
               m_asset_manager(std::move(asset_manager)),
-              m_input_manager(std::move(input_manager)),
-              m_render_pipeline_manager(std::move(render_pipeline_manager)) {
+              m_input_manager(std::move(input_manager)) {
 
         m_app_context = std::make_unique<ApplicationContext>();
         m_frame_context = std::make_unique<FrameContext>();
@@ -47,8 +44,7 @@ namespace RDE {
                 .layer_stack = m_layer_stack.get()
         };
 
-        if (m_window && !m_window->init()) {
-            m_window->close();
+        if (!m_window) {
             throw std::runtime_error("Window initialization failed.");
         }
         if (!m_app_context) {
@@ -57,10 +53,10 @@ namespace RDE {
 
         m_window->set_event_callback(RDE_BIND_EVENT_FN(Engine::on_event));
 
-        if (m_input_manager && !m_input_manager->init()) {
+        if (m_input_manager) {
             throw std::runtime_error("InputManager failed to initialize.");
         }
-        if (m_renderer && !m_renderer->init()) {
+        if (m_renderer) {
             throw std::runtime_error("Renderer failed to initialize.");
         }
 
@@ -87,7 +83,7 @@ namespace RDE {
         }
         if (m_window) {
             RDE_CORE_INFO("Closing window...");
-            m_window->close();
+            //m_window->close();
         }
         RDE_CORE_INFO("Engine shutdown complete.");
     }
@@ -109,11 +105,8 @@ namespace RDE {
             frame_context.scene = m_scene.get();
             frame_context.is_minimized = m_is_minimized;
 
-            m_input_manager->process_input();
-            // Poll and process input events, this will call the input manager's event handlers and afterwards set the input state for this frame.
-            for (auto &e: m_input_manager->fetch_events()) {
-                on_event(e);
-            }
+            m_input_manager->begin_frame();
+            m_window->poll_events();
 
             if (m_is_minimized) {
                 time_accumulator = 0.0f;
@@ -143,16 +136,21 @@ namespace RDE {
             }
             ImGuiLayer::end(app_context, frame_context);
 
-            m_render_pipeline_manager->execute_frame(m_scene.get(), m_renderer.get());
+
+            m_input_manager->end_frame();
         }
     }
 
     void Engine::on_event(Event &e) {
+
+
         EventDispatcher dispatcher(e);
         dispatcher.dispatch<WindowCloseEvent>([this](WindowCloseEvent &) {
             m_is_running = false;
             return true;
         });
+
+        m_input_manager->on_event(e);
 
         dispatcher.dispatch<WindowResizeEvent>([this](WindowResizeEvent &e) {
             // Don't process if minimized
@@ -162,15 +160,9 @@ namespace RDE {
             }
             m_is_minimized = false;
 
-            m_renderer->on_window_resize(e.get_width(), e.get_height());
+            //m_renderer->on_window_resize(e.get_width(), e.get_height());
             // This function's only job is to manage the minimized state.
             // It MUST return false to allow layers to handle the event.
-            return false;
-        });
-
-        dispatcher.dispatch<MouseScrolledEvent>([this](MouseScrolledEvent &e) {
-            m_input_manager->on_mouse_scroll_event(e);
-
             return false;
         });
 

@@ -9,11 +9,11 @@ struct GLFWwindow;
 namespace RDE {
     class GlfwVulkanWindow : public IWindow {
     public:
-        GlfwVulkanWindow(const WindowConfig &window_config = WindowConfig());
+        explicit GlfwVulkanWindow(const WindowConfig &window_config = WindowConfig());
 
         ~GlfwVulkanWindow() override;
 
-        void on_update() override;
+        void poll_events() override;
 
         unsigned int get_width() const override { return m_data.width; }
 
@@ -21,18 +21,11 @@ namespace RDE {
 
         void set_event_callback(const EventCallbackFn &callback) override { m_data.event_callback = callback; }
 
-        void set_vsync(bool enabled) override;
+        void *get_native_handle() const override { return m_window; }
 
-        bool is_vsync() const override;
-
-        void *get_native_window() const override { return m_window; }
+        bool should_close() override;
 
     private:
-        void init(const WindowConfig &window_config);
-
-        void init_opengl();
-
-        void init_vulkan();
 
         void shutdown();
 
@@ -41,7 +34,6 @@ namespace RDE {
         struct WindowData {
             std::string title;
             unsigned int width, height;
-            bool vsync;
             EventCallbackFn event_callback;
         };
 

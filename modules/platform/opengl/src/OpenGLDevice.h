@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../../renderer/include/ral/Device.h"
+#include "ral/Device.h"
 #include <unordered_map>
 #include <vector>
 
@@ -29,7 +29,7 @@ namespace RDE {
     };
 
 
-    class OpenGLDevice : public IGraphicsDevice {
+class OpenGLDevice : public RAL::Device {
     public:
         OpenGLDevice() = default;
 

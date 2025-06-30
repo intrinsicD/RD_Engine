@@ -2,31 +2,9 @@
 #include "Entity.h"
 #include "components/NameTagComponent.h"
 
-#include "systems/AnimationSystem.h"
-#include "systems/CameraSystem.h"
-#include "systems/CullingSystem.h"
-#include "systems/InputSystem.h"
-#include "systems/PhysicsSystem.h"
-#include "systems/RenderSystem.h"
-#include "systems/TransformSystem.h"
-
 namespace RDE {
     Scene::Scene() {
-        // Initialize the scene with a default camera.
-        m_systems.emplace_back(std::make_unique<InputSystem>());
 
-        // Add systems in the order they should be processed.
-
-        // TransformSystem must be first to ensure all entities have their transforms updated before any other system.
-        m_systems.emplace_back(std::make_unique<TransformSystem>());
-        // AnimationSystem must be before PhysicsSystem to ensure animations are updated before physics calculations.
-        m_systems.emplace_back(std::make_unique<AnimationSystem>());
-        // PhysicsSystem must be after TransformSystem to ensure transforms are updated before physics calculations.
-        m_systems.emplace_back(std::make_unique<PhysicsSystem>());
-        // CameraSystem must be after TransformSystem to ensure camera matrices are updated correctly.
-        m_systems.emplace_back(std::make_unique<CameraSystem>());
-        m_systems.emplace_back(std::make_unique<CullingSystem>());
-        m_systems.emplace_back(std::make_unique<RenderSystem>());
     }
 
     Scene::~Scene() {

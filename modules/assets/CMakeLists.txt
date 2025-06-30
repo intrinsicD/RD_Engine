@@ -9,7 +9,7 @@ add_library(RDE::AssetSystem ALIAS AssetSystem)
 target_include_directories(AssetSystem
         PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
-        ${stb_SOURCE_DIR}
+        ${stb_image_SOURCE_DIR}
 )
 
 target_sources(AssetSystem
@@ -20,7 +20,7 @@ target_sources(AssetSystem
 
 target_link_libraries(AssetSystem
         PUBLIC
-        stb
+        RAL
         efsw
         EnTT
         RDE::Core
