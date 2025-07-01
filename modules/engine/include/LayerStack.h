@@ -70,9 +70,6 @@ namespace RDE {
         std::vector<std::shared_ptr<ILayer> >::reverse_iterator rend() { return m_layers.rend(); }
 
     private:
-        ApplicationContext &app_context;
-        FrameContext &frame_context;
-
         std::vector<std::shared_ptr<ILayer> > m_layers;
         unsigned int m_layer_insert_index = 0;
     };

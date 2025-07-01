@@ -1,5 +1,8 @@
 #include "GlfwVulkanWindow.h"
 #include "Log.h"
+#include "events/ApplicationEvent.h"
+#include "events/KeyEvent.h"
+#include "events/MouseEvent.h"
 
 #include <GLFW/glfw3.h>
 
@@ -38,12 +41,107 @@ namespace RDE{
         if (!m_window) {
             throw std::runtime_error("Failed to create GLFW window!");
         }
+
+        glfwSetWindowSizeCallback(m_window, [](GLFWwindow *window, int width, int height) {
+            WindowData &data = *(WindowData *) glfwGetWindowUserPointer(window);
+            data.width = width;
+            data.height = height;
+            WindowResizeEvent event(width, height);
+            if (data.event_callback) {
+                data.event_callback(event);
+            }
+        });
+
+        glfwSetWindowCloseCallback(m_window, [](GLFWwindow *window) {
+            WindowData &data = *(WindowData *) glfwGetWindowUserPointer(window);
+            WindowCloseEvent event;
+            if (data.event_callback) {
+                data.event_callback(event);
+            }
+        });
+
+        glfwSetKeyCallback(m_window, [](GLFWwindow *window, int key, int scancode, int action, int mods) {
+            WindowData &data = *(WindowData *) glfwGetWindowUserPointer(window);
+            switch (action) {
+                case GLFW_PRESS: {
+                    KeyPressedEvent event(key, 0);
+                    if (data.event_callback) {
+                        data.event_callback(event);
+                    }
+                    break;
+                }
+                case GLFW_RELEASE: {
+                    KeyReleasedEvent event(key);
+                    if (data.event_callback) {
+                        data.event_callback(event);
+                    }
+                    break;
+                }
+                case GLFW_REPEAT: {
+                    KeyPressedEvent event(key, 1);
+                    if (data.event_callback) {
+                        data.event_callback(event);
+                    }
+                    break;
+                }
+            }
+        });
+
+        glfwSetMouseButtonCallback(m_window, [](GLFWwindow *window, int button, int action, int mods) {
+            WindowData &data = *(WindowData *) glfwGetWindowUserPointer(window);
+
+            switch (action) {
+                case GLFW_PRESS: {
+                    MouseButtonPressedEvent event(button);
+                    if (data.event_callback) {
+                        data.event_callback(event);
+                    }
+                    break;
+                }
+                case GLFW_RELEASE: {
+                    MouseButtonReleasedEvent event(button);
+                    if (data.event_callback) {
+                        data.event_callback(event);
+                    }
+                    break;
+                }
+            }
+        });
+
+        glfwSetScrollCallback(m_window, [](GLFWwindow *window, double x_offset, double y_offset) {
+            WindowData &data = *(WindowData *) glfwGetWindowUserPointer(window);
+
+            MouseScrolledEvent event((float) x_offset, (float) y_offset);
+            if (data.event_callback) {
+                data.event_callback(event);
+            }
+        });
+
+        glfwSetCursorPosCallback(m_window, [](GLFWwindow *window, double x_pos, double y_pos) {
+            WindowData &data = *(WindowData *) glfwGetWindowUserPointer(window);
+
+            MouseMovedEvent event((float) x_pos, (float) y_pos);
+            if (data.event_callback) {
+                data.event_callback(event);
+            }
+        });
+
+        glfwSetDropCallback(m_window, [](GLFWwindow *window, int count, const char **filepaths) {
+            WindowData &data = *(WindowData *) glfwGetWindowUserPointer(window);
+            std::vector<std::string> files;
+            files.reserve(count);
+            for (int i = 0; i < count; ++i) {
+                files.emplace_back(filepaths[i]);
+            }
+            WindowFileDropEvent event(files);
+            if (data.event_callback) {
+                data.event_callback(event);
+            }
+        });
     }
 
     GlfwVulkanWindow::~GlfwVulkanWindow() {
-        if (m_window) {
-            glfwDestroyWindow(m_window);
-        }
+        shutdown();
         // Could add logic to terminate GLFW when the last window is destroyed.
     }
 
@@ -53,5 +151,12 @@ namespace RDE{
 
     bool GlfwVulkanWindow::should_close() {
         return glfwWindowShouldClose(m_window);
+    }
+
+    void GlfwVulkanWindow::shutdown() {
+        if (m_window) {
+            glfwDestroyWindow(m_window);
+            m_window = nullptr;
+        }
     }
 }

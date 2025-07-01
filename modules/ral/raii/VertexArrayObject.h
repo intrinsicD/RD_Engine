@@ -1,22 +1,27 @@
 // RDE_Project/modules/platform/opengl/OpenGLVertexArray.h
 #pragma once
 
-#include "VertexArray.h"
+#include "Buffer.h"
+
+#include <cstdint>
+#include <vector>
+#include <memory>
+
 
 namespace RDE {
-    class OpenGLVertexArray : public VertexArray {
+    class VertexArray {
     public:
-        OpenGLVertexArray();
+        VertexArray();
 
-        ~OpenGLVertexArray() override;
+        virtual ~VertexArray() = 0;
 
-        void bind() const override;
+        virtual void bind() const = 0;
 
-        void unbind() const override;
+        virtual void unbind() const = 0;
 
-        void add_vertex_buffer(const std::shared_ptr<VertexBuffer> &vertexBuffer) override;
+        virtual void add_vertex_buffer(const std::shared_ptr<VertexBuffer> &vertexBuffer) override;
 
-        void set_index_buffer(const std::shared_ptr<IndexBuffer> &indexBuffer) override;
+        virtual void set_index_buffer(const std::shared_ptr<IndexBuffer> &indexBuffer) override;
 
         const std::vector<std::shared_ptr<VertexBuffer> > &get_vertex_buffers() const override { return m_vertex_buffers; };
 

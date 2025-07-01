@@ -21,18 +21,17 @@ namespace RDE {
 
         virtual ~IWindow() = default;
 
-        // --- Kept Methods ---
-        virtual void poll_events() = 0;
-
-        virtual unsigned int get_width() const = 0;
-
-        virtual unsigned int get_height() const = 0;
-
         virtual void set_event_callback(const EventCallbackFn &callback) = 0;
 
-        virtual void *get_native_handle() const = 0;
+        virtual void poll_events() = 0;
 
         virtual bool should_close() = 0; // Better name than 'on_update' for the loop condition
+
+        [[nodiscard]] virtual int get_width() const = 0;
+
+        [[nodiscard]] virtual int get_height() const = 0;
+
+        [[nodiscard]] virtual void *get_native_handle() const = 0;
 
         static std::unique_ptr<IWindow> Create(const WindowConfig &config = WindowConfig());
     };

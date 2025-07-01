@@ -4,7 +4,7 @@
 #include <GLFW/glfw3.h>
 
 #include "GlfwOpenGLWindow.h"
-#include "../../../log/include/Log.h"
+#include "Log.h"
 #include "events/ApplicationEvent.h"
 #include "events/MouseEvent.h"
 #include "events/KeyEvent.h"

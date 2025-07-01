@@ -14,24 +14,24 @@ namespace RDE {
     }
 
     void ImGuiLayer::on_attach(const ApplicationContext &app_context, const FrameContext &frame_context) {
-        IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
-        ImGuiIO &io = ImGui::GetIO();
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+            IMGUI_CHECKVERSION();
+            ImGui::CreateContext();
+            ImGuiIO &io = ImGui::GetIO();
+            io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+            io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+            io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
-        ImGui::StyleColorsDark();
+            ImGui::StyleColorsDark();
 
-        ImGuiStyle &style = ImGui::GetStyle();
-        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-            style.WindowRounding = 0.0f;
-            style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-        }
+            ImGuiStyle &style = ImGui::GetStyle();
+            if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+                style.WindowRounding = 0.0f;
+                style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+            }
 
-        auto &window = *app_context.window;
-        ImGui_ImplGlfw_InitForOpenGL(static_cast<GLFWwindow *>(window.get_native_handle()), true);
-        ImGui_ImplOpenGL3_Init("#version 410");
+            auto &window = *app_context.window;
+            ImGui_ImplGlfw_InitForOpenGL(static_cast<GLFWwindow *>(window.get_native_handle()), true);
+            ImGui_ImplOpenGL3_Init("#version 410");
     }
 
     void ImGuiLayer::on_detach(const ApplicationContext &, const FrameContext &) {

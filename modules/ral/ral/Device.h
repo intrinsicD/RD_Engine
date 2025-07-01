@@ -29,6 +29,10 @@ namespace RAL {
 
         virtual void destroy_swapchain() = 0;
 
+        virtual RAL::CommandBuffer *begin_frame() = 0;
+
+        virtual void end_frame() = 0;
+
         // Acquires the next available image from the swapchain to be rendered into.
         // Returns the texture handle for the image. This is what the RenderGraph imports.
         // Also provides a semaphore that will be signaled when the image is ready for us to render to.
@@ -36,7 +40,7 @@ namespace RAL {
 
         // Presents the rendered image to the screen.
         // It must wait on the provided semaphore to ensure rendering is complete before presentation.
-        virtual void present() = 0;
+        virtual void do_present() = 0;
 
         // --- Resource Factories ---
         virtual BufferHandle create_buffer(const BufferDescription &desc) = 0;

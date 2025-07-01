@@ -1,1 +1,1 @@
-add_subdirectory(test_vulkan)
+add_subdirectory(test)

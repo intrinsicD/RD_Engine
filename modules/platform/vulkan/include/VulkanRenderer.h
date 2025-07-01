@@ -10,29 +10,20 @@ namespace RDE {
     // Concrete implementation of the IRenderer interface using Vulkan.
     class VulkanRenderer : public IRenderer {
     public:
+    public:
         VulkanRenderer();
 
         ~VulkanRenderer() override;
 
-        // --- Implementing the Interface ---
-        void prepare_resources(AssetDatabase &asset_db) override;
+        [[nodiscard]] FrameContext begin_frame() override;
 
-        void draw_frame() override;
+        void submit_and_present(FrameContext &context) override;
 
-        RAL::Device *get_device() override;
-
-        void shutdown() override;
-
+        RAL::Device *get_device() override { return m_device.get(); }
     private:
-        // The VulkanRenderer OWNS all the core Vulkan objects.
         std::unique_ptr<VulkanDevice> m_device;
-
-        // It also owns its internal helper systems.
-        std::unique_ptr<VulkanTextureUploader> m_texture_uploader;
-
-        // Later, it will own these as well:
-        // std::unique_ptr<RenderGraph> m_render_graph;
-        // std::vector<std::unique_ptr<RAL::CommandBuffer>> m_command_buffers;
+        uint32_t m_current_swapchain_image_index = 0; // Temp storage between begin/end
+        bool m_frame_started = false; // Safety flag
     };
 
 } // namespace RDE

@@ -142,8 +142,6 @@ namespace RDE {
     }
 
     void Engine::on_event(Event &e) {
-
-
         EventDispatcher dispatcher(e);
         dispatcher.dispatch<WindowCloseEvent>([this](WindowCloseEvent &) {
             m_is_running = false;

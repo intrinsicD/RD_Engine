@@ -43,7 +43,9 @@ namespace RDE {
         // For now, enable minimal required extensions. A real engine queries for support.
         // We need a surface extension to draw to a window eventually.
         std::vector<const char *> extensions = {
-                "VK_KHR_surface", /* platform specific surface, e.g., "VK_KHR_win32_surface" */ };
+                "VK_KHR_surface", /* platform specific surface, e.g., "VK_KHR_win32_surface" */
+                "VK_KHR_xcb_surface", // Add this for X11 support
+        };
         // Add debug utils extension for validation layers
         const char *validation_layer = "VK_LAYER_KHRONOS_validation";
         extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
@@ -79,9 +81,9 @@ namespace RDE {
 
         // 2. Destroy synchronization primitives.
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            if (m_render_finished_semaphores[i]) vkDestroySemaphore(m_device, m_render_finished_semaphores[i], nullptr);
-            if (m_image_available_semaphores[i]) vkDestroySemaphore(m_device, m_image_available_semaphores[i], nullptr);
-            if (m_in_flight_fences[i]) vkDestroyFence(m_device, m_in_flight_fences[i], nullptr);
+            if (m_frames_in_flight[i].render_finished_semaphore) vkDestroySemaphore(m_device, m_frames_in_flight[i].render_finished_semaphore, nullptr);
+            if (m_frames_in_flight[i].image_available_semaphore) vkDestroySemaphore(m_device, m_frames_in_flight[i].image_available_semaphore, nullptr);
+            if (m_frames_in_flight[i].in_flight_fence) vkDestroyFence(m_device, m_frames_in_flight[i].in_flight_fence], nullptr);
         }
 
         // 3. Destroy all remaining resources (buffers, textures, etc.)
@@ -100,7 +102,9 @@ namespace RDE {
         if (m_allocator) {
             vmaDestroyAllocator(m_allocator);
         }
-
+        if (m_command_pool) {
+            vkDestroyCommandPool(m_device, m_command_pool, nullptr);
+        }
         // 5. Destroy the logical device.
         if (m_device) {
             vkDestroyDevice(m_device, nullptr);
@@ -203,6 +207,20 @@ namespace RDE {
         RDE_CORE_INFO("VMA Allocator created successfully.");
     }
 
+    void VulkanDevice::create_command_pool() {
+        VkCommandPoolCreateInfo pool_info{};
+        pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        // We want command buffers that can be reset individually
+        pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        // The pool must be tied to the queue family we will submit to
+        pool_info.queueFamilyIndex = m_graphics_queue_family_index;
+
+        if (vkCreateCommandPool(m_device, &pool_info, nullptr, &m_command_pool) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to create command pool!");
+        }
+        RDE_CORE_INFO("Vulkan Command Pool created successfully.");
+    }
+
     void VulkanDevice::find_queue_families(VkPhysicalDevice device) {
         // ... existing logic to find graphics_family ...
 
@@ -219,6 +237,15 @@ namespace RDE {
         // 1. Create the Surface
         // This connects Vulkan to the windowing system. It's platform-specific.
         // We use GLFW to handle this for us.
+        if (!m_instance) {
+            throw std::runtime_error("Vulkan instance is not initialized!");
+        }
+        if (!desc.native_window_handle) {
+            throw std::runtime_error("Native window handle is null!");
+        }
+        if (!glfwVulkanSupported()) {
+            throw std::runtime_error("GLFW does not support Vulkan!");
+        }
         if (glfwCreateWindowSurface(m_instance, static_cast<GLFWwindow *>(desc.native_window_handle), nullptr,
                                     &m_surface) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create window surface!");
@@ -296,32 +323,69 @@ namespace RDE {
             vkCreateSemaphore(m_device, &semaphore_info, nullptr, &m_render_finished_semaphores[i]);
             vkCreateFence(m_device, &fence_info, nullptr, &m_in_flight_fences[i]);
         }
+
+        m_command_buffers.resize(MAX_FRAMES_IN_FLIGHT);
+        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            m_command_buffers[i] = std::make_unique<VulkanCommandBuffer>(*this);
+        }
     }
 
     void VulkanDevice::destroy_swapchain() {
         cleanup_swapchain();
     }
 
-    RAL::TextureHandle VulkanDevice::acquire_next_swapchain_image() {
-        // Wait for the previous frame to finish before starting to record the new one
-        vkWaitForFences(m_device, 1, &m_in_flight_fences[m_current_frame], VK_TRUE, UINT64_MAX);
-        vkResetFences(m_device, 1, &m_in_flight_fences[m_current_frame]);
-
-        // Acquire the image
-        VkResult result = vkAcquireNextImageKHR(m_device, m_swapchain, UINT64_MAX,
-                                                m_image_available_semaphores[m_current_frame], VK_NULL_HANDLE,
-                                                &m_current_swapchain_image_index);
-
-        if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-            // Swapchain is outdated (e.g., window resized). Recreate it.
-            // For now, return invalid handle. A real engine would handle recreation.
-            return {};
-        }
-
-        return m_swapchain_ral_textures[m_current_swapchain_image_index];
+    VkResult VulkanDevice::acquire_next_swapchain_image(uint32_t *out_image_index) {
+        auto& frame_data = m_frames_in_flight[m_current_frame];
+        return vkAcquireNextImageKHR(m_device, m_swapchain, UINT64_MAX,
+                                     frame_data.image_available_semaphore, VK_NULL_HANDLE, out_image_index);
     }
 
-    void VulkanDevice::present() {
+    RAL::CommandBuffer *VulkanDevice::begin_frame() {
+        // 1. Wait for the frame we are about to reuse to be finished on the GPU.
+        // This is the call that was hanging, but now it will work because end_frame() will submit work that signals this fence.
+        vkWaitForFences(m_device, 1, &m_in_flight_fences[m_current_frame], VK_TRUE, UINT64_MAX);
+
+        // 2. Acquire an image from the swapchain.
+        uint32_t image_index;
+        VkResult result = vkAcquireNextImageKHR(m_device, m_swapchain, UINT64_MAX,
+                                                m_image_available_semaphores[m_current_frame], VK_NULL_HANDLE,
+                                                &image_index);
+
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+            // Handle swapchain recreation... for now, signal failure.
+            // cleanup_swapchain(); create_swapchain(...);
+            return nullptr;
+        } else if (result != VK_SUCCESS) {
+            throw std::runtime_error("Failed to acquire swapchain image!");
+        }
+
+        m_current_swapchain_image_index = image_index;
+
+        // 3. Now that we know we're not waiting anymore, reset the fence for this frame.
+        vkResetFences(m_device, 1, &m_in_flight_fences[m_current_frame]);
+
+        // 4. Get the command buffer for the current frame and begin recording.
+        VulkanCommandBuffer* cmd = m_command_buffers[m_current_frame].get();
+        cmd->begin(); // Resets the VkCommandBuffer
+
+        return cmd;
+    }
+
+    void VulkanDevice::end_frame() {
+        VulkanCommandBuffer* cmd = m_command_buffers[m_current_frame].get();
+        cmd->end(); // Finalizes the VkCommandBuffer
+
+        // Submit the command buffer
+        submit_command_buffers({cmd});
+
+        // Present the result
+        do_present();
+
+        // Advance to the next frame data for the next call to begin_frame()
+        m_current_frame = (m_current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
+    }
+
+    void VulkanDevice::do_present() {
         VkPresentInfoKHR present_info{};
         present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
@@ -337,6 +401,14 @@ namespace RDE {
 
         // Advance to the next frame in flight
         m_current_frame = (m_current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
+    }
+
+    void VulkanDevice::advance_frame() {
+        // This function is called after a frame has been presented.
+        // It can be used to prepare for the next frame, but in this simple case,
+        // we just increment the current frame index.
+        m_current_frame = (m_current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
+        m_current_swapchain_image_index = 0; // Reset for the next frame
     }
 
     void VulkanDevice::cleanup_swapchain() {
@@ -570,33 +642,38 @@ namespace RDE {
     }
 
     void VulkanDevice::submit_command_buffers(const std::vector<RAL::CommandBuffer*>& command_buffers) {
-        // This is also important. We'll provide a more functional stub.
         if (command_buffers.empty()) return;
 
-        // A real implementation needs to map the abstract RAL::CommandBuffer* to a concrete
-        // VulkanCommandBuffer* to get the VkCommandBuffer handle.
-        // For now, let's assume one command buffer and use a member variable.
-        // This part WILL BE REWRITTEN.
+        std::vector<VkCommandBuffer> vk_command_buffers;
+        vk_command_buffers.reserve(command_buffers.size());
+        for (const auto& cmd : command_buffers) {
+            // We must cast from the abstract RAL interface to our concrete Vulkan implementation.
+            vk_command_buffers.push_back(static_cast<VulkanCommandBuffer*>(cmd)->get_native_handle());
+        }
 
-        // Example logic using the sync primitives we created:
         VkSubmitInfo submit_info{};
         submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
+        // Wait on the image_available semaphore before the color attachment output stage.
         VkSemaphore wait_semaphores[] = { m_image_available_semaphores[m_current_frame] };
         VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
         submit_info.waitSemaphoreCount = 1;
         submit_info.pWaitSemaphores = wait_semaphores;
         submit_info.pWaitDstStageMask = wait_stages;
 
-        // submit_info.commandBufferCount = ...
-        // submit_info.pCommandBuffers = ...
+        submit_info.commandBufferCount = static_cast<uint32_t>(vk_command_buffers.size());
+        submit_info.pCommandBuffers = vk_command_buffers.data();
 
+        // Signal the render_finished semaphore when commands are done.
         VkSemaphore signal_semaphores[] = { m_render_finished_semaphores[m_current_frame] };
         submit_info.signalSemaphoreCount = 1;
         submit_info.pSignalSemaphores = signal_semaphores;
 
-        // Use the fence of the current frame in flight to signal the CPU.
-        vkQueueSubmit(m_graphics_queue, 1, &submit_info, m_in_flight_fences[m_current_frame]);
+        // The in_flight_fence will be signaled by the GPU when this submission completes.
+        // This is what `begin_frame` will wait on.
+        if (vkQueueSubmit(m_graphics_queue, 1, &submit_info, m_in_flight_fences[m_current_frame]) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to submit draw command buffer!");
+        }
     }
 
     void VulkanDevice::wait_idle() {
