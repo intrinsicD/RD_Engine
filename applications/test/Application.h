@@ -2,6 +2,10 @@
 
 #include "events/Event.h"
 
+#include "AssetManager.h"
+#include "AssetDatabase.h"
+#include "FileWatcher.h"
+
 #include <glm/glm.hpp>
 #include <entt/fwd.hpp>
 #include <set>
@@ -17,8 +21,9 @@ namespace RDE {
             glm::vec2 press_position = {0.0f, 0.0f}; // Position of the mouse when the button was pressed
             glm::vec2 release_position = {0.0f, 0.0f}; // Position of the mouse when the button was released
         };
-        std::vector<Button> buttons_current_frame;
-        std::vector<Button> buttons_last_frame;
+
+        std::vector<Button> buttons_current_frame{3};
+        std::vector<Button> buttons_last_frame{3};
 
         glm::vec2 cursor_position = {0.0f, 0.0f}; // Current mouse position
         glm::vec2 delta_position = {0.0f, 0.0f}; // Change in mouse position since last frame
@@ -48,9 +53,11 @@ namespace RDE {
 
     struct Keyboard {
         std::set<int> keys_held_this_frame; // Set of keys currently held down
-        std::vector<bool> keys_pressed_current_frame; // List of keys released this frame
-        std::vector<bool> keys_pressed_last_frame; // List of keys released this frame
-        std::vector<bool> keys_repeated; // List of keys released this frame
+        std::vector<bool> keys_pressed_current_frame = std::vector<bool>(1024, false);
+        // List of keys released this frame
+        std::vector<bool> keys_pressed_last_frame = std::vector<bool>(1024, false); ;
+        // List of keys released this frame
+        std::vector<bool> keys_repeated = std::vector<bool>(1024, false); ; // List of keys released this frame
     };
 
     struct ApplicationContext;
@@ -139,19 +146,24 @@ namespace RDE {
         std::shared_ptr<entt::registry> m_registry; // Entity registry for managing entities and components
         std::shared_ptr<entt::dispatcher> m_dispatcher; // Event dispatcher for handling events
 
+        std::shared_ptr<AssetDatabase> m_asset_database;
+        std::unique_ptr<AssetManager> m_asset_manager;
+        std::unique_ptr<FileWatcher> m_file_watcher; // File watcher for monitoring asset changes
+        std::unique_ptr<ThreadSafeQueue<std::string>> m_file_watcher_event_queue; // File watcher for monitoring asset changes
+
         entt::entity m_primary_camera_entity; // Entity representing the camera in the scene
         entt::entity m_last_selected_entity; // Entity currently selected by the user
 
         std::vector<entt::entity> m_selected_entities; // List of entities in the scene
         std::function<void(Event &)> m_event_callback; // Callback function for handling events
 
-        Mouse m_mouse_state;// Input state for mouse
+        Mouse m_mouse_state; // Input state for mouse
         Keyboard m_keyboard_state; // Input state for keyboard
 
-        std::unordered_map<int, std::function<void()>> m_key_press_bindings; // Key bindings for press actions
-        std::unordered_map<int, std::function<void()>> m_key_release_bindings; // Key bindings for release actions
-        std::unordered_map<int, std::function<void()>> m_key_repeat_bindings; // Key bindings for release actions
-        std::unordered_map<int, std::function<void()>> m_key_update_bindings; // Key bindings for update actions
+        std::unordered_map<int, std::function<void()> > m_key_press_bindings; // Key bindings for press actions
+        std::unordered_map<int, std::function<void()> > m_key_release_bindings; // Key bindings for release actions
+        std::unordered_map<int, std::function<void()> > m_key_repeat_bindings; // Key bindings for release actions
+        std::unordered_map<int, std::function<void()> > m_key_update_bindings; // Key bindings for update actions
 
         LayerStack m_layer_stack; // Stack of layers for the application
     };

@@ -20,12 +20,14 @@ target_include_directories(Test PUBLIC
 
 target_sources(Test PRIVATE
         Application.cpp
+        Platform.cpp
         ${IMGUI_SOURCES}
 )
 
 find_package(OpenGL REQUIRED)
 target_link_libraries(Test
         PRIVATE
+        RDE::AssetSystem
         RDE::Core
         EnTT
         spdlog
@@ -34,3 +36,5 @@ target_link_libraries(Test
         glad_gl_core
         OpenGL::GL
 )
+
+add_subdirectory(assets)

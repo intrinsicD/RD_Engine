@@ -3,6 +3,7 @@
 #include "events/MouseEvent.h"
 #include "events/KeyEvent.h"
 #include "Log.h"
+#include "GetAssetPath.h"
 
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
@@ -275,6 +276,16 @@ namespace RDE {
             ImGui_ImplGlfw_InitForOpenGL(m_app_context->m_window, true);
             ImGui_ImplOpenGL3_Init("#version 410");
         }
+
+        {
+            m_app_context->m_asset_database = std::make_shared<AssetDatabase>();
+            m_app_context->m_asset_manager = std::make_unique<AssetManager>(*m_app_context->m_asset_database);
+            m_app_context->m_file_watcher = std::make_unique<FileWatcher>();
+            m_app_context->m_file_watcher_event_queue = std::make_unique<ThreadSafeQueue<std::string>>();
+            auto path =  get_asset_path();
+
+            m_app_context->m_file_watcher->start(path->string(), m_app_context->m_file_watcher_event_queue.get());
+        }
         return true;
     }
 
@@ -331,6 +342,15 @@ namespace RDE {
         for (const auto key: m_app_context->m_keyboard_state.keys_held_this_frame) {
             if (m_app_context->m_key_update_bindings.find(key) != m_app_context->m_key_update_bindings.end()) {
                 m_app_context->m_key_update_bindings[key]();
+            }
+        }
+        while(!m_app_context->m_file_watcher_event_queue->empty()) {
+            auto file_path_opt = m_app_context->m_file_watcher_event_queue->try_pop();
+            if (file_path_opt) {
+                const std::string &file_path = *file_path_opt;
+                // Handle file change event, e.g., reload assets
+                m_app_context->m_asset_manager->force_load_from(file_path);
+                RDE_CORE_INFO("File reloaded: {}", file_path);
             }
         }
 

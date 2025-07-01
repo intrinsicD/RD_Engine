@@ -77,13 +77,13 @@ namespace RDE {
             return AssetHandle<AssetConcept>(new_id);
         }
 
-        void force_load_from(const std::string& uri) {
+        bool force_load_from(const std::string& uri, std::function<void(std::string)> reload_callback = nullptr) {
             // 1. Determine type from file extension
             std::string extension = std::filesystem::path(uri).extension().string();
             auto it = m_extension_to_type_map.find(extension);
             if (it == m_extension_to_type_map.end()) {
                 RDE_CORE_WARN("Hot Reload: No asset type registered for extension '{}'", extension);
-                return;
+                return false;
             }
             const std::type_index& type_id = it->second;
 
@@ -92,11 +92,15 @@ namespace RDE {
             auto cache_it = m_generic_reload_funcs.find(type_id);
             if (cache_it == m_generic_reload_funcs.end()) {
                 RDE_CORE_ERROR("Hot Reload: No reload function found for type '{}'", type_id.name());
-                return;
+                return false;
             }
 
             // 3. Call the stored lambda to reload the asset
             cache_it->second(uri);
+            if (reload_callback) {
+                reload_callback(uri);
+            }
+            return true;
         }
 
     private:

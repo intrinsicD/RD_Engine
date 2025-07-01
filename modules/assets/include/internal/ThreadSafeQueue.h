@@ -22,8 +22,13 @@ namespace RDE {
             return value;
         }
 
+        bool empty() const {
+            std::lock_guard lock(m_mutex);
+            return m_queue.empty();
+        }
+
     private:
         std::queue<T> m_queue;
-        std::mutex m_mutex;
+        mutable std::mutex m_mutex;
     };
 }

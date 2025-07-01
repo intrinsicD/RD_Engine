@@ -1,0 +1,5 @@
+#pragma once
+
+// This path is configured by CMake and points to the assets directory
+// relative to the SOURCE directory during development builds.
+#define RDE_DEVELOPMENT_ASSET_PATH "@RDE_DEVELOPMENT_ASSET_PATH@"
