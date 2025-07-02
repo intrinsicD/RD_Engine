@@ -20,6 +20,9 @@ target_include_directories(Test PUBLIC
 
 target_sources(Test PRIVATE
         Application.cpp
+        core/Camera.cpp
+        core/CameraSystem.cpp
+        core/Transform.cpp
         ${IMGUI_SOURCES}
 )
 
