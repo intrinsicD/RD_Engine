@@ -5,6 +5,11 @@
 #include "Log.h"
 #include "GetAssetPath.h"
 
+#include "core/TransformSystem.h"
+#include "core/CameraSystem.h"
+#include "core/HierarchySystem.h"
+#include "core/BoundingVolumeSystem.h"
+
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
 
@@ -67,7 +72,12 @@ namespace RDE {
         m_app_context->m_event_callback = [this](Event &e) {
             this->on_event(e);
         };
-        // Main loop
+        m_app_context->m_mouse_state.buttons_current_frame.resize(3);
+        m_app_context->m_mouse_state.buttons_last_frame.resize(3);
+        m_app_context->m_keyboard_state.keys_pressed_current_frame.resize(GLFW_KEY_LAST + 1, false);
+        m_app_context->m_keyboard_state.keys_pressed_last_frame.resize(GLFW_KEY_LAST + 1, false);
+        m_app_context->m_keyboard_state.keys_repeated.resize(GLFW_KEY_LAST + 1, false);
+
         glfwSetWindowUserPointer(m_app_context->m_window, this); // Set the user pointer to this Application instance
 
         // Set up event callbacks
@@ -164,7 +174,8 @@ namespace RDE {
                     app_context.m_mouse_state.buttons_current_frame[button].button = button;
                     app_context.m_mouse_state.buttons_current_frame[button].is_pressed = true;
                     app_context.m_mouse_state.buttons_current_frame[button].is_released = false;
-                    app_context.m_mouse_state.buttons_current_frame[button].press_position = app_context.m_mouse_state.cursor_position;
+                    app_context.m_mouse_state.buttons_current_frame[button].press_position = app_context.m_mouse_state.
+                            cursor_position;
 
                     MouseButtonPressedEvent event(button);
                     if (app_context.m_event_callback) {
@@ -176,7 +187,8 @@ namespace RDE {
                     app_context.m_mouse_state.buttons_current_frame[button].button = button;
                     app_context.m_mouse_state.buttons_current_frame[button].is_pressed = false;
                     app_context.m_mouse_state.buttons_current_frame[button].is_released = true;
-                    app_context.m_mouse_state.buttons_current_frame[button].release_position = app_context.m_mouse_state.cursor_position;
+                    app_context.m_mouse_state.buttons_current_frame[button].release_position = app_context.m_mouse_state
+                            .cursor_position;
 
                     MouseButtonReleasedEvent event(button);
                     if (app_context.m_event_callback) {
@@ -232,9 +244,7 @@ namespace RDE {
             if (app_context.m_event_callback) {
                 app_context.m_event_callback(event);
             }
-        });
-
-        {
+        }); {
             // Initialize OpenGL context
             int version = gladLoadGL(glfwGetProcAddress);
             // Initialize GLAD (or your OpenGL function loader)
@@ -254,9 +264,7 @@ namespace RDE {
 
             // Enable depth testing
             glEnable(GL_DEPTH_TEST);
-        }
-
-        {
+        } {
             // Initialize ImGui
             IMGUI_CHECKVERSION();
             ImGui::CreateContext();
@@ -275,14 +283,12 @@ namespace RDE {
 
             ImGui_ImplGlfw_InitForOpenGL(m_app_context->m_window, true);
             ImGui_ImplOpenGL3_Init("#version 410");
-        }
-
-        {
+        } {
             m_app_context->m_asset_database = std::make_shared<AssetDatabase>();
             m_app_context->m_asset_manager = std::make_unique<AssetManager>(*m_app_context->m_asset_database);
             m_app_context->m_file_watcher = std::make_unique<FileWatcher>();
-            m_app_context->m_file_watcher_event_queue = std::make_unique<ThreadSafeQueue<std::string>>();
-            auto path =  get_asset_path();
+            m_app_context->m_file_watcher_event_queue = std::make_unique<ThreadSafeQueue<std::string> >();
+            auto path = get_asset_path();
 
             m_app_context->m_file_watcher->start(path->string(), m_app_context->m_file_watcher_event_queue.get());
         }
@@ -292,8 +298,7 @@ namespace RDE {
     void Application::shutdown() {
         for (auto &layer: m_app_context->m_layer_stack) {
             layer->on_detach(*m_app_context);
-        }
-        {
+        } {
             ImGui_ImplOpenGL3_Shutdown();
             ImGui_ImplGlfw_Shutdown();
             ImGui::DestroyContext();
@@ -306,7 +311,7 @@ namespace RDE {
     }
 
     void Application::run(int width, int height, const char *title) {
-        if(!init(width, height, title)) {
+        if (!init(width, height, title)) {
             throw std::runtime_error("Failed to initialize the application");
         }
 
@@ -344,7 +349,7 @@ namespace RDE {
                 m_app_context->m_key_update_bindings[key]();
             }
         }
-        while(!m_app_context->m_file_watcher_event_queue->empty()) {
+        while (!m_app_context->m_file_watcher_event_queue->empty()) {
             auto file_path_opt = m_app_context->m_file_watcher_event_queue->try_pop();
             if (file_path_opt) {
                 const std::string &file_path = *file_path_opt;
@@ -359,14 +364,20 @@ namespace RDE {
             layer->on_update(*m_app_context);
         }
 
+        HierarchySystem::update_dirty_hierarchy(*m_app_context->m_registry);
+        TransformSystem::update_dirty_transforms(*m_app_context->m_registry);
+        BoundingVolumeSystem::update_dirty_bounding_volumes(*m_app_context->m_registry);
+        CameraSystem::update_dirty_cameras(*m_app_context->m_registry);
+
         // After all updates, reset the current frame states
-        m_app_context->m_keyboard_state.keys_pressed_last_frame = m_app_context->m_keyboard_state.keys_pressed_current_frame;
+        m_app_context->m_keyboard_state.keys_pressed_last_frame = m_app_context->m_keyboard_state.
+                keys_pressed_current_frame;
         m_app_context->m_keyboard_state.keys_repeated = std::vector<bool>(
-                m_app_context->m_keyboard_state.keys_pressed_current_frame.size(), false);
+            m_app_context->m_keyboard_state.keys_pressed_current_frame.size(), false);
         m_app_context->m_mouse_state.scroll_delta = {0.0f, 0.0f};
         m_app_context->m_mouse_state.buttons_last_frame = m_app_context->m_mouse_state.buttons_current_frame;
         m_app_context->m_mouse_state.buttons_current_frame = std::vector<Mouse::Button>(
-                m_app_context->m_mouse_state.buttons_current_frame.size(), Mouse::Button{});
+            m_app_context->m_mouse_state.buttons_current_frame.size(), Mouse::Button{});
     }
 
     void Application::on_render() {
@@ -431,7 +442,7 @@ int main() {
     RDE::Application app;
     try {
         app.run(1280, 720, "RDE Application");
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
