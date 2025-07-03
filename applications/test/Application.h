@@ -3,6 +3,7 @@
 #include "events/Event.h"
 #include "core/Mouse.h"
 #include "core/Keyboard.h"
+#include "core/SystemScheduler.h"
 
 #include "AssetManager.h"
 #include "AssetDatabase.h"
@@ -119,6 +120,7 @@ namespace RDE {
         std::unordered_map<int, std::function<void()>> m_key_update_bindings; // Key bindings for update actions
 
         LayerStack m_layer_stack; // Stack of layers for the application
+        std::unique_ptr<SystemScheduler> m_system_scheduler; // System scheduler for managing systems and their execution order
     };
 
     class Application {
@@ -138,7 +140,7 @@ namespace RDE {
 
         void shutdown();
 
-        void on_update();
+        void on_update(float delta_time);
 
         void on_render();
 

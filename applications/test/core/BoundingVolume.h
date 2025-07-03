@@ -4,20 +4,20 @@
 #include "Sphere.h"
 #include "Capsule.h"
 
-namespace RDE::BoundingVolume {
-    struct Dirty{};
+namespace RDE {
+    struct BoundingVolumeDirty{};
 
-    struct AABBComponent {
+    struct BoundingVolumeAABBComponent {
         AABB world;
         AABB local;
     };
 
-    struct SphereComponent {
+    struct BoundingVolumeSphereComponent {
         Sphere world;
         Sphere local;
     };
 
-    struct CapsuleComponent {
+    struct BoundingVolumeCapsuleComponent {
         Capsule world;
         Capsule local;
     };

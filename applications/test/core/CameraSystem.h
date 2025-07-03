@@ -1,19 +1,23 @@
 #pragma once
 
-#include <entt/entity/registry.hpp>
+#include "ISystem.h"
 
-namespace RDE::CameraSystem{
-    void init(entt::registry &registry);
+#include <entt/fwd.hpp>
 
-    void shutdown(entt::registry &registry);
+namespace RDE{
+    class CameraSystem : public ISystem{
+    public:
+        explicit CameraSystem(entt::registry &registry);
 
-    void update_dirty_cameras(entt::registry &registry);
+        void init() override;
 
-    entt::entity create_camera_entity(entt::registry &registry, entt::entity entity_id = entt::null);
+        void shutdown() override;
 
-    bool make_camera_entity_primary(entt::registry &registry, entt::entity entity_id);
+        void update(float delta_time) override;
+    private:
 
-    entt::entity get_primary_camera(entt::registry &registry);
+        void declare_dependencies(SystemDependencyBuilder &builder) override;
+        entt::registry &m_registry;
+    };
 
-    void set_camera_dirty(entt::registry &registry, entt::entity entity_id);
 }

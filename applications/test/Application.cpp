@@ -5,6 +5,7 @@
 #include "Log.h"
 #include "GetAssetPath.h"
 
+#include "core/Ticker.h"
 #include "core/TransformSystem.h"
 #include "core/CameraSystem.h"
 #include "core/HierarchySystem.h"
@@ -26,6 +27,8 @@ namespace RDE {
         m_app_context = std::make_shared<ApplicationContext>();
         m_app_context->m_registry = std::make_shared<entt::registry>();
         m_app_context->m_dispatcher = std::make_shared<entt::dispatcher>();
+        m_app_context->m_system_scheduler = std::make_unique<SystemScheduler>(*m_app_context->m_registry);
+
     }
 
     Application::~Application() {
@@ -244,7 +247,8 @@ namespace RDE {
             if (app_context.m_event_callback) {
                 app_context.m_event_callback(event);
             }
-        }); {
+        });
+        {
             // Initialize OpenGL context
             int version = gladLoadGL(glfwGetProcAddress);
             // Initialize GLAD (or your OpenGL function loader)
@@ -264,7 +268,8 @@ namespace RDE {
 
             // Enable depth testing
             glEnable(GL_DEPTH_TEST);
-        } {
+        }
+        {
             // Initialize ImGui
             IMGUI_CHECKVERSION();
             ImGui::CreateContext();
@@ -283,7 +288,8 @@ namespace RDE {
 
             ImGui_ImplGlfw_InitForOpenGL(m_app_context->m_window, true);
             ImGui_ImplOpenGL3_Init("#version 410");
-        } {
+        }
+        {
             m_app_context->m_asset_database = std::make_shared<AssetDatabase>();
             m_app_context->m_asset_manager = std::make_unique<AssetManager>(*m_app_context->m_asset_database);
             m_app_context->m_file_watcher = std::make_unique<FileWatcher>();
@@ -292,13 +298,36 @@ namespace RDE {
 
             m_app_context->m_file_watcher->start(path->string(), m_app_context->m_file_watcher_event_queue.get());
         }
+
+        {
+            auto &registry = *m_app_context->m_registry;
+            m_app_context->m_system_scheduler->register_system<HierarchySystem>(registry);
+            m_app_context->m_system_scheduler->register_system<TransformSystem>(registry);
+            m_app_context->m_system_scheduler->register_system<BoundingVolumeSystem>(registry);
+            m_app_context->m_system_scheduler->register_system<CameraSystem>(registry);
+            RDE_CORE_INFO("Registered systems: HierarchySystem, TransformSystem, BoundingVolumeSystem, CameraSystem");
+            m_app_context->m_system_scheduler->bake();
+            RDE_CORE_INFO("SystemScheduler baked successfully");
+        }
         return true;
     }
 
     void Application::shutdown() {
         for (auto &layer: m_app_context->m_layer_stack) {
             layer->on_detach(*m_app_context);
-        } {
+        }
+        {
+            m_app_context->m_file_watcher->stop();
+            m_app_context->m_file_watcher.reset();
+            m_app_context->m_file_watcher_event_queue.reset();
+            m_app_context->m_asset_manager.reset();
+            m_app_context->m_asset_database.reset();
+        }
+        {
+            m_app_context->m_system_scheduler->shutdown();
+            m_app_context->m_system_scheduler.reset();
+        }
+        {
             ImGui_ImplOpenGL3_Shutdown();
             ImGui_ImplGlfw_Shutdown();
             ImGui::DestroyContext();
@@ -315,6 +344,7 @@ namespace RDE {
             throw std::runtime_error("Failed to initialize the application");
         }
 
+        Ticker timer;
         while (!glfwWindowShouldClose(m_app_context->m_window) && m_app_context->m_is_running) {
             // Poll events
             glfwPollEvents();
@@ -329,8 +359,9 @@ namespace RDE {
                 m_app_context->m_is_minimized = false;
             }
 
+            float delta_time = timer.tick();
             // Render and update logic here
-            on_update();
+            on_update(delta_time);
 
             on_render();
 
@@ -343,7 +374,7 @@ namespace RDE {
         shutdown();
     }
 
-    void Application::on_update() {
+    void Application::on_update(float delta_time) {
         for (const auto key: m_app_context->m_keyboard_state.keys_held_this_frame) {
             if (m_app_context->m_key_update_bindings.find(key) != m_app_context->m_key_update_bindings.end()) {
                 m_app_context->m_key_update_bindings[key]();
@@ -359,25 +390,24 @@ namespace RDE {
             }
         }
 
+
+
         // Update layers
         for (auto &layer: m_app_context->m_layer_stack) {
             layer->on_update(*m_app_context);
         }
 
-        HierarchySystem::update_dirty_hierarchy(*m_app_context->m_registry);
-        TransformSystem::update_dirty_transforms(*m_app_context->m_registry);
-        BoundingVolumeSystem::update_dirty_bounding_volumes(*m_app_context->m_registry);
-        CameraSystem::update_dirty_cameras(*m_app_context->m_registry);
+        m_app_context->m_system_scheduler->execute(delta_time);
 
         // After all updates, reset the current frame states
         m_app_context->m_keyboard_state.keys_pressed_last_frame = m_app_context->m_keyboard_state.
                 keys_pressed_current_frame;
         m_app_context->m_keyboard_state.keys_repeated = std::vector<bool>(
-            m_app_context->m_keyboard_state.keys_pressed_current_frame.size(), false);
+                m_app_context->m_keyboard_state.keys_pressed_current_frame.size(), false);
         m_app_context->m_mouse_state.scroll_delta = {0.0f, 0.0f};
         m_app_context->m_mouse_state.buttons_last_frame = m_app_context->m_mouse_state.buttons_current_frame;
         m_app_context->m_mouse_state.buttons_current_frame = std::vector<Mouse::Button>(
-            m_app_context->m_mouse_state.buttons_current_frame.size(), Mouse::Button{});
+                m_app_context->m_mouse_state.buttons_current_frame.size(), Mouse::Button{});
     }
 
     void Application::on_render() {

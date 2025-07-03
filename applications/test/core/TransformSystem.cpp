@@ -1,42 +1,118 @@
 #include "TransformSystem.h"
-#include "Transform.h"
-#include "BoundingVolumeSystem.h"
-#include "CameraSystem.h"
-#include "Camera.h"
+#include "TransformUtils.h"
+#include "BoundingVolumeUtils.h"
+#include "CameraUtils.h"
+#include "Hierarchy.h"
+#include "SystemDependencyBuilder.h"
 
-namespace RDE::TransformSystem {
-    void set_dirty_on_change(entt::registry &registry, entt::entity entity_id) {
-        registry.emplace_or_replace<Transform::Dirty>(entity_id);
+#include <entt/entity/registry.hpp>
+#include <stack>
+
+namespace RDE {
+    namespace Detail {
+        inline void set_dirty_on_change(entt::registry &registry, entt::entity entity_id) {
+            registry.emplace_or_replace<TransformDirty>(entity_id);
+        }
     }
 
-    void init(entt::registry &registry) {
+    TransformSystem::TransformSystem(entt::registry &registry) : m_registry(registry) {
+
+    }
+
+    void TransformSystem::init() {
         // Initialize the Transform system by ensuring the necessary components are present
-        registry.on_construct<Transform::Component>().connect<&set_dirty_on_change>();
-        registry.on_update<Transform::Component>().connect<&set_dirty_on_change>();
+        m_registry.on_construct<TransformLocal>().connect<&Detail::set_dirty_on_change>();
+        m_registry.on_update<TransformLocal>().connect<&Detail::set_dirty_on_change>();
     }
 
-    void shutdown(entt::registry &registry) {
+    void TransformSystem::shutdown() {
         // Cleanup if necessary, currently nothing to do
-        registry.clear<Transform::Component>();
-        registry.clear<Transform::Dirty>();
+        m_registry.clear<TransformLocal>();
+        m_registry.clear<TransformWorld>();
+        m_registry.clear<TransformDirty>();
     }
 
-    void update_dirty_transforms(entt::registry &registry) {
-        auto view = registry.view<Transform::Component, Transform::Dirty>();
-        for (auto entity: view) {
-            auto &transform = view.get<Transform::Component>(entity);
-            transform.world_matrix = get_model_matrix(transform.parameters); // Update the world matrix
-
-            BoundingVolumeSystem::set_bounding_volume_dirty(registry, entity);
-            CameraSystem::set_camera_dirty(registry, entity);
+    bool IsRootOfDirtyTree(entt::registry &registry, entt::entity entity_id) {
+        if (auto *hierarchy = registry.try_get<Hierarchy>(entity_id)) {
+            // The entity is part of a hierarchy, check its parent.
+            if (registry.valid(hierarchy->parent)) {
+                // If the parent is valid AND also dirty, then we are NOT the root.
+                // The parent will process us when it gets its turn in this loop.
+                if (registry.all_of<TransformDirty>(hierarchy->parent)) {
+                    return false;
+                }
+            }
         }
-        registry.clear<Transform::Dirty>();
+        return true;
     }
 
-    void set_transform_dirty(entt::registry &registry, entt::entity entity_id) {
-        if (!registry.valid(entity_id) || !registry.all_of<Transform::Component>(entity_id)) {
-            return;
+    void TransformSystem::update(float delta_time) {
+        auto view = m_registry.view<TransformLocal, TransformDirty>();
+
+        for (auto entity : view) {
+            // We must check if the entity is still dirty, as it might have been
+            // processed already as a child of another dirty root.
+            if (!m_registry.all_of<TransformDirty>(entity)) {
+                continue;
+            }
+
+            if (IsRootOfDirtyTree(m_registry, entity)) {
+                // --- This is the new, combined logic ---
+                std::stack<entt::entity> stack;
+                stack.push(entity);
+
+                while (!stack.empty()) {
+                    entt::entity current_entity = stack.top();
+                    stack.pop();
+
+                    // --- 1. Calculate the matrix for the CURRENT node ---
+                    const auto& local_transform = m_registry.get<TransformLocal>(current_entity);
+                    glm::mat4 local_matrix = TransformUtils::GetModelMatrix(local_transform);
+
+                    glm::mat4 parent_world_matrix = glm::mat4(1.0f);
+                    if (auto* hierarchy = m_registry.try_get<Hierarchy>(current_entity)) {
+                        if (m_registry.valid(hierarchy->parent)) {
+                            // We can safely get this, as parents are always processed before children.
+                            parent_world_matrix = m_registry.get<TransformWorld>(hierarchy->parent).matrix;
+                        }
+                    }
+
+                    // Set the final world matrix for the current node
+                    auto& world_transform = m_registry.get_or_emplace<TransformWorld>(current_entity);
+                    world_transform.matrix = parent_world_matrix * local_matrix;
+
+                    // --- 2. Push its children onto the stack to be processed next ---
+                    if (auto* hierarchy = m_registry.try_get<Hierarchy>(current_entity)) {
+                        entt::entity child_iter = hierarchy->first_child;
+                        while (m_registry.valid(child_iter)) {
+                            stack.push(child_iter);
+                            child_iter = m_registry.get<Hierarchy>(child_iter).next_sibling;
+                        }
+                    }
+                }
+            }
         }
-        set_dirty_on_change(registry, entity_id);
+
+        // --- Dependency Propagation: AFTER all calculations are complete ---
+        // At this point, all WorldTransform matrices are up-to-date for this frame.
+        // It is now safe to tell other systems to update.
+        for (auto entity : view) {
+            BoundingVolumeUtils::SetBoundingVolumeDirty(m_registry, entity);
+            CameraUtils::SetCameraDirty(m_registry, entity);
+        }
+
+        // --- Final Cleanup ---
+        // Now that all work related to dirty transforms is done, clear the flags.
+        m_registry.clear<TransformDirty>();
+    }
+
+    void TransformSystem::declare_dependencies(RDE::SystemDependencyBuilder &builder) {
+        builder.reads<TransformLocal>();
+        builder.reads<TransformDirty>();
+
+        builder.writes<TransformDirty>();
+        builder.writes<TransformWorld>();
+        builder.writes<BoundingVolumeDirty>();
+        builder.writes<CameraComponent>();
     }
 }

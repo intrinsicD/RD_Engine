@@ -1,13 +1,23 @@
 #pragma once
 
-#include <entt/entity/registry.hpp>
+#include "ISystem.h"
 
-namespace RDE::TransformSystem{
-    void init(entt::registry &registry);
+#include <entt/fwd.hpp>
 
-    void shutdown(entt::registry &registry);
+namespace RDE{
+    class TransformSystem : public ISystem {
+    public:
+        explicit TransformSystem(entt::registry &registry);
 
-    void update_dirty_transforms(entt::registry &registry);
+        void init() override;
 
-    void set_transform_dirty(entt::registry &registry, entt::entity entity_id);
+        void shutdown() override;
+
+        void update(float delta_time) override;
+
+    private:
+        void declare_dependencies(SystemDependencyBuilder &builder) override;
+
+        entt::registry &m_registry;
+    };
 }

@@ -1,13 +1,25 @@
 #pragma once
 
-#include <entt/entity/registry.hpp>
+#include "ISystem.h"
 
-namespace RDE::BoundingVolumeSystem {
-    void init(entt::registry &registry);
+#include <entt/fwd.hpp>
 
-    void shutdown(entt::registry &registry);
+namespace RDE {
+    class BoundingVolumeSystem : public ISystem {
+    public:
+        explicit BoundingVolumeSystem(entt::registry &registry);
 
-    void update_dirty_bounding_volumes(entt::registry &registry);
+        void init() override;
 
-    void set_bounding_volume_dirty(entt::registry &registry, entt::entity entity);
+        void shutdown() override;
+
+        void update(float delta_time) override;
+
+    private:
+        void declare_dependencies(SystemDependencyBuilder &builder) override;
+
+        entt::registry &m_registry;
+    };
+
+
 }

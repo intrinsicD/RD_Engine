@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 #include <limits>
 #include <optional>
+#include <array>
 
 namespace RDE {
     struct AABB {

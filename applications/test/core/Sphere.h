@@ -7,7 +7,7 @@
 namespace RDE {
     struct Sphere {
         static Sphere Create(const glm::vec3 &center) {
-            return Sphere(center, 0.0f);
+            return {center, 0.0f};
         }
 
         glm::vec3 center = glm::vec3(0.0f); // Center of the sphere

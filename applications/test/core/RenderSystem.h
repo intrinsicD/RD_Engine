@@ -2,12 +2,12 @@
 
 #include "ISystem.h"
 
-#include <entt/entity/registry.hpp>
+#include <entt/fwd.hpp>
 
 namespace RDE {
-    class HierarchySystem : public ISystem {
+    class RenderSystem : public ISystem {
     public:
-        explicit HierarchySystem(entt::registry &registry);
+        explicit RenderSystem(entt::registry &registry);
 
         void init() override;
 
