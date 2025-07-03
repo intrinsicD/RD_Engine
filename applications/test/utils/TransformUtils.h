@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Transform.h"
+#include "../components/TransformComponent.h"
 
 #include <entt/fwd.hpp>
 

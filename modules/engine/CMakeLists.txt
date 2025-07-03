@@ -37,7 +37,7 @@ target_sources(Engine
 
 target_link_libraries(Engine
         PUBLIC
-        EnTT
+        EnTT::EnTT
         spdlog
         RDE::AssetSystem
         RDE::Renderer

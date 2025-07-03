@@ -20,18 +20,18 @@ target_include_directories(Test PUBLIC
 
 target_sources(Test PRIVATE
         Application.cpp
-
         core/SystemScheduler.cpp
-        core/CameraSystem.cpp
-        core/TransformSystem.cpp
-        core/HierarchySystem.cpp
-        core/BoundingVolumeSystem.cpp
-        core/RenderSystem.cpp
 
-        core/HierarchyUtils.cpp
-        core/TransformUtils.cpp
-        core/CameraUtils.cpp
-        core/BoundingVolumeUtils.cpp
+        systems/CameraSystem.cpp
+        systems/TransformSystem.cpp
+        systems/HierarchySystem.cpp
+        systems/BoundingVolumeSystem.cpp
+        systems/RenderSystem.cpp
+
+        utils/HierarchyUtils.cpp
+        utils/TransformUtils.cpp
+        utils/CameraUtils.cpp
+        utils/BoundingVolumeUtils.cpp
 
         Platform.cpp
         ${IMGUI_SOURCES}

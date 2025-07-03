@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Camera.h"
+#include "Cameracomponent.h"
 #include "Ray.h"
 
 namespace RDE::Camera {

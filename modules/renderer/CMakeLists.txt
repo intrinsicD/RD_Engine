@@ -9,7 +9,6 @@ add_library(RDE::Renderer ALIAS Renderer)
 target_include_directories(Renderer
         PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
-        ${glm_SOURCE_DIR}
 )
 
 target_sources(Renderer
@@ -23,4 +22,5 @@ target_link_libraries(Renderer
         RDE::Core
         RDE::AssetSystem
         glfw
+        glm::glm
 )

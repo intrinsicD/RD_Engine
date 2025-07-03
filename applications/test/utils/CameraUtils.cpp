@@ -2,6 +2,7 @@
 #include "TransformUtils.h"
 
 #include <entt/entity/registry.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/matrix_decompose.hpp>
 
 namespace RDE::CameraUtils {
@@ -108,9 +109,12 @@ namespace RDE::CameraUtils {
         }
         if (!registry.valid(entity_id)) return entt::null;
 
-        registry.get_or_emplace<CameraProjectionParameters>(entity_id);
-        registry.get_or_emplace<TransformLocal>(entity_id);
-
+        if (!registry.all_of<CameraProjectionParameters>(entity_id)) {
+            registry.emplace<CameraProjectionParameters>(entity_id);
+        }
+        if (!registry.all_of<TransformLocal>(entity_id)) {
+            registry.emplace<TransformLocal>(entity_id);
+        }
         return entity_id;
     }
 

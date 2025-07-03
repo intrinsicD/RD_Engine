@@ -1,5 +1,5 @@
 #include "HierarchyUtils.h"
-#include "Hierarchy.h"
+#include "../components/HierarchyComponent.h"
 
 #include <entt/entity/registry.hpp>
 
@@ -10,9 +10,11 @@ namespace RDE::HierarchyUtils{
         }
 
         // Ensure both entities have the hierarchy component
-        registry.get_or_emplace<Hierarchy>(child_entity);
-        if (registry.valid(parent_entity)) {
-            registry.get_or_emplace<Hierarchy>(parent_entity);
+        if (!registry.all_of<Hierarchy>(child_entity)) {
+            registry.emplace<Hierarchy>(child_entity);
+        }
+        if (registry.valid(parent_entity) && !registry.all_of<Hierarchy>(parent_entity)) {
+            registry.emplace<Hierarchy>(parent_entity);
         }
 
         // First, detach from any existing parent

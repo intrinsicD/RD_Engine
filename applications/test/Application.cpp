@@ -6,10 +6,10 @@
 #include "GetAssetPath.h"
 
 #include "core/Ticker.h"
-#include "core/TransformSystem.h"
-#include "core/CameraSystem.h"
-#include "core/HierarchySystem.h"
-#include "core/BoundingVolumeSystem.h"
+#include "systems/TransformSystem.h"
+#include "systems/CameraSystem.h"
+#include "systems/HierarchySystem.h"
+#include "systems/BoundingVolumeSystem.h"
 
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>

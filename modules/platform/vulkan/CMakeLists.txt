@@ -10,7 +10,7 @@ target_include_directories(VulkanPlatform
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         PRIVATE
         ${PROJECT_SOURCE_DIR}/modules/renderer/include
-        ${VMA_SOURCE_DIR}/include
+       ${VMA_SOURCE_DIR}/include
 )
 
 target_sources(VulkanPlatform PRIVATE

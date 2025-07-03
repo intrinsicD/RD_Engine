@@ -1,13 +1,13 @@
 #pragma once
 
-#include "ISystem.h"
+#include "../core/ISystem.h"
 
 #include <entt/fwd.hpp>
 
-namespace RDE{
-    class TransformSystem : public ISystem {
+namespace RDE {
+    class BoundingVolumeSystem : public ISystem {
     public:
-        explicit TransformSystem(entt::registry &registry);
+        explicit BoundingVolumeSystem(entt::registry &registry);
 
         void init() override;
 
@@ -20,4 +20,6 @@ namespace RDE{
 
         entt::registry &m_registry;
     };
+
+
 }

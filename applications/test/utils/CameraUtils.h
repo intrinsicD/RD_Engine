@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Camera.h"
+#include "../components/CameraComponent.h"
 
 #include <entt/fwd.hpp>
 

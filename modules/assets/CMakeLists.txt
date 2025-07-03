@@ -22,6 +22,6 @@ target_link_libraries(AssetSystem
         PUBLIC
         RAL
         efsw
-        EnTT
+        EnTT::EnTT
         RDE::Core
 )

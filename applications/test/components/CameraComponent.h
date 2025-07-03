@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Plane.h"
+#include "../geometry/Plane.h"
 
 #include <glm/glm.hpp>
 #include <variant>
@@ -49,7 +49,6 @@ namespace RDE {
     };
 
     struct CameraComponent{
-        CameraMatrices matrices; // Contains the view and projection matrices
         CameraProjectionParameters projection_params; // Projection parameters of the camera
     };
 }

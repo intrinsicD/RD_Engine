@@ -1,7 +1,7 @@
-#include "RenderSystem.h"
-#include "SystemDependencyBuilder.h"
-#include "Transform.h"
-#include "Camera.h"
+#include "systems/RenderSystem.h"
+#include "core/SystemDependencyBuilder.h"
+#include "components/TransformComponent.h"
+#include "components/CameraComponent.h"
 
 #include <entt/entity/registry.hpp>
 

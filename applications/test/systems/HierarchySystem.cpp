@@ -1,7 +1,7 @@
-#include "HierarchySystem.h"
-#include "Hierarchy.h"
-#include "Transform.h"
-#include "SystemDependencyBuilder.h"
+#include "systems/HierarchySystem.h"
+#include "components/HierarchyComponent.h"
+#include "components/TransformComponent.h"
+#include "core/SystemDependencyBuilder.h"
 
 #include <stack>
 

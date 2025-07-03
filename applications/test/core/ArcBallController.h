@@ -1,8 +1,0 @@
-//
-// Created by alex on 03.07.25.
-//
-
-#ifndef RD_ENGINE_ARCBALLCONTROLLER_H
-#define RD_ENGINE_ARCBALLCONTROLLER_H
-
-#endif //RD_ENGINE_ARCBALLCONTROLLER_H

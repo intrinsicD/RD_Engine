@@ -1,9 +1,10 @@
 #include "BoundingVolumeSystem.h"
-#include "BoundingVolume.h"
-#include "Transform.h"
-#include "SystemDependencyBuilder.h"
+#include "../components/BoundingVolumeComponent.h"
+#include "../components/TransformComponent.h"
+#include "../core/SystemDependencyBuilder.h"
 
 #include <entt/entity/registry.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/component_wise.hpp>
 
 namespace RDE {

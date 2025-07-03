@@ -1,13 +1,13 @@
 #pragma once
 
-#include "ISystem.h"
+#include "../core/ISystem.h"
 
-#include <entt/fwd.hpp>
+#include <entt/entity/registry.hpp>
 
 namespace RDE {
-    class RenderSystem : public ISystem {
+    class HierarchySystem : public ISystem {
     public:
-        explicit RenderSystem(entt::registry &registry);
+        explicit HierarchySystem(entt::registry &registry);
 
         void init() override;
 

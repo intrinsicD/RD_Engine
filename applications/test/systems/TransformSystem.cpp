@@ -1,9 +1,9 @@
-#include "TransformSystem.h"
-#include "TransformUtils.h"
-#include "BoundingVolumeUtils.h"
-#include "CameraUtils.h"
-#include "Hierarchy.h"
-#include "SystemDependencyBuilder.h"
+#include "systems/TransformSystem.h"
+#include "utils/TransformUtils.h"
+#include "utils/BoundingVolumeUtils.h"
+#include "utils/CameraUtils.h"
+#include "components/HierarchyComponent.h"
+#include "core/SystemDependencyBuilder.h"
 
 #include <entt/entity/registry.hpp>
 #include <stack>
