@@ -3,7 +3,7 @@
 #pragma once
 
 #include "Application.h"
-#include "../../log/include/Log.h"
+#include "Log.h"
 
 // Forward declare the function the client must implement.
 extern RDE::Application *RDE::CreateApplication();

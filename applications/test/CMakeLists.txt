@@ -48,6 +48,7 @@ target_link_libraries(Test
         glm
         glad_gl_core
         OpenGL::GL
+        #daxa::daxa
 )
 
 add_subdirectory(assets)

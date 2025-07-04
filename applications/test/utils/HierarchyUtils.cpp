@@ -1,5 +1,5 @@
 #include "HierarchyUtils.h"
-#include "../components/HierarchyComponent.h"
+#include "components/HierarchyComponent.h"
 
 #include <entt/entity/registry.hpp>
 

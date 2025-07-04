@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "../../../log/include/Log.h"
+#include "Log.h"
 
 #include <spdlog/fmt/fmt.h>
 #include <glad/gl.h>

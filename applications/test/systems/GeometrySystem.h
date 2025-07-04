@@ -4,22 +4,21 @@
 
 #include <entt/fwd.hpp>
 
-namespace RDE {
-    class BoundingVolumeSystem : public ISystem {
+namespace RDE{
+    class GeometrySystem : public ISystem {
     public:
-        explicit BoundingVolumeSystem(entt::registry &registry);
+        GeometrySystem(entt::registry &registry);
+
+        ~GeometrySystem() override = default;
 
         void init() override;
 
-        void shutdown() override;
-
         void update(float delta_time) override;
 
+        void shutdown() override;
     private:
         void declare_dependencies(SystemDependencyBuilder &builder) override;
 
         entt::registry &m_registry;
     };
-
-
 }

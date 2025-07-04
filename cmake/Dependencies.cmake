@@ -20,7 +20,8 @@ FetchContent_Declare(EnTT GIT_REPOSITORY https://github.com/skypjack/entt.git GI
 FetchContent_Declare(tinyobjloader GIT_REPOSITORY https://github.com/tinyobjloader/tinyobjloader.git GIT_TAG v2.0.0rc13)
 FetchContent_Declare(yaml-cpp GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git GIT_TAG master)
 FetchContent_Declare(efsw GIT_REPOSITORY https://github.com/SpartanJ/efsw.git GIT_TAG 1.4.1)
-FetchContent_Declare(VMA GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git GIT_TAG v3.0.1)
+FetchContent_Declare(VulkanMemoryAllocator GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git GIT_TAG v3.0.1)
+FetchContent_Declare(daxa GIT_REPOSITORY https://github.com/Ipotrick/Daxa GIT_TAG 3.1)
 
 # -----------------------------------------------------------------------------
 # 2. CONFIGURE & POPULATE DEPENDENCIES
@@ -61,4 +62,6 @@ FetchContent_MakeAvailable(imgui)
 
 # --- All other dependencies ---
 # Most of these are header-only or have simple builds.
-FetchContent_MakeAvailable(spdlog ImGuiFileDialog EnTT tinyobjloader yaml-cpp VMA stb_image efsw glm)
+FetchContent_MakeAvailable(VulkanMemoryAllocator)
+#FetchContent_MakeAvailable(daxa)
+FetchContent_MakeAvailable(spdlog ImGuiFileDialog EnTT tinyobjloader yaml-cpp stb_image efsw glm)

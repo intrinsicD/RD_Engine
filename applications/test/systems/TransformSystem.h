@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../core/ISystem.h"
+#include "core/ISystem.h"
 
 #include <entt/fwd.hpp>
 

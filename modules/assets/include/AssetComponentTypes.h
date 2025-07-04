@@ -2,6 +2,7 @@
 
 //#include "Properties.h"
 #include "AssetHandle.h"
+#include "AttributeRegistry.h"
 #include "ral/Common.h"
 
 #include <string>
@@ -41,12 +42,15 @@ namespace RDE {
     };
 
     struct AssetGpuGeometry {
-        RAL::BufferHandle vertex_buffer;
-        RAL::BufferHandle index_buffer; // Optional
+        /// @brief get the attribute id from the attribute registry
+        std::unordered_map<AttributeID, RAL::BufferHandle> attribute_buffers;
+
+        /// @brief Handle to the optional index buffer.
+        RAL::BufferHandle index_buffer;
 
         uint32_t vertex_count = 0;
-        uint32_t index_count = 0;   // Use this instead of element_count for clarity
-        RAL::IndexType index_type = RAL::IndexType::UINT32; // Store the index type
+        uint32_t index_count = 0;
+        RAL::IndexType index_type = RAL::IndexType::UINT32;
     };
 
     struct AssetGpuPipeline {

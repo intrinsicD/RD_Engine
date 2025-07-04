@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../geometry/Plane.h"
+#include "geometry/Plane.h"
 
 #include <glm/glm.hpp>
 #include <variant>

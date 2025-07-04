@@ -1,7 +1,7 @@
 #include "BoundingVolumeSystem.h"
-#include "../components/BoundingVolumeComponent.h"
-#include "../components/TransformComponent.h"
-#include "../core/SystemDependencyBuilder.h"
+#include "components/BoundingVolumeComponent.h"
+#include "components/TransformComponent.h"
+#include "core/SystemDependencyBuilder.h"
 
 #include <entt/entity/registry.hpp>
 #define GLM_ENABLE_EXPERIMENTAL

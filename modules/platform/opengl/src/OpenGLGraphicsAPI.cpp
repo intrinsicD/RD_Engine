@@ -3,7 +3,7 @@
 #include "OpenGLGraphicsAPI.h"
 #include "OpenGLDebug.h"
 #include "Base.h"
-#include "../../../log/include/Log.h"
+#include "Log.h"
 
 #include <glad/gl.h>
 

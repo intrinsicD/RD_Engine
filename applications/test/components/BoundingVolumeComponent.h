@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../geometry/AABB.h"
-#include "../geometry/Sphere.h"
-#include "../geometry/Capsule.h"
+#include "geometry/AABB.h"
+#include "geometry/Sphere.h"
+#include "geometry/Capsule.h"
 
 namespace RDE {
     struct BoundingVolumeDirty{};

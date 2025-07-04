@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../components/BoundingVolumeComponent.h"
+#include "components/BoundingVolumeComponent.h"
 
 #include <entt/fwd.hpp>
 
