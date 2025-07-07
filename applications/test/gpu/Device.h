@@ -1,6 +1,6 @@
 #pragma once
 
-#include <daxa>
+#include <cstdint>
 
 namespace RDE {
 #define GPU_HANDLE(Name) struct Name { uint64_t id = 0; bool is_valid() const { return id != 0; } };
@@ -42,6 +42,16 @@ namespace RDE {
         const char *name = nullptr; // Optional name for debugging
     };
 
+    struct CommandSubmitInfo {
+        // This struct can be extended to include command buffers, semaphores, etc.
+        // For now, it's empty as a placeholder.
+    };
+
+    struct PresentInfo {
+        // This struct can be extended to include swapchain information, etc.
+        // For now, it's empty as a placeholder.
+    };
+
     class Device {
     public:
         virtual ~Device() = default;
@@ -60,7 +70,9 @@ namespace RDE {
         virtual void destroy_program(ProgramHandle handle) = 0;
 
         // TODO later: Command submission
-        virtual void submit_commands() = 0;
+        virtual void submit_commands(const CommandSubmitInfo &) = 0;
+
+        virtual void present(const PresentInfo &) = 0;
 
         // TODO later:  Synchronization
         virtual void wait_for_idle() = 0;
