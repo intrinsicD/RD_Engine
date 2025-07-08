@@ -144,11 +144,18 @@ namespace RDE{
 
     GlfwVulkanWindow::~GlfwVulkanWindow() {
         shutdown();
-        // Could add logic to terminate GLFW when the last window is destroyed.
     }
 
     void GlfwVulkanWindow::poll_events() {
         glfwPollEvents();
+    }
+
+    void GlfwVulkanWindow::set_vsync(bool enabled) {
+        if (enabled)
+            glfwSwapInterval(1);
+        else
+            glfwSwapInterval(0);
+        m_data.vsync = enabled;
     }
 
     bool GlfwVulkanWindow::should_close() {
@@ -160,5 +167,9 @@ namespace RDE{
             glfwDestroyWindow(m_window);
             m_window = nullptr;
         }
+    }
+
+    void GlfwVulkanWindow::swap_buffers() {
+        glfwSwapBuffers(m_window);
     }
 }

@@ -1,13 +1,14 @@
 // RDE_Project/modules/platform/glfw/GlfwWindow.cpp
 
-#include <glad/gl.h>
-#include <GLFW/glfw3.h>
 
 #include "GlfwOpenGLWindow.h"
-#include "Log.h"
-#include "events/ApplicationEvent.h"
-#include "events/MouseEvent.h"
-#include "events/KeyEvent.h"
+#include "core/Log.h"
+#include "core/events/ApplicationEvent.h"
+#include "core/events/MouseEvent.h"
+#include "core/events/KeyEvent.h"
+
+#include <glad/gl.h>
+#include <GLFW/glfw3.h>
 
 namespace RDE {
     static void InitializeGLFW() {
@@ -29,8 +30,8 @@ namespace RDE {
         RDE_CORE_ERROR("GLFW Error ({}): {}", error, description);
     }
 
-    std::shared_ptr<IWindow> IWindow::Create(const WindowConfig &window_config) {
-        return std::make_shared<GlfwOpenGLWindow>(window_config);
+    std::unique_ptr<IWindow> IWindow::Create(const WindowConfig &config) {
+        return std::make_unique<GlfwOpenGLWindow>(config);
     }
 
     GlfwOpenGLWindow::GlfwOpenGLWindow(const WindowConfig &window_config) : m_window(nullptr) {
@@ -40,43 +41,16 @@ namespace RDE {
 
         InitializeGLFW();
         glfwSetErrorCallback(GlfwErrorCallback);
+
         m_window = glfwCreateWindow(m_data.width, m_data.height, m_data.title.c_str(), nullptr, nullptr);
         if (!m_window) {
             throw std::runtime_error("Failed to create GLFW window!");
         }
-    }
-
-    GlfwOpenGLWindow::~GlfwOpenGLWindow() {
-        shutdown();
-    }
-
-    bool GlfwOpenGLWindow::init() {
-        RDE_CORE_INFO("Creating window {} ({}, {})", m_data.title, m_data.width, m_data.height);
-
-        if (!s_glfw_initialized) {
-            int success = glfwInit();
-            RDE_CORE_ASSERT(success, "Could not initialize GLFW!");
-            if (!success) return false;
-
-            glfwSetErrorCallback(GlfwErrorCallback);
-            s_glfw_initialized = true;
-        }
-
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-        m_window = glfwCreateWindow((int) m_data.width, (int) m_data.height, m_data.title.c_str(), nullptr, nullptr);
 
         glfwMakeContextCurrent(m_window);
-        int status = gladLoadGL((GLADloadfunc) glfwGetProcAddress);
-        RDE_CORE_ASSERT(status, "Failed to initialize Glad!");
 
-        glfwSetWindowUserPointer(m_window, &m_data);
-        set_vsync(true);
+        glfwSetWindowUserPointer(m_window, this); // Set the user pointer to this Application instance
 
-        // Set GLFW callbacks
         glfwSetWindowSizeCallback(m_window, [](GLFWwindow *window, int width, int height) {
             WindowData &data = *(WindowData *) glfwGetWindowUserPointer(window);
             data.width = width;
@@ -173,20 +147,17 @@ namespace RDE {
                 data.event_callback(event);
             }
         });
-        return true;
+
+        int status = gladLoadGL((GLADloadfunc) glfwGetProcAddress);
+        RDE_CORE_ASSERT(status, "Failed to initialize Glad!");
     }
 
-    void GlfwOpenGLWindow::shutdown() {
-        RDE_CORE_INFO("Shutting down window {}", m_data.title);
-        glfwDestroyWindow(m_window);
+    GlfwOpenGLWindow::~GlfwOpenGLWindow() {
+        shutdown();
     }
 
     void GlfwOpenGLWindow::poll_events() {
         glfwPollEvents();
-    }
-
-    void GlfwOpenGLWindow::on_update() {
-
     }
 
     void GlfwOpenGLWindow::set_vsync(bool enabled) {
@@ -197,12 +168,15 @@ namespace RDE {
         m_data.vsync = enabled;
     }
 
-    bool GlfwOpenGLWindow::is_vsync() const {
-        return m_data.vsync;
+    bool GlfwOpenGLWindow::should_close() {
+        return glfwWindowShouldClose(m_window);
     }
 
-    void GlfwOpenGLWindow::close() {
-        glfwSetWindowShouldClose(m_window, true);
+    void GlfwOpenGLWindow::shutdown() {
+        if (m_window) {
+            glfwDestroyWindow(m_window);
+            m_window = nullptr;
+        }
     }
 
     void GlfwOpenGLWindow::swap_buffers() {

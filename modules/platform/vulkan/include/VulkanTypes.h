@@ -20,6 +20,7 @@ namespace RDE {
         VkSwapchainKHR handle{VK_NULL_HANDLE};
         VkFormat imageFormat;
         VkExtent2D extent;
+        VkImageView imageView;
         std::vector<VkImage> images;
         std::vector<VkImageView> imageViews;
     };
@@ -31,6 +32,18 @@ namespace RDE {
     struct VulkanPipeline {
         VkPipeline handle{VK_NULL_HANDLE};
         VkPipelineLayout layout{VK_NULL_HANDLE};
+    };
+
+    struct VulkanSampler {
+        VkSampler handle{VK_NULL_HANDLE};
+    };
+
+    struct VulkanDescriptorSetLayout {
+        VkDescriptorSetLayout handle{VK_NULL_HANDLE};
+    };
+
+    struct VulkanDescriptorSet {
+        VkDescriptorSet handle{VK_NULL_HANDLE};
     };
     // ... other concrete types later
 }

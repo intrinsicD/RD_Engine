@@ -2,38 +2,36 @@
 
 #pragma once
 
-#include "IWindow.h"
+#include "core/IWindow.h"
 
 struct GLFWwindow;
 
 namespace RDE {
     class GlfwOpenGLWindow : public IWindow {
     public:
-        GlfwOpenGLWindow(const WindowConfig &window_config);
+        explicit GlfwOpenGLWindow(const WindowConfig &window_config = WindowConfig());
 
         ~GlfwOpenGLWindow() override;
 
-        bool init() override;
+        void set_event_callback(const EventCallbackFn &callback) override { m_data.event_callback = callback; }
 
         void poll_events() override;
 
-        void on_update() override;
+        bool should_close() override;
 
-        unsigned int get_width() const override { return m_data.width; }
+        void swap_buffers() override;
 
-        unsigned int get_height() const override { return m_data.height; }
+        [[nodiscard]] const char *get_title() const override { return m_data.title.c_str(); }
 
-        void set_event_callback(const EventCallbackFn &callback) override { m_data.event_callback = callback; }
+        [[nodiscard]] int get_width() const override { return m_data.width; }
+
+        [[nodiscard]] int get_height() const override { return m_data.height; }
+
+        [[nodiscard]] void *get_native_window() const override { return m_window; }
 
         void set_vsync(bool enabled) override;
 
-        bool is_vsync() const override;
-
-        void *get_native_window() const override { return m_window; }
-
-        void close() override;
-
-        void swap_buffers() override;
+        [[nodiscard]] bool is_vsync() const override { return m_data.vsync; }
 
     private:
         void shutdown();

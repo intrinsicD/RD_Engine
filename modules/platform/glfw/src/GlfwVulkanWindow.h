@@ -19,21 +19,29 @@ namespace RDE {
 
         bool should_close() override;
 
+        void swap_buffers() override;
+
+        [[nodiscard]] const char *get_title() const override { return m_data.title.c_str(); }
+
         [[nodiscard]] int get_width() const override { return m_data.width; }
 
         [[nodiscard]] int get_height() const override { return m_data.height; }
 
         [[nodiscard]] void *get_native_handle() const override { return m_window; }
 
-    private:
+        void set_vsync(bool enabled) override;
 
+        [[nodiscard]] bool is_vsync() const override { return m_data.vsync; }
+
+    private:
         void shutdown();
 
-        GLFWwindow *m_window;
+        GLFWwindow *m_window = nullptr;
 
         struct WindowData {
             std::string title;
             int width, height;
+            bool vsync;
             EventCallbackFn event_callback;
         };
 

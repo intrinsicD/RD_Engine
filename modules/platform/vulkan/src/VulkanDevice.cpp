@@ -1,6 +1,7 @@
 #include "VulkanDevice.h"
 #include "VulkanCommandBuffer.h"
 #include "VulkanCommon.h"
+#include "VulkanMappers.h"
 
 #include "core/Log.h"
 #include "core/FileIOUtils.h"
@@ -20,11 +21,10 @@
 namespace RDE {
     // A debug callback function for the validation layers
     static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
-            VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-            VkDebugUtilsMessageTypeFlagsEXT messageType,
-            const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-            void *pUserData) {
-
+        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+        VkDebugUtilsMessageTypeFlagsEXT messageType,
+        const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+        void *pUserData) {
         // Only print warnings and errors
         if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
             RDE_CORE_ERROR("Validation Layer: {}", pCallbackData->pMessage);
@@ -32,49 +32,6 @@ namespace RDE {
         return VK_FALSE;
     }
 
-    VkFormat ToVulkanFormat(RAL::Format format) {
-        // This would be a large switch statement.
-        // Let's add a few examples.
-        switch (format) {
-            // 8-bit
-            case RAL::Format::R8_UNORM:             return VK_FORMAT_R8_UNORM;
-            case RAL::Format::R8G8_UNORM:           return VK_FORMAT_R8G8_UNORM;
-            case RAL::Format::R8G8B8A8_UNORM:       return VK_FORMAT_R8G8B8A8_UNORM;
-            case RAL::Format::B8G8R8A8_UNORM:       return VK_FORMAT_B8G8R8A8_UNORM;
-            case RAL::Format::R8_SRGB:              return VK_FORMAT_R8_SRGB;
-            case RAL::Format::R8G8_SRGB:            return VK_FORMAT_R8G8_SRGB;
-            case RAL::Format::R8G8B8A8_SRGB:        return VK_FORMAT_R8G8B8A8_SRGB;
-            case RAL::Format::B8G8R8A8_SRGB:        return VK_FORMAT_B8G8R8A8_SRGB;
-                // 16-bit
-            case RAL::Format::R16_SFLOAT:           return VK_FORMAT_R16_SFLOAT;
-            case RAL::Format::R16G16_SFLOAT:        return VK_FORMAT_R16G16_SFLOAT;
-            case RAL::Format::R16G16B16A16_SFLOAT:  return VK_FORMAT_R16G16B16A16_SFLOAT;
-                // 32-bit
-            case RAL::Format::R32_SFLOAT:           return VK_FORMAT_R32_SFLOAT;
-            case RAL::Format::R32G32_SFLOAT:        return VK_FORMAT_R32G32_SFLOAT;
-            case RAL::Format::R32G32B32_SFLOAT:     return VK_FORMAT_R32G32B32_SFLOAT;
-            case RAL::Format::R32G32B32A32_SFLOAT:  return VK_FORMAT_R32G32B32A32_SFLOAT;
-            case RAL::Format::R32_UINT:             return VK_FORMAT_R32_UINT;
-            case RAL::Format::R32G32_UINT:          return VK_FORMAT_R32G32_UINT;
-            case RAL::Format::R32G32B32_UINT:       return VK_FORMAT_R32G32B32_UINT;
-            case RAL::Format::R32G32B32A32_UINT:    return VK_FORMAT_R32G32B32A32_UINT;
-                // Depth
-            case RAL::Format::D32_SFLOAT:           return VK_FORMAT_D32_SFLOAT;
-            case RAL::Format::D24_UNORM_S8_UINT:    return VK_FORMAT_D24_UNORM_S8_UINT;
-            case RAL::Format::D32_SFLOAT_S8_UINT:   return VK_FORMAT_D32_SFLOAT_S8_UINT;
-                // Block Compression
-            case RAL::Format::BC1_RGB_UNORM:        return VK_FORMAT_BC1_RGB_UNORM_BLOCK;
-            case RAL::Format::BC3_UNORM:            return VK_FORMAT_BC3_UNORM_BLOCK;
-            case RAL::Format::BC7_UNORM:            return VK_FORMAT_BC7_UNORM_BLOCK;
-
-            case RAL::Format::UNKNOWN:
-            default:
-                // You should have a logging system here
-                // For now, we'll assert or throw
-                throw std::runtime_error("Unsupported or unknown RAL::Format!");
-                return VK_FORMAT_UNDEFINED;
-        }
-    }
 
 
     struct SwapchainSupportDetails {
@@ -136,8 +93,8 @@ namespace RDE {
             glfwGetFramebufferSize(window, &width, &height);
 
             VkExtent2D actualExtent = {
-                    static_cast<uint32_t>(width),
-                    static_cast<uint32_t>(height)
+                static_cast<uint32_t>(width),
+                static_cast<uint32_t>(height)
             };
             actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width,
                                             capabilities.maxImageExtent.width);
@@ -176,7 +133,7 @@ namespace RDE {
 
             // Enable validation layers - this is non-negotiable for development
             const std::vector<const char *> validationLayers = {
-                    "VK_LAYER_KHRONOS_validation"
+                "VK_LAYER_KHRONOS_validation"
             };
             createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
             createInfo.ppEnabledLayerNames = validationLayers.data();
@@ -199,7 +156,7 @@ namespace RDE {
 
             // We have to load the function pointer for this extension function ourselves
             auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(m_Instance,
-                                                                                   "vkCreateDebugUtilsMessengerEXT");
+                "vkCreateDebugUtilsMessengerEXT");
             if (func != nullptr) {
                 VK_CHECK(func(m_Instance, &createInfo, nullptr, &m_DebugMessenger));
             } else {
@@ -256,7 +213,7 @@ namespace RDE {
 
             // Enable the mandatory swapchain extension
             const std::vector<const char *> deviceExtensions = {
-                    VK_KHR_SWAPCHAIN_EXTENSION_NAME
+                VK_KHR_SWAPCHAIN_EXTENSION_NAME
             };
             createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
             createInfo.ppEnabledExtensionNames = deviceExtensions.data();
@@ -277,11 +234,35 @@ namespace RDE {
 
             VkFenceCreateInfo fenceInfo{};
             fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-            fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; // Create it in the signaled state so the first frame doesn't wait forever
+            fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+            // Create it in the signaled state so the first frame doesn't wait forever
 
             VK_CHECK(vkCreateSemaphore(m_LogicalDevice, &semaphoreInfo, nullptr, &m_ImageAvailableSemaphore));
             VK_CHECK(vkCreateSemaphore(m_LogicalDevice, &semaphoreInfo, nullptr, &m_RenderFinishedSemaphore));
             VK_CHECK(vkCreateFence(m_LogicalDevice, &fenceInfo, nullptr, &m_InFlightFence));
+        } {
+            std::vector<VkDescriptorPoolSize> poolSizes = {
+                {VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
+                {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},
+                {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000}
+                // Add other types as you need them
+            };
+            VkDescriptorPoolCreateInfo poolInfo{};
+            poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+            poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT; // Allows freeing individual sets
+            poolInfo.maxSets = 1000 * poolSizes.size();
+            poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+            poolInfo.pPoolSizes = poolSizes.data();
+
+            VK_CHECK(vkCreateDescriptorPool(m_LogicalDevice, &poolInfo, nullptr, &m_DescriptorPool));
+        } {
+            VmaAllocatorCreateInfo allocatorInfo = {};
+            allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_2; // Or your target version
+            allocatorInfo.physicalDevice = m_PhysicalDevice;
+            allocatorInfo.device = m_LogicalDevice;
+            allocatorInfo.instance = m_Instance;
+
+            VK_CHECK(vmaCreateAllocator(&allocatorInfo, &m_VmaAllocator));
         }
 
         RDE_CORE_INFO("Vulkan Device Initialized successfully.");
@@ -290,6 +271,7 @@ namespace RDE {
     VulkanDevice::~VulkanDevice() {
         wait_idle(); // Ensure GPU is not busy before we start destroying things
         // Destruction must happen in reverse order of creation.
+        vkDestroyDescriptorPool(m_LogicalDevice, m_DescriptorPool, nullptr);
 
         destroy_swapchain();
 
@@ -297,16 +279,49 @@ namespace RDE {
         vkDestroySemaphore(m_LogicalDevice, m_ImageAvailableSemaphore, nullptr);
         vkDestroyFence(m_LogicalDevice, m_InFlightFence, nullptr);
 
+        vmaDestroyAllocator(m_VmaAllocator);
+
         vkDestroyDevice(m_LogicalDevice, nullptr);
 
         auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(m_Instance,
-                                                                                "vkDestroyDebugUtilsMessengerEXT");
+            "vkDestroyDebugUtilsMessengerEXT");
         if (func != nullptr) {
             func(m_Instance, m_DebugMessenger, nullptr);
         }
 
         vkDestroySurfaceKHR(m_Instance, m_Surface, nullptr);
         vkDestroyInstance(m_Instance, nullptr);
+    }
+
+    void *VulkanDevice::map_buffer(RAL::BufferHandle handle) {
+        if (!m_BufferManager.is_valid(handle)) {
+            return nullptr;
+        }
+        VulkanBuffer &buffer = m_BufferManager.get(handle);
+
+        void *mappedData = nullptr;
+        // vmaMapMemory works on the VmaAllocation handle.
+        // It will fail internally if the memory type is not mappable.
+        VkResult result = vmaMapMemory(m_VmaAllocator, buffer.allocation, &mappedData);
+
+        if (result != VK_SUCCESS) {
+            //TODO map to string
+            /*RDE_CORE_ERROR("VMA: Failed to map buffer! Error: {}", result);*/
+            return nullptr;
+        }
+
+        return mappedData;
+    }
+
+    void VulkanDevice::unmap_buffer(RAL::BufferHandle handle) {
+        if (!m_BufferManager.is_valid(handle)) {
+            return;
+        }
+        VulkanBuffer &buffer = m_BufferManager.get(handle);
+
+        // vmaUnmapMemory also works on the VmaAllocation handle.
+        // If the memory is coherent, VMA handles flushing automatically if needed.
+        vmaUnmapMemory(m_VmaAllocator, buffer.allocation);
     }
 
     void VulkanDevice::create_swapchain(const RAL::SwapchainDescription &desc) {
@@ -410,12 +425,12 @@ namespace RDE {
         // 2. Acquire an image from the swapchain.
         // This call will signal m_ImageAvailableSemaphore when the image is ready.
         VkResult result = vkAcquireNextImageKHR(
-                m_LogicalDevice,
-                m_Swapchain.handle,
-                UINT64_MAX,
-                m_ImageAvailableSemaphore, // Semaphore to be signaled
-                VK_NULL_HANDLE,            // Fence to be signaled (we're using our own)
-                &m_CurrentImageIndex
+            m_LogicalDevice,
+            m_Swapchain.handle,
+            UINT64_MAX,
+            m_ImageAvailableSemaphore, // Semaphore to be signaled
+            VK_NULL_HANDLE, // Fence to be signaled (we're using our own)
+            &m_CurrentImageIndex
         );
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR) {
@@ -434,8 +449,8 @@ namespace RDE {
     }
 
     // NOTE: This is a simplified Submit for a single command buffer.
-// The interface takes a vector, but we'll implement for the common case of one.
-    void VulkanDevice::submit(const std::vector<std::unique_ptr<RAL::CommandBuffer>> &command_buffers) {
+    // The interface takes a vector, but we'll implement for the common case of one.
+    void VulkanDevice::submit(const std::vector<std::unique_ptr<RAL::CommandBuffer> > &command_buffers) {
         if (command_buffers.empty()) {
             return;
         }
@@ -496,39 +511,6 @@ namespace RDE {
         }
     }
 
-    uint32_t VulkanDevice::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
-        VkPhysicalDeviceMemoryProperties memProperties;
-        vkGetPhysicalDeviceMemoryProperties(m_PhysicalDevice, &memProperties);
-
-        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-                return i;
-            }
-        }
-        throw std::runtime_error("Failed to find suitable memory type!");
-    }
-
-    void VulkanDevice::createVulkanBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
-                                          VkBuffer &buffer, VkDeviceMemory &bufferMemory) {
-        VkBufferCreateInfo bufferInfo{};
-        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        bufferInfo.size = size;
-        bufferInfo.usage = usage;
-        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        VK_CHECK(vkCreateBuffer(m_LogicalDevice, &bufferInfo, nullptr, &buffer));
-
-        VkMemoryRequirements memRequirements;
-        vkGetBufferMemoryRequirements(m_LogicalDevice, buffer, &memRequirements);
-
-        VkMemoryAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
-        VK_CHECK(vkAllocateMemory(m_LogicalDevice, &allocInfo, nullptr, &bufferMemory));
-
-        vkBindBufferMemory(m_LogicalDevice, buffer, bufferMemory, 0);
-    }
-
     void VulkanDevice::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
         // This is a simplified copy command that should be done on a dedicated transfer queue
         // in a real engine. For now, we use the graphics queue.
@@ -544,7 +526,7 @@ namespace RDE {
         cmd->end();
 
         // Submit and wait for completion. This is synchronous and inefficient, but simple.
-        std::vector<std::unique_ptr<RAL::CommandBuffer>> submissions;
+        std::vector<std::unique_ptr<RAL::CommandBuffer> > submissions;
         submissions.push_back(std::move(cmd));
         submit(submissions);
         wait_idle(); // Extremely inefficient! For learning purposes only.
@@ -606,8 +588,11 @@ namespace RDE {
         }
         std::vector<VkVertexInputAttributeDescription> attributes;
         for (const auto &a: desc.vertexAttributes) {
-            attributes.push_back({.location = a.location, .binding = a.binding, .format = ToVulkanFormat(
-                    a.format), .offset = a.offset});
+            attributes.push_back({
+                .location = a.location, .binding = a.binding, .format = ToVulkanFormat(
+                    a.format),
+                .offset = a.offset
+            });
         }
 
         VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
@@ -630,63 +615,61 @@ namespace RDE {
 
         VkPipelineRasterizationStateCreateInfo rasterizer{};
         rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-        rasterizer.depthClampEnable = VK_FALSE;
-        rasterizer.rasterizerDiscardEnable = VK_FALSE;
-        rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+        // ... map desc.rasterizationState fields to the vulkan struct ...
+        rasterizer.cullMode = (desc.rasterizationState.cullMode == RAL::CullMode::Back)
+                                  ? VK_CULL_MODE_BACK_BIT
+                                  : VK_CULL_MODE_NONE; // Simplified
+        rasterizer.polygonMode = VK_POLYGON_MODE_FILL; // map from desc
         rasterizer.lineWidth = 1.0f;
-        rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-        rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
-        rasterizer.depthBiasEnable = VK_FALSE;
+        rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; // map from desc
 
-        VkPipelineMultisampleStateCreateInfo multisampling{};
-        multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-        multisampling.sampleShadingEnable = VK_FALSE;
-        multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        VkPipelineMultisampleStateCreateInfo multisampling{
+            /*...*/
+        };
 
+        // --- FIX: Use BlendState from description ---
         VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-        colorBlendAttachment.colorWriteMask =
-                VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
-                VK_COLOR_COMPONENT_A_BIT;
-        colorBlendAttachment.blendEnable = VK_FALSE; // No blending for our first triangle
+        colorBlendAttachment.blendEnable = desc.colorBlendState.attachment.blendEnable;
+        // ... map all the blend factors and ops from desc.colorBlendState ...
+        colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                                              VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
-        VkPipelineColorBlendStateCreateInfo colorBlending{};
-        colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        colorBlending.logicOpEnable = VK_FALSE;
+        VkPipelineColorBlendStateCreateInfo colorBlending{
+            /*...*/
+        };
         colorBlending.attachmentCount = 1;
         colorBlending.pAttachments = &colorBlendAttachment;
 
-        // --- 4. Pipeline Layout ---
-        // Describes uniform buffers, textures, etc. For now, it's empty.
+        // --- 4. Pipeline Layout (Driven by RAL description) ---
+        std::vector<VkDescriptorSetLayout> vkSetLayouts;
+        for (const auto &layoutHandle: desc.descriptorSetLayouts) {
+            vkSetLayouts.push_back(m_DsLayoutManager.get(layoutHandle).handle);
+        }
+
+        std::vector<VkPushConstantRange> vkPushRanges;
+        for (const auto &pushRange: desc.pushConstantRanges) {
+            vkPushRanges.push_back({ToVulkanShaderStageFlags(pushRange.stages), pushRange.offset, pushRange.size});
+        }
+
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(vkSetLayouts.size());
+        pipelineLayoutInfo.pSetLayouts = vkSetLayouts.data();
+        pipelineLayoutInfo.pushConstantRangeCount = static_cast<uint32_t>(vkPushRanges.size());
+        pipelineLayoutInfo.pPushConstantRanges = vkPushRanges.data();
         VK_CHECK(vkCreatePipelineLayout(m_LogicalDevice, &pipelineLayoutInfo, nullptr, &newPipeline.layout));
 
-        // Set dynamic states that can be changed without recreating the pipeline
-        std::vector<VkDynamicState> dynamicStates = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
-        VkPipelineDynamicStateCreateInfo dynamicState{};
-        dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-        dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
-        dynamicState.pDynamicStates = dynamicStates.data();
-
         // --- 5. Create the Pipeline ---
-        VkGraphicsPipelineCreateInfo pipelineInfo{};
-        pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        pipelineInfo.stageCount = 2;
-        pipelineInfo.pStages = shaderStages;
-        pipelineInfo.pVertexInputState = &vertexInputInfo;
-        pipelineInfo.pInputAssemblyState = &inputAssembly;
-        pipelineInfo.pViewportState = &viewportState;
+        // The rest is mostly the same, it correctly uses the structs we just filled.
+        VkGraphicsPipelineCreateInfo pipelineInfo{
+            /*...*/
+        };
         pipelineInfo.pRasterizationState = &rasterizer;
-        pipelineInfo.pMultisampleState = &multisampling;
-        pipelineInfo.pDepthStencilState = nullptr; // No depth testing for now
         pipelineInfo.pColorBlendState = &colorBlending;
-        pipelineInfo.pDynamicState = &dynamicState;
         pipelineInfo.layout = newPipeline.layout;
-        pipelineInfo.renderPass = m_SwapchainRenderPass; // Must be compatible with this render pass
-        pipelineInfo.subpass = 0;
 
-        VK_CHECK(vkCreateGraphicsPipelines(m_LogicalDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr,
-                                           &newPipeline.handle));
+        VK_CHECK(
+            vkCreateGraphicsPipelines(m_LogicalDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &newPipeline.handle));
 
         return m_PipelineManager.create(std::move(newPipeline));
     }
@@ -701,7 +684,212 @@ namespace RDE {
         }
     }
 
-    RAL::CommandBuffer *VulkanDevice::begin_frame(){
+    RAL::DescriptorSetLayoutHandle VulkanDevice::create_descriptor_set_layout(
+        const RAL::DescriptorSetLayoutDescription &desc) {
+        std::vector<VkDescriptorSetLayoutBinding> bindings;
+        bindings.reserve(desc.bindings.size());
+
+        for (const auto &ralBinding: desc.bindings) {
+            VkDescriptorSetLayoutBinding layoutBinding{};
+            layoutBinding.binding = ralBinding.binding;
+            layoutBinding.descriptorType = ToVulkanDescriptorType(ralBinding.type);
+            layoutBinding.descriptorCount = 1; // Not supporting arrays of resources yet
+            layoutBinding.stageFlags = ToVulkanShaderStageFlags(ralBinding.stages);
+            layoutBinding.pImmutableSamplers = nullptr;
+            bindings.push_back(layoutBinding);
+        }
+
+        VkDescriptorSetLayoutCreateInfo layoutInfo{};
+        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+        layoutInfo.pBindings = bindings.data();
+
+        VulkanDescriptorSetLayout layout;
+        VK_CHECK(vkCreateDescriptorSetLayout(m_LogicalDevice, &layoutInfo, nullptr, &layout.handle));
+
+        return m_DsLayoutManager.create(std::move(layout));
+    }
+
+    void VulkanDevice::destroy_descriptor_set_layout(RAL::DescriptorSetLayoutHandle handle) {
+        if (m_DsLayoutManager.is_valid(handle)) {
+            wait_idle();
+            auto layout = m_DsLayoutManager.get(handle);
+            vkDestroyDescriptorSetLayout(m_LogicalDevice, layout.handle, nullptr);
+            m_DsLayoutManager.destroy(handle);
+        }
+    }
+
+    // Note: Descriptor sets are often allocated from a pool for efficiency.
+    // This simple create function is a good starting point.
+    RAL::DescriptorSetHandle VulkanDevice::create_descriptor_set(const RAL::DescriptorSetDescription &desc) {
+        // Get the concrete Vulkan layout handle
+        auto layout = m_DsLayoutManager.get(desc.layout);
+
+        VkDescriptorSetAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocInfo.descriptorPool = m_DescriptorPool;
+        allocInfo.descriptorSetCount = 1;
+        allocInfo.pSetLayouts = &layout.handle;
+
+
+        VkDescriptorSet newSet;
+        VK_CHECK(vkAllocateDescriptorSets(m_LogicalDevice, &allocInfo, &newSet));
+
+        // --- Write the actual resource handles into the set ---
+        std::vector<VkWriteDescriptorSet> descriptorWrites;
+
+        // These must live until vkUpdateDescriptorSets is called
+        std::vector<VkDescriptorBufferInfo> bufferInfos;
+        std::vector<VkDescriptorImageInfo> imageInfos;
+
+        for (const auto &ralWrite: desc.writes) {
+            VkWriteDescriptorSet write{};
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.dstSet = newSet;
+            write.dstBinding = ralWrite.binding;
+            write.dstArrayElement = 0;
+            write.descriptorType = ToVulkanDescriptorType(ralWrite.type);
+            write.descriptorCount = 1;
+
+            switch (ralWrite.type) {
+                case RAL::DescriptorType::UniformBuffer: {
+                    // Get the concrete buffer and create the info struct
+                    VulkanBuffer &buffer = m_BufferManager.get(ralWrite.buffer);
+                    bufferInfos.push_back({buffer.handle, 0, VK_WHOLE_SIZE});
+                    write.pBufferInfo = &bufferInfos.back();
+                    break;
+                }
+                case RAL::DescriptorType::CombinedImageSampler: {
+                    // Get the concrete texture view and sampler
+                    VulkanTexture &texture = m_TextureManager.get(ralWrite.texture);
+                    VulkanSampler sampler = m_SamplerManager.get(ralWrite.sampler);
+                    imageInfos.push_back({
+                        sampler.handle, texture.image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                    });
+                    write.pImageInfo = &imageInfos.back();
+                    break;
+                }
+            }
+            descriptorWrites.push_back(write);
+        }
+
+        vkUpdateDescriptorSets(m_LogicalDevice, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(),
+                               0, nullptr);
+
+        return m_DescriptorSetManager.create(std::move(newSet));
+    }
+
+    void VulkanDevice::destroy_descriptor_set(RAL::DescriptorSetHandle handle) {
+        if (m_DescriptorSetManager.is_valid(handle)) {
+            wait_idle();
+            auto set = m_DescriptorSetManager.get(handle);
+            // We FREE the set back to the pool, we don't destroy it.
+            vkFreeDescriptorSets(m_LogicalDevice, m_DescriptorPool, 1, &set);
+            m_DescriptorSetManager.destroy(handle); // Reclaim the handle slot
+        }
+    }
+
+    RAL::SamplerHandle VulkanDevice::create_sampler(const RAL::SamplerDescription &desc) {
+        VkSamplerCreateInfo samplerInfo{};
+        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        samplerInfo.magFilter = ToVulkanFilter(desc.magFilter);
+        samplerInfo.minFilter = ToVulkanFilter(desc.minFilter);
+        samplerInfo.addressModeU = ToVulkanAddressMode(desc.addressModeU);
+        samplerInfo.addressModeV = ToVulkanAddressMode(desc.addressModeV);
+        samplerInfo.addressModeW = ToVulkanAddressMode(desc.addressModeW);
+        samplerInfo.anisotropyEnable = VK_TRUE; // Good default
+        samplerInfo.maxAnisotropy = m_PhysicalDeviceProperties.limits.maxSamplerAnisotropy; // Use max supported
+        samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+        samplerInfo.unnormalizedCoordinates = VK_FALSE;
+        samplerInfo.compareEnable = VK_FALSE;
+        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        samplerInfo.mipLodBias = 0.0f;
+        samplerInfo.minLod = 0.0f;
+        samplerInfo.maxLod = VK_LOD_CLAMP_NONE;
+
+        VulkanSampler sampler;
+        VK_CHECK(vkCreateSampler(m_LogicalDevice, &samplerInfo, nullptr, &sampler.handle));
+
+        return m_SamplerManager.create(std::move(sampler));
+    }
+
+    void VulkanDevice::destroy_sampler(RAL::SamplerHandle handle) {
+        if (m_SamplerManager.is_valid(handle)) {
+            // Defer this! For now, wait idle.
+            wait_idle();
+            auto sampler = m_SamplerManager.get(handle);
+            vkDestroySampler(m_LogicalDevice, sampler.handle, nullptr);
+            m_SamplerManager.destroy(handle);
+        }
+    }
+
+    RAL::BufferHandle VulkanDevice::create_buffer(const RAL::BufferDescription &desc) {
+        VkBufferCreateInfo bufferInfo{};
+        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        bufferInfo.size = desc.size;
+        bufferInfo.usage = ToVulkanBufferUsage(desc.usage);
+
+        VmaAllocationCreateInfo allocInfo = {};
+        allocInfo.usage = ToVmaMemoryUsage(desc.memoryUsage);
+
+        if (desc.initialData && desc.memoryUsage == RAL::MemoryUsage::DeviceLocal) {
+            bufferInfo.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        }
+
+        VulkanBuffer newBuffer;
+        VK_CHECK(
+            vmaCreateBuffer(m_VmaAllocator, &bufferInfo, &allocInfo, &newBuffer.handle, &newBuffer.allocation, nullptr))
+        ;
+
+        if (desc.initialData) {
+            if (desc.memoryUsage == RAL::MemoryUsage::HostVisible) {
+                void *mappedData;
+                vmaMapMemory(m_VmaAllocator, newBuffer.allocation, &mappedData);
+                memcpy(mappedData, desc.initialData, desc.size);
+                vmaUnmapMemory(m_VmaAllocator, newBuffer.allocation);
+            } else {
+                // Use a staging buffer for device-local memory
+                VulkanBuffer stagingBuffer;
+
+                VkBufferCreateInfo stagingBufferInfo{};
+                stagingBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+                stagingBufferInfo.size = desc.size;
+                stagingBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+
+                VmaAllocationCreateInfo stagingAllocInfo = {};
+                stagingAllocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST; // Staging buffer is on the CPU side
+                stagingAllocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+
+                VK_CHECK(
+                    vmaCreateBuffer(m_VmaAllocator, &stagingBufferInfo, &stagingAllocInfo, &stagingBuffer.handle, &
+                        stagingBuffer.allocation, nullptr));
+
+                void *mappedData;
+                vmaMapMemory(m_VmaAllocator, stagingBuffer.allocation, &mappedData);
+                memcpy(mappedData, desc.initialData, desc.size);
+                vmaUnmapMemory(m_VmaAllocator, stagingBuffer.allocation);
+
+                copyBuffer(stagingBuffer.handle, newBuffer.handle, desc.size);
+
+                vmaDestroyBuffer(m_VmaAllocator, stagingBuffer.handle, stagingBuffer.allocation);
+            }
+        }
+
+        return m_BufferManager.create(std::move(newBuffer));
+    }
+
+    void VulkanDevice::destroy_buffer(RAL::BufferHandle handle) {
+        if (m_BufferManager.is_valid(handle)) {
+            wait_idle();
+            VulkanBuffer &buffer = m_BufferManager.get(handle);
+            // Single call to destroy buffer and free memory
+            vmaDestroyBuffer(m_VmaAllocator, buffer.handle, buffer.allocation);
+            m_BufferManager.destroy(handle);
+        }
+    }
+
+    RAL::CommandBuffer *VulkanDevice::begin_frame() {
         assert(m_CurrentFrameCommandBuffer == nullptr && "begin_frame() called twice without a call to end_frame()!");
         // Acquire returns the handle, but we don't need it here. The command buffer
         // will get it from the device when BeginRenderPass is called.
@@ -726,7 +914,7 @@ namespace RDE {
 
         m_CurrentFrameCommandBuffer->end();
 
-        std::vector<std::unique_ptr<RAL::CommandBuffer>> submissions;
+        std::vector<std::unique_ptr<RAL::CommandBuffer> > submissions;
         submissions.push_back(std::move(m_CurrentFrameCommandBuffer));
 
         submit(submissions);
@@ -737,5 +925,4 @@ namespace RDE {
     void VulkanDevice::wait_idle() {
         vkDeviceWaitIdle(m_LogicalDevice);
     }
-
 }

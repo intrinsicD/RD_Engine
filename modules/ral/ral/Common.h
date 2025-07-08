@@ -37,14 +37,25 @@ namespace RAL {
     struct TextureHandle : RenderHandle {
         static constexpr TextureHandle INVALID() { return {}; }
     };
+
     struct SamplerHandle : RenderHandle {
         static constexpr SamplerHandle INVALID() { return {}; }
     };
+
     struct PipelineHandle : RenderHandle {
         static constexpr PipelineHandle INVALID() { return {}; }
     };
+
     struct ShaderHandle : RenderHandle {
         static constexpr ShaderHandle INVALID() { return {}; }
+    };
+
+    struct DescriptorSetLayoutHandle : RenderHandle {
+        static constexpr DescriptorSetLayoutHandle INVALID() { return {}; }
+    };
+
+    struct DescriptorSetHandle : RenderHandle {
+        static constexpr DescriptorSetHandle INVALID() { return {}; }
     };
 
 
@@ -72,40 +83,40 @@ namespace RAL {
         UNKNOWN,
 
         // --- 8-bit formats ---
-        R8_UNORM,           // Single channel, unsigned normalized
-        R8G8_UNORM,         // Two channels
-        R8G8B8A8_UNORM,     // Four channels
-        B8G8R8A8_UNORM,     // Common for swapchains
+        R8_UNORM, // Single channel, unsigned normalized
+        R8G8_UNORM, // Two channels
+        R8G8B8A8_UNORM, // Four channels
+        B8G8R8A8_UNORM, // Common for swapchains
 
-        R8_SRGB,            // Single channel, sRGB gamma corrected
-        R8G8_SRGB,          // Two channels
-        R8G8B8A8_SRGB,      // Four channels
-        B8G8R8A8_SRGB,      // Common for swapchains with sRGB
+        R8_SRGB, // Single channel, sRGB gamma corrected
+        R8G8_SRGB, // Two channels
+        R8G8B8A8_SRGB, // Four channels
+        B8G8R8A8_SRGB, // Common for swapchains with sRGB
 
         // --- 16-bit formats ---
-        R16_SFLOAT,         // Half-precision float
+        R16_SFLOAT, // Half-precision float
         R16G16_SFLOAT,
         R16G16B16A16_SFLOAT,
 
         // --- 32-bit formats (very common for vertex attributes) ---
-        R32_SFLOAT,         // Single-precision float
-        R32G32_SFLOAT,      // vec2
-        R32G32B32_SFLOAT,   // vec3
-        R32G32B32A32_SFLOAT,// vec4
+        R32_SFLOAT, // Single-precision float
+        R32G32_SFLOAT, // vec2
+        R32G32B32_SFLOAT, // vec3
+        R32G32B32A32_SFLOAT, // vec4
 
-        R32_UINT,           // Unsigned integer
+        R32_UINT, // Unsigned integer
         R32G32_UINT,
         R32G32B32_UINT,
         R32G32B32A32_UINT,
 
         // --- Depth/Stencil Formats ---
-        D32_SFLOAT,         // 32-bit float depth buffer
-        D24_UNORM_S8_UINT,  // Common 24-bit depth, 8-bit stencil format
+        D32_SFLOAT, // 32-bit float depth buffer
+        D24_UNORM_S8_UINT, // Common 24-bit depth, 8-bit stencil format
         D32_SFLOAT_S8_UINT, // 32-bit float depth, 8-bit stencil
 
         // --- Block Compression Formats (for textures) ---
-        BC1_RGB_UNORM,      // DXT1
-        BC3_UNORM,          // DXT5
-        BC7_UNORM,          // High quality compression
+        BC1_RGB_UNORM, // DXT1
+        BC3_UNORM, // DXT5
+        BC7_UNORM, // High quality compression
     };
 }

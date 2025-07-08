@@ -2,7 +2,8 @@
 #pragma once
 
 #include "Common.h"
-#include "ral/CommandBufferTypes.h"
+#include "CommandBufferTypes.h"
+#include "Resources.h"
 
 #include <string>
 #include <cstdint>
@@ -30,7 +31,11 @@ namespace RAL {
 
         virtual void bind_vertex_buffer(BufferHandle buffer, uint32_t binding) = 0;
 
-        virtual void bind_index_buffer(BufferHandle buffer, RAL::IndexType indexType) = 0;
+        virtual void bind_index_buffer(BufferHandle buffer, IndexType indexType) = 0;
+
+        virtual void bind_descriptor_set(PipelineHandle pipeline, DescriptorSetHandle set, uint32_t setIndex) = 0;
+
+        virtual void push_constants(PipelineHandle pipeline, ShaderStage stages, uint32_t offset, uint32_t size, const void* data) = 0;
 
         virtual void draw(uint32_t vertex_count,
                           uint32_t instance_count = 1,

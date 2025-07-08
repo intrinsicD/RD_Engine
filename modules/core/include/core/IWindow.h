@@ -25,11 +25,19 @@ namespace RDE {
 
         virtual bool should_close() = 0; // Better name than 'on_update' for the loop condition
 
+        virtual void swap_buffers() = 0;
+
+        [[nodiscard]] virtual const char * get_title() const = 0;
+
         [[nodiscard]] virtual int get_width() const = 0;
 
         [[nodiscard]] virtual int get_height() const = 0;
 
         [[nodiscard]] virtual void *get_native_handle() const = 0;
+
+        virtual void set_vsync(bool enabled) = 0;
+
+        virtual bool is_vsync() const = 0;
 
         static std::unique_ptr<IWindow> Create(const WindowConfig &config = WindowConfig());
     };

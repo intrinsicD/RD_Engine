@@ -19,7 +19,7 @@ target_include_directories(Test PUBLIC
 )
 
 target_sources(Test PRIVATE
-        Application.cpp
+        SandboxApp.cpp
         ${IMGUI_SOURCES}
 )
 

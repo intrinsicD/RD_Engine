@@ -13,7 +13,6 @@
 struct GLFWwindow; // Forward declaration of GLFWwindow
 
 namespace RDE {
-
     // This will be our concrete implementation of the RAL::Device interface
     class VulkanDevice final : public RAL::Device {
     public:
@@ -21,6 +20,10 @@ namespace RDE {
         VulkanDevice(GLFWwindow *window);
 
         ~VulkanDevice() override;
+
+        void* map_buffer(RAL::BufferHandle handle) override;
+
+        void unmap_buffer(RAL::BufferHandle handle) override;
 
         // We will implement these functions one by one. For now, we'll leave them as overrides.
         void create_swapchain(const RAL::SwapchainDescription &desc) override;
@@ -33,7 +36,7 @@ namespace RDE {
 
         std::unique_ptr<RAL::CommandBuffer> create_command_buffer() override;
 
-        void submit(const std::vector<std::unique_ptr<RAL::CommandBuffer>> &command_buffers) override;
+        void submit(const std::vector<std::unique_ptr<RAL::CommandBuffer> > &command_buffers) override;
 
         RAL::CommandBuffer *begin_frame() override;
 
@@ -57,6 +60,22 @@ namespace RDE {
         RAL::PipelineHandle create_pipeline(const RAL::PipelineDescription &desc) override;
 
         void destroy_pipeline(RAL::PipelineHandle handle) override;
+
+        RAL::DescriptorSetLayoutHandle
+        create_descriptor_set_layout(const RAL::DescriptorSetLayoutDescription &desc) override;
+
+        void destroy_descriptor_set_layout(RAL::DescriptorSetLayoutHandle handle) override;
+
+        // Note: Descriptor sets are often allocated from a pool for efficiency.
+        // This simple create function is a good starting point.
+        RAL::DescriptorSetHandle create_descriptor_set(const RAL::DescriptorSetDescription &desc) override;
+
+        void destroy_descriptor_set(RAL::DescriptorSetHandle handle) override;
+
+        RAL::SamplerHandle create_sampler(const RAL::SamplerDescription &desc) override;
+
+        void destroy_sampler(RAL::SamplerHandle handle) override;
+
     private:
         // --- Core Vulkan Objects ---
         VkInstance m_Instance{VK_NULL_HANDLE};
@@ -67,6 +86,10 @@ namespace RDE {
         VkQueue m_GraphicsQueue{VK_NULL_HANDLE};
         VkQueue m_PresentQueue{VK_NULL_HANDLE};
 
+        VmaAllocator m_VmaAllocator{VK_NULL_HANDLE};
+
+        VkPhysicalDeviceProperties m_PhysicalDeviceProperties;
+
         // We'll need these later for resource creation
         uint32_t m_GraphicsQueueFamilyIndex;
 
@@ -74,6 +97,12 @@ namespace RDE {
         ResourceManager<VulkanShader, RAL::ShaderHandle> m_ShaderManager;
         ResourceManager<VulkanPipeline, RAL::PipelineHandle> m_PipelineManager;
         ResourceManager<VulkanTexture, RAL::TextureHandle> m_TextureManager;
+        ResourceManager<VulkanSampler, RAL::SamplerHandle> m_SamplerManager;
+        ResourceManager<VulkanDescriptorSetLayout, RAL::DescriptorSetLayoutHandle> m_DsLayoutManager;
+        ResourceManager<VkDescriptorSet, RAL::DescriptorSetHandle> m_DescriptorSetManager;
+
+
+        VkDescriptorPool m_DescriptorPool{VK_NULL_HANDLE};
 
         GLFWwindow *m_Window{nullptr};
 
@@ -100,16 +129,9 @@ namespace RDE {
         friend class VulkanCommandBuffer;
 
         // --- Private Helper Functions (we'll declare them here) ---
-        void createVulkanBuffer(VkDeviceSize size,
-                                VkBufferUsageFlags usage,
-                                VkMemoryPropertyFlags properties,
-                                VkBuffer &buffer,
-                                VkDeviceMemory &bufferMemory);
-
-        uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
         void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
-        VkShaderModule createShaderModule(const std::vector<char>& code);
+        VkShaderModule createShaderModule(const std::vector<char> &code);
     };
 }

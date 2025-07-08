@@ -9,24 +9,26 @@ namespace RAL {
     // --- Resource Usage Flags ---
     enum class BufferUsage : uint32_t {
         None = 0,
-        VertexBuffer  = 1 << 0,
-        IndexBuffer   = 1 << 1,
+        VertexBuffer = 1 << 0,
+        IndexBuffer = 1 << 1,
         UniformBuffer = 1 << 2,
         StorageBuffer = 1 << 3,
-        TransferSrc   = 1 << 4,
-        TransferDst   = 1 << 5,
+        TransferSrc = 1 << 4,
+        TransferDst = 1 << 5,
     };
+
     ENABLE_ENUM_FLAG_OPERATORS(BufferUsage)
 
     enum class TextureUsage : uint32_t {
         None = 0,
-        Sampled                = 1 << 0,
-        Storage                = 1 << 1,
-        ColorAttachment        = 1 << 2,
+        Sampled = 1 << 0,
+        Storage = 1 << 1,
+        ColorAttachment = 1 << 2,
         DepthStencilAttachment = 1 << 3,
-        TransferSrc            = 1 << 4,
-        TransferDst            = 1 << 5,
+        TransferSrc = 1 << 4,
+        TransferDst = 1 << 5,
     };
+
     ENABLE_ENUM_FLAG_OPERATORS(TextureUsage)
 
     enum class MemoryUsage {
@@ -42,13 +44,27 @@ namespace RAL {
         Task, Mesh // Modern mesh pipeline stages
     };
 
+    ENABLE_ENUM_FLAG_OPERATORS(ShaderStage)
+
+    enum class CullMode { None, Front, Back, FrontAndBack };
+
+    enum class PolygonMode { Fill, Line, Point };
+
+    enum class FrontFace { Clockwise, CounterClockwise };
+
+    enum class BlendFactor {
+        Zero, One, SrcColor, OneMinusSrcColor, DstColor, OneMinusDstColor, SrcAlpha, OneMinusSrcAlpha
+    };
+
+    enum class BlendOp { Add, Subtract, ReverseSubtract, Min, Max };
+
     // --- Resource Description Structs ---
 
     struct BufferDescription {
         uint64_t size = 0;
         BufferUsage usage;
         MemoryUsage memoryUsage;
-        const void* initialData = nullptr; // Add this for easier creation
+        const void *initialData = nullptr; // Add this for easier creation
     };
 
     struct TextureDescription {
@@ -56,6 +72,7 @@ namespace RAL {
         uint32_t mipLevels = 1;
         Format format; // Use the single, unified Format enum
         TextureUsage usage;
+        const void *initialData = nullptr;
     };
 
     struct ShaderDescription {
@@ -76,15 +93,102 @@ namespace RAL {
         uint32_t stride;
     };
 
+    // Defines a range of push constants accessible to the pipeline.
+    struct PushConstantRange {
+        ShaderStage stages; // Which shader stages can access it
+        uint32_t offset;
+        uint32_t size;
+    };
+
+    struct RasterizationState {
+        PolygonMode polygonMode = PolygonMode::Fill;
+        CullMode cullMode = CullMode::Back;
+        FrontFace frontFace = FrontFace::CounterClockwise;
+        bool depthBiasEnable = false;
+    };
+
+    struct BlendAttachmentState {
+        bool blendEnable = false;
+        BlendFactor srcColorBlendFactor = BlendFactor::SrcAlpha;
+        BlendFactor dstColorBlendFactor = BlendFactor::OneMinusSrcAlpha;
+        BlendOp colorBlendOp = BlendOp::Add;
+        BlendFactor srcAlphaBlendFactor = BlendFactor::One;
+        BlendFactor dstAlphaBlendFactor = BlendFactor::Zero;
+        BlendOp alphaBlendOp = BlendOp::Add;
+    };
+
+    // We'll define a simple blend state for now. Can be expanded.
+    struct ColorBlendState {
+        // For simplicity, one blend state for all attachments.
+        // A real engine might have a vector of these.
+        BlendAttachmentState attachment;
+    };
+
     struct PipelineDescription {
         ShaderHandle vertexShader;
         ShaderHandle fragmentShader;
+        std::vector<DescriptorSetLayoutHandle> descriptorSetLayouts;
+        std::vector<PushConstantRange> pushConstantRanges;
+
+        RasterizationState rasterizationState;
+        ColorBlendState colorBlendState;
+        // Depth/stencil state can be added later
+
         std::vector<VertexInputBinding> vertexBindings;
         std::vector<VertexInputAttribute> vertexAttributes;
     };
 
     struct SwapchainDescription {
-        void* nativeWindowHandle = nullptr;
+        void *nativeWindowHandle = nullptr;
         bool vsync = true;
+    };
+
+    // --- NEW: Descriptor Set Descriptions ---
+    enum class DescriptorType {
+        UniformBuffer,
+        CombinedImageSampler // Texture + Sampler together
+        // Other types like StorageBuffer, StorageImage can be added later
+    };
+
+    // Describes a single binding within a descriptor set (e.g., "binding = 0")
+    struct DescriptorSetLayoutBinding {
+        uint32_t binding;
+        DescriptorType type;
+        ShaderStage stages; // Bitmask of stages that can access this binding
+    };
+
+    // Describes the "shape" of a descriptor set. Pipelines are created with this.
+    struct DescriptorSetLayoutDescription {
+        std::vector<DescriptorSetLayoutBinding> bindings;
+    };
+
+    // Describes a single resource to be written into an actual DescriptorSet instance.
+    struct DescriptorWrite {
+        uint32_t binding;
+        DescriptorType type;
+        // One of these should be valid depending on the type
+        BufferHandle buffer;
+        TextureHandle texture;
+        SamplerHandle sampler;
+        // You can add more specific info like buffer range/offset if needed
+    };
+
+    // Describes the contents of a specific DescriptorSet instance.
+    struct DescriptorSetDescription {
+        DescriptorSetLayoutHandle layout;
+        std::vector<DescriptorWrite> writes;
+    };
+
+    enum class Filter { Nearest, Linear };
+
+    enum class SamplerAddressMode { Repeat, MirroredRepeat, ClampToEdge, ClampToBorder };
+
+    struct SamplerDescription {
+        Filter magFilter = Filter::Linear;
+        Filter minFilter = Filter::Linear;
+        SamplerAddressMode addressModeU = SamplerAddressMode::Repeat;
+        SamplerAddressMode addressModeV = SamplerAddressMode::Repeat;
+        SamplerAddressMode addressModeW = SamplerAddressMode::Repeat;
+        // ... other options like anisotropy, mipmapping etc. can be added later
     };
 }
