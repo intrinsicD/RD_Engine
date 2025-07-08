@@ -16,9 +16,6 @@ target_include_directories(VulkanPlatform
 target_sources(VulkanPlatform PRIVATE
         src/VulkanCommandBuffer.cpp
         src/VulkanDevice.cpp
-        src/VulkanImmediateSubmit.cpp
-        src/VulkanRenderer.cpp
-        src/VulkanTextureUploader.cpp
 )
 
 # This module implements the renderer, so it links against the graphics libraries.
@@ -28,5 +25,5 @@ target_link_libraries(VulkanPlatform
         Vulkan::Vulkan
         RAL
         RDE::Core
-        RDE::Renderer
+        glfw
 )

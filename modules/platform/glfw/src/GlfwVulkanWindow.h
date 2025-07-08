@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "IWindow.h"
+#include "core/IWindow.h"
 
 struct GLFWwindow;
 

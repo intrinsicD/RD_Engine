@@ -10,7 +10,20 @@
 #include "events/KeyEvent.h"
 
 namespace RDE {
-    static bool s_glfw_initialized = false;
+    static void InitializeGLFW() {
+        static bool is_initialized = false;
+        if (!is_initialized) {
+            if (!glfwInit()) {
+                throw std::runtime_error("Failed to initialize GLFW!");
+            }
+            // Tell GLFW not to create an OpenGL context, as we are using Vulkan.
+            glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+            is_initialized = true;
+        }
+    }
 
     static void GlfwErrorCallback(int error, const char *description) {
         RDE_CORE_ERROR("GLFW Error ({}): {}", error, description);
@@ -24,6 +37,13 @@ namespace RDE {
         m_data.title = window_config.title;
         m_data.width = window_config.width;
         m_data.height = window_config.height;
+
+        InitializeGLFW();
+        glfwSetErrorCallback(GlfwErrorCallback);
+        m_window = glfwCreateWindow(m_data.width, m_data.height, m_data.title.c_str(), nullptr, nullptr);
+        if (!m_window) {
+            throw std::runtime_error("Failed to create GLFW window!");
+        }
     }
 
     GlfwOpenGLWindow::~GlfwOpenGLWindow() {

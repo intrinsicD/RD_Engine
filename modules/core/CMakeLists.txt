@@ -14,6 +14,8 @@ target_include_directories(Core
 target_sources(Core
         PRIVATE
         src/Log.cpp
+        src/FileIOUtils.cpp
+        src/Platform.cpp
 )
 
 target_link_libraries(Core

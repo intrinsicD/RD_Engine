@@ -1,15 +1,17 @@
 #include "Application.h"
-#include "events/ApplicationEvent.h"
-#include "events/MouseEvent.h"
-#include "events/KeyEvent.h"
-#include "Log.h"
-#include "GetAssetPath.h"
+#include "core/events/ApplicationEvent.h"
+#include "core/events/MouseEvent.h"
+#include "core/events/KeyEvent.h"
+#include "core/Log.h"
+#include "core/Paths.h"
 
 #include "core/Ticker.h"
 #include "systems/TransformSystem.h"
 #include "systems/CameraSystem.h"
 #include "systems/HierarchySystem.h"
 #include "systems/BoundingVolumeSystem.h"
+
+#include "src/GlfwVulkanWindow.h"
 
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
@@ -314,7 +316,7 @@ namespace RDE {
 
     void Application::shutdown() {
         for (auto &layer: m_app_context->m_layer_stack) {
-            layer->on_detach(*m_app_context);
+            layer->on_detach();
         }
         {
             m_app_context->m_file_watcher->stop();
@@ -390,11 +392,9 @@ namespace RDE {
             }
         }
 
-
-
         // Update layers
         for (auto &layer: m_app_context->m_layer_stack) {
-            layer->on_update(*m_app_context);
+            layer->on_update(delta_time);
         }
 
         m_app_context->m_system_scheduler->execute(delta_time);
@@ -417,7 +417,7 @@ namespace RDE {
         // Additional rendering code...
 
         for (auto &layer: m_app_context->m_layer_stack) {
-            layer->on_render(*m_app_context);
+            layer->on_render();
         }
     }
 
@@ -429,7 +429,7 @@ namespace RDE {
 
         // Render ImGui UI here
         for (auto &layer: m_app_context->m_layer_stack) {
-            layer->on_render_gui(*m_app_context);
+            layer->on_render_gui();
         }
 
         ImGui::EndMainMenuBar();
@@ -462,7 +462,7 @@ namespace RDE {
                 if (e.handled) {
                     break;
                 }
-                (*it)->on_event(e, *m_app_context);
+                (*it)->on_event(e);
             }
         }
     }

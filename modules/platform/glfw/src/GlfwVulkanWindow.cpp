@@ -1,8 +1,8 @@
 #include "GlfwVulkanWindow.h"
-#include "Log.h"
-#include "events/ApplicationEvent.h"
-#include "events/KeyEvent.h"
-#include "events/MouseEvent.h"
+#include "core/Log.h"
+#include "core/events/ApplicationEvent.h"
+#include "core/events/KeyEvent.h"
+#include "core/events/MouseEvent.h"
 
 #include <GLFW/glfw3.h>
 
@@ -41,6 +41,8 @@ namespace RDE{
         if (!m_window) {
             throw std::runtime_error("Failed to create GLFW window!");
         }
+
+        glfwSetWindowUserPointer(m_window, this); // Set the user pointer to this Application instance
 
         glfwSetWindowSizeCallback(m_window, [](GLFWwindow *window, int width, int height) {
             WindowData &data = *(WindowData *) glfwGetWindowUserPointer(window);

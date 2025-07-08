@@ -16,16 +16,13 @@ target_include_directories(GlfwPlatform
 
 target_sources(GlfwPlatform PRIVATE
         src/GlfwVulkanWindow.cpp
-        src/GlfwInput.cpp
 )
 
 # This is a platform implementation, so it links against the actual platform libraries.
-find_package(OpenGL REQUIRED)
+
 target_link_libraries(GlfwPlatform
         PUBLIC
         # It needs to link to the same dependencies as Core did for windowing.
-        RDE::Engine
+        RDE::Core
         glfw
-        glad_gl_core
-        OpenGL::GL
 )

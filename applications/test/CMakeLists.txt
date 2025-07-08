@@ -20,35 +20,22 @@ target_include_directories(Test PUBLIC
 
 target_sources(Test PRIVATE
         Application.cpp
-        core/SystemScheduler.cpp
-
-        systems/CameraSystem.cpp
-        systems/TransformSystem.cpp
-        systems/HierarchySystem.cpp
-        systems/BoundingVolumeSystem.cpp
-        systems/RenderSystem.cpp
-
-        utils/HierarchyUtils.cpp
-        utils/TransformUtils.cpp
-        utils/CameraUtils.cpp
-        utils/BoundingVolumeUtils.cpp
-
-        Platform.cpp
         ${IMGUI_SOURCES}
 )
 
 find_package(OpenGL REQUIRED)
+
 target_link_libraries(Test
         PRIVATE
         RDE::AssetSystem
         RDE::Core
-        EnTT
+        RDE::Platform::Vulkan
+        RDE::Platform::Glfw
+        RDE::Scene
+        RDE::Geometry
         spdlog
         glfw
         glm
         glad_gl_core
         OpenGL::GL
-        #daxa::daxa
 )
-
-add_subdirectory(assets)

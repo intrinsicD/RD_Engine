@@ -1,9 +1,11 @@
 #pragma once
 
-#include "events/Event.h"
+#include "core/events/Event.h"
 #include "core/Mouse.h"
 #include "core/Keyboard.h"
-#include "core/SystemScheduler.h"
+#include "scene/SystemScheduler.h"
+#include "core/LayerStack.h"
+#include "core/IWindow.h"
 
 #include "AssetManager.h"
 #include "AssetDatabase.h"
@@ -11,87 +13,11 @@
 
 #include <entt/fwd.hpp>
 
-
-
 struct GLFWwindow;
 
 namespace RDE {
-    struct ApplicationContext;
-
-    class ILayer {
-    public:
-        virtual ~ILayer() = default;
-
-        virtual void on_attach(const ApplicationContext &app_context) = 0;
-
-        virtual void on_detach(const ApplicationContext &app_context) = 0;
-
-        virtual void on_update(const ApplicationContext &app_context) = 0;
-
-        virtual void on_render(const ApplicationContext &app_context) = 0;
-
-        virtual void on_render_gui(const ApplicationContext &app_context) = 0;
-
-        virtual void on_event(Event &e, const ApplicationContext &app_context) = 0;
-
-        virtual const std::string &get_name() const = 0;
-    };
-
-    class LayerStack {
-    public:
-        LayerStack() = default;
-
-        ~LayerStack() = default;
-
-        ILayer *push_layer(std::shared_ptr<ILayer> layer, ApplicationContext &app_context) {
-            auto it = m_layers.emplace(m_layers.begin() + m_layer_insert_index, std::move(layer));
-            m_layer_insert_index++;
-            (*it)->on_attach(app_context); // Call the attach hook.
-            return it->get();
-        }
-
-        ILayer *push_overlay(std::shared_ptr<ILayer> overlay, ApplicationContext &app_context) {
-            // Overlays are always added to the very end of the list.
-            m_layers.emplace_back(std::move(overlay));
-            m_layers.back()->on_attach(app_context); // Call the attach hook.
-            return m_layers.back().get();
-        }
-
-        void pop_layer(ILayer *layer, ApplicationContext &app_context) {
-            auto it = std::find_if(m_layers.begin(), m_layers.begin() + m_layer_insert_index,
-                                   [layer](const std::shared_ptr<ILayer> &l) { return l.get() == layer; });
-
-            if (it != m_layers.begin() + m_layer_insert_index) {
-                (*it)->on_detach(app_context);
-                m_layers.erase(it);
-                m_layer_insert_index--; // Decrement the boundary index as a normal layer was removed.
-            }
-        }
-
-        void pop_overlay(ILayer *overlay, ApplicationContext &app_context) {
-            auto it = std::find_if(m_layers.begin() + m_layer_insert_index, m_layers.end(),
-                                   [overlay](const std::shared_ptr<ILayer> &l) { return l.get() == overlay; });
-
-            if (it != m_layers.end()) {
-                (*it)->on_detach(app_context);
-                m_layers.erase(it); // Simply remove the overlay. The insert index is not affected.
-            }
-        }
-
-        std::vector<std::shared_ptr<ILayer> >::iterator begin() { return m_layers.begin(); }
-
-        std::vector<std::shared_ptr<ILayer> >::iterator end() { return m_layers.end(); }
-
-        std::vector<std::shared_ptr<ILayer> >::reverse_iterator rbegin() { return m_layers.rbegin(); }
-
-        std::vector<std::shared_ptr<ILayer> >::reverse_iterator rend() { return m_layers.rend(); }
-
-    private:
-        std::vector<std::shared_ptr<ILayer> > m_layers;
-        unsigned int m_layer_insert_index = 0;
-    };
-
     struct ApplicationContext {
+        //TODO descide where to put IWindow...
         GLFWwindow *m_window = nullptr; // Pointer to the GLFW window
         std::string m_title; // Title of the application window
         int m_width = 0;

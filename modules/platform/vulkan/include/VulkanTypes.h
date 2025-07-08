@@ -1,3 +1,4 @@
+//vulkan/VulkanTypes.h
 #pragma once
 
 #include <vulkan/vulkan.h>
@@ -5,14 +6,31 @@
 
 namespace RDE {
     struct VulkanBuffer {
-        VkBuffer buffer = VK_NULL_HANDLE;
+        VkBuffer handle = VK_NULL_HANDLE;
         VmaAllocation allocation = VK_NULL_HANDLE;
     };
 
     struct VulkanTexture {
-        VkImage image = VK_NULL_HANDLE;
+        VkImage handle = VK_NULL_HANDLE;
         VkImageView image_view = VK_NULL_HANDLE;
         VmaAllocation allocation = VK_NULL_HANDLE;
+    };
+
+    struct VulkanSwapchain {
+        VkSwapchainKHR handle{VK_NULL_HANDLE};
+        VkFormat imageFormat;
+        VkExtent2D extent;
+        std::vector<VkImage> images;
+        std::vector<VkImageView> imageViews;
+    };
+
+    struct VulkanShader {
+        VkShaderModule module{VK_NULL_HANDLE};
+    };
+
+    struct VulkanPipeline {
+        VkPipeline handle{VK_NULL_HANDLE};
+        VkPipelineLayout layout{VK_NULL_HANDLE};
     };
     // ... other concrete types later
 }

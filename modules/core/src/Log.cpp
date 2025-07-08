@@ -1,4 +1,4 @@
-#include "Log.h"
+#include "core/Log.h"
 
 namespace RDE {
     // Definition for static members

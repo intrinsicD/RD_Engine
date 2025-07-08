@@ -3,7 +3,7 @@
 #include "AssetHandle.h"
 #include "AssetComponentTypes.h"
 #include "AssetDatabase.h"
-#include "Log.h"
+#include "core/Log.h"
 #include "internal/AssetCreationReceipt.h"
 
 #include <any>

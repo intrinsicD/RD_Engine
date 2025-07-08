@@ -1,5 +1,5 @@
 #include "FileWatcher.h"
-#include "Log.h" // Your logging utility
+#include "core/Log.h" // Your logging utility
 
 // Include the actual efsw header here in the .cpp
 #include <efsw/efsw.hpp>

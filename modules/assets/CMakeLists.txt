@@ -1,5 +1,6 @@
 # RDE_Project/modules/assets/CMakeLists.txt
 
+
 # An INTERFACE library has no source files and doesn't produce a binary.
 # It's used to group together usage requirements like include directories.
 add_library(AssetSystem)
@@ -25,3 +26,5 @@ target_link_libraries(AssetSystem
         EnTT::EnTT
         RDE::Core
 )
+
+add_subdirectory(config)

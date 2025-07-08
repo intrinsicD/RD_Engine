@@ -1,684 +1,741 @@
 #include "VulkanDevice.h"
-#include "VulkanMappers.h"
 #include "VulkanCommandBuffer.h"
-#include "Log.h"
+#include "VulkanCommon.h"
 
-#include <stdexcept>
-#include <vector>
-#include <unordered_map>
-#include <memory>
+#include "core/Log.h"
+#include "core/FileIOUtils.h"
+#include "ral/Resources.h"
 
 // Place the VMA implementation macro here
 #define VMA_IMPLEMENTATION
 
 #include <vk_mem_alloc.h>
+#include <stdexcept>
+#include <vector>
+#include <unordered_map>
+#include <memory>
 #include <GLFW/glfw3.h>
 
+
 namespace RDE {
+    // A debug callback function for the validation layers
+    static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
+            VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+            VkDebugUtilsMessageTypeFlagsEXT messageType,
+            const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+            void *pUserData) {
 
-    struct VulkanDevice::PImpl {
-        // We will store our concrete resources here. The key is the ID from the RAL handle.
-        std::unordered_map<uint64_t, VulkanBuffer> buffers;
-        std::unordered_map<uint64_t, VulkanTexture> textures;
+        // Only print warnings and errors
+        if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+            RDE_CORE_ERROR("Validation Layer: {}", pCallbackData->pMessage);
+        }
+        return VK_FALSE;
+    }
 
-        // A simple counter to generate unique handle IDs.
-        uint64_t next_handle_id = 1;
+    VkFormat ToVulkanFormat(RAL::Format format) {
+        // This would be a large switch statement.
+        // Let's add a few examples.
+        switch (format) {
+            // 8-bit
+            case RAL::Format::R8_UNORM:             return VK_FORMAT_R8_UNORM;
+            case RAL::Format::R8G8_UNORM:           return VK_FORMAT_R8G8_UNORM;
+            case RAL::Format::R8G8B8A8_UNORM:       return VK_FORMAT_R8G8B8A8_UNORM;
+            case RAL::Format::B8G8R8A8_UNORM:       return VK_FORMAT_B8G8R8A8_UNORM;
+            case RAL::Format::R8_SRGB:              return VK_FORMAT_R8_SRGB;
+            case RAL::Format::R8G8_SRGB:            return VK_FORMAT_R8G8_SRGB;
+            case RAL::Format::R8G8B8A8_SRGB:        return VK_FORMAT_R8G8B8A8_SRGB;
+            case RAL::Format::B8G8R8A8_SRGB:        return VK_FORMAT_B8G8R8A8_SRGB;
+                // 16-bit
+            case RAL::Format::R16_SFLOAT:           return VK_FORMAT_R16_SFLOAT;
+            case RAL::Format::R16G16_SFLOAT:        return VK_FORMAT_R16G16_SFLOAT;
+            case RAL::Format::R16G16B16A16_SFLOAT:  return VK_FORMAT_R16G16B16A16_SFLOAT;
+                // 32-bit
+            case RAL::Format::R32_SFLOAT:           return VK_FORMAT_R32_SFLOAT;
+            case RAL::Format::R32G32_SFLOAT:        return VK_FORMAT_R32G32_SFLOAT;
+            case RAL::Format::R32G32B32_SFLOAT:     return VK_FORMAT_R32G32B32_SFLOAT;
+            case RAL::Format::R32G32B32A32_SFLOAT:  return VK_FORMAT_R32G32B32A32_SFLOAT;
+            case RAL::Format::R32_UINT:             return VK_FORMAT_R32_UINT;
+            case RAL::Format::R32G32_UINT:          return VK_FORMAT_R32G32_UINT;
+            case RAL::Format::R32G32B32_UINT:       return VK_FORMAT_R32G32B32_UINT;
+            case RAL::Format::R32G32B32A32_UINT:    return VK_FORMAT_R32G32B32A32_UINT;
+                // Depth
+            case RAL::Format::D32_SFLOAT:           return VK_FORMAT_D32_SFLOAT;
+            case RAL::Format::D24_UNORM_S8_UINT:    return VK_FORMAT_D24_UNORM_S8_UINT;
+            case RAL::Format::D32_SFLOAT_S8_UINT:   return VK_FORMAT_D32_SFLOAT_S8_UINT;
+                // Block Compression
+            case RAL::Format::BC1_RGB_UNORM:        return VK_FORMAT_BC1_RGB_UNORM_BLOCK;
+            case RAL::Format::BC3_UNORM:            return VK_FORMAT_BC3_UNORM_BLOCK;
+            case RAL::Format::BC7_UNORM:            return VK_FORMAT_BC7_UNORM_BLOCK;
+
+            case RAL::Format::UNKNOWN:
+            default:
+                // You should have a logging system here
+                // For now, we'll assert or throw
+                throw std::runtime_error("Unsupported or unknown RAL::Format!");
+                return VK_FORMAT_UNDEFINED;
+        }
+    }
+
+
+    struct SwapchainSupportDetails {
+        VkSurfaceCapabilitiesKHR capabilities;
+        std::vector<VkSurfaceFormatKHR> formats;
+        std::vector<VkPresentModeKHR> presentModes;
     };
 
-    VulkanDevice::VulkanDevice() {
-        m_pimpl = std::make_unique<PImpl>();
-        // 1. Create Vulkan Instance
-        VkApplicationInfo app_info{};
-        app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-        app_info.pApplicationName = "RDE Engine";
-        app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-        app_info.pEngineName = "RDE";
-        app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-        app_info.apiVersion = VK_API_VERSION_1_2;
+    SwapchainSupportDetails querySwapchainSupport(VkPhysicalDevice device, VkSurfaceKHR surface) {
+        SwapchainSupportDetails details;
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
 
-        VkInstanceCreateInfo create_info{};
-        create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-        create_info.pApplicationInfo = &app_info;
-
-        // For now, enable minimal required extensions. A real engine queries for support.
-        // We need a surface extension to draw to a window eventually.
-        std::vector<const char *> extensions = {
-                "VK_KHR_surface", /* platform specific surface, e.g., "VK_KHR_win32_surface" */
-                "VK_KHR_xcb_surface", // Add this for X11 support
-        };
-        // Add debug utils extension for validation layers
-        const char *validation_layer = "VK_LAYER_KHRONOS_validation";
-        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-
-        create_info.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
-        create_info.ppEnabledExtensionNames = extensions.data();
-        create_info.enabledLayerCount = 1;
-        create_info.ppEnabledLayerNames = &validation_layer;
-
-        if (vkCreateInstance(&create_info, nullptr, &m_instance) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to create Vulkan instance!");
+        uint32_t formatCount;
+        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+        if (formatCount != 0) {
+            details.formats.resize(formatCount);
+            vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
         }
-        RDE_CORE_INFO("Vulkan Instance created successfully.");
 
-        // 2. Pick Physical Device
-        pick_physical_device();
+        uint32_t presentModeCount;
+        vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+        if (presentModeCount != 0) {
+            details.presentModes.resize(presentModeCount);
+            vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
+        }
+        return details;
+    }
 
-        // 3. Create Logical Device
-        create_logical_device();
+    // Choose the best settings from the available options
+    VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats) {
+        for (const auto &availableFormat: availableFormats) {
+            // We want sRGB color space for better visuals
+            if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB &&
+                availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+                return availableFormat;
+            }
+        }
+        return availableFormats[0]; // Fallback to the first available format
+    }
 
-        // 4. Create VMA Allocator
-        create_allocator();
+    VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes, bool vsync) {
+        if (!vsync) {
+            for (const auto &availablePresentMode: availablePresentModes) {
+                // Prefer triple buffering for low latency without tearing
+                if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
+                    return availablePresentMode;
+                }
+            }
+        }
+        // Guaranteed to be available, standard VSync
+        return VK_PRESENT_MODE_FIFO_KHR;
+    }
+
+    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities, GLFWwindow *window) {
+        if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
+            return capabilities.currentExtent;
+        } else {
+            int width, height;
+            glfwGetFramebufferSize(window, &width, &height);
+
+            VkExtent2D actualExtent = {
+                    static_cast<uint32_t>(width),
+                    static_cast<uint32_t>(height)
+            };
+            actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width,
+                                            capabilities.maxImageExtent.width);
+            actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height,
+                                             capabilities.maxImageExtent.height);
+            return actualExtent;
+        }
+    }
+
+    VulkanDevice::VulkanDevice(GLFWwindow *window) {
+        // === 1. Create VkInstance ===
+        // The instance is the connection between your application and the Vulkan library.
+        {
+            VkApplicationInfo appInfo{};
+            appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+            appInfo.pApplicationName = "Helios Engine";
+            appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+            appInfo.pEngineName = "Helios";
+            appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+            appInfo.apiVersion = VK_API_VERSION_1_2;
+
+            VkInstanceCreateInfo createInfo{};
+            createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+            createInfo.pApplicationInfo = &appInfo;
+
+            // Get required extensions from GLFW
+            uint32_t glfwExtensionCount = 0;
+            const char **glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+            std::vector<const char *> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+
+            // Add the debug messenger extension
+            extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+
+            createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+            createInfo.ppEnabledExtensionNames = extensions.data();
+
+            // Enable validation layers - this is non-negotiable for development
+            const std::vector<const char *> validationLayers = {
+                    "VK_LAYER_KHRONOS_validation"
+            };
+            createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+            createInfo.ppEnabledLayerNames = validationLayers.data();
+
+            VK_CHECK(vkCreateInstance(&createInfo, nullptr, &m_Instance));
+        }
+
+        // === 2. Setup Debug Messenger ===
+        // This will give us validation layer messages in our console.
+        {
+            VkDebugUtilsMessengerCreateInfoEXT createInfo{};
+            createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+            createInfo.messageSeverity =
+                    VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                    VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+            createInfo.messageType =
+                    VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                    VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+            createInfo.pfnUserCallback = DebugCallback;
+
+            // We have to load the function pointer for this extension function ourselves
+            auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(m_Instance,
+                                                                                   "vkCreateDebugUtilsMessengerEXT");
+            if (func != nullptr) {
+                VK_CHECK(func(m_Instance, &createInfo, nullptr, &m_DebugMessenger));
+            } else {
+                // Handle error
+            }
+        }
+
+        // === 3. Create Window Surface ===
+        // This is the bridge between Vulkan and the OS window manager, handled by GLFW.
+        VK_CHECK(glfwCreateWindowSurface(m_Instance, window, nullptr, &m_Surface));
+
+        // === 4. Pick Physical Device (GPU) ===
+        // We'll simplify this for now and just pick the first available discrete GPU.
+        // A real engine would have a scoring system to pick the best device.
+        {
+            uint32_t deviceCount = 0;
+            vkEnumeratePhysicalDevices(m_Instance, &deviceCount, nullptr);
+            std::vector<VkPhysicalDevice> devices(deviceCount);
+            vkEnumeratePhysicalDevices(m_Instance, &deviceCount, devices.data());
+
+            m_PhysicalDevice = devices[0]; // TODO: Implement proper device picking
+
+            // Find a queue family that supports graphics operations.
+            uint32_t queueFamilyCount = 0;
+            vkGetPhysicalDeviceQueueFamilyProperties(m_PhysicalDevice, &queueFamilyCount, nullptr);
+            std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+            vkGetPhysicalDeviceQueueFamilyProperties(m_PhysicalDevice, &queueFamilyCount, queueFamilies.data());
+
+            for (uint32_t i = 0; i < queueFamilyCount; ++i) {
+                if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+                    m_GraphicsQueueFamilyIndex = i;
+                    break;
+                }
+            }
+        }
+
+        // === 5. Create Logical Device & Queues ===
+        // The logical device is our interface to the physical device.
+        {
+            VkDeviceQueueCreateInfo queueCreateInfo{};
+            queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            queueCreateInfo.queueFamilyIndex = m_GraphicsQueueFamilyIndex;
+            queueCreateInfo.queueCount = 1;
+            float queuePriority = 1.0f;
+            queueCreateInfo.pQueuePriorities = &queuePriority;
+
+            VkPhysicalDeviceFeatures deviceFeatures{}; // Enable features here if needed
+
+            VkDeviceCreateInfo createInfo{};
+            createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+            createInfo.pQueueCreateInfos = &queueCreateInfo;
+            createInfo.queueCreateInfoCount = 1;
+            createInfo.pEnabledFeatures = &deviceFeatures;
+
+            // Enable the mandatory swapchain extension
+            const std::vector<const char *> deviceExtensions = {
+                    VK_KHR_SWAPCHAIN_EXTENSION_NAME
+            };
+            createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
+            createInfo.ppEnabledExtensionNames = deviceExtensions.data();
+
+            VK_CHECK(vkCreateDevice(m_PhysicalDevice, &createInfo, nullptr, &m_LogicalDevice));
+
+            // Retrieve the handle to the queue
+            vkGetDeviceQueue(m_LogicalDevice, m_GraphicsQueueFamilyIndex, 0, &m_GraphicsQueue);
+            // In a more complex scenario, the present queue might be different from the graphics queue.
+            // For now, we assume they are the same.
+            m_PresentQueue = m_GraphicsQueue;
+        }
+
+        // === 6. Create Swapchain ===
+        {
+            VkSemaphoreCreateInfo semaphoreInfo{};
+            semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+            VkFenceCreateInfo fenceInfo{};
+            fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+            fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; // Create it in the signaled state so the first frame doesn't wait forever
+
+            VK_CHECK(vkCreateSemaphore(m_LogicalDevice, &semaphoreInfo, nullptr, &m_ImageAvailableSemaphore));
+            VK_CHECK(vkCreateSemaphore(m_LogicalDevice, &semaphoreInfo, nullptr, &m_RenderFinishedSemaphore));
+            VK_CHECK(vkCreateFence(m_LogicalDevice, &fenceInfo, nullptr, &m_InFlightFence));
+        }
+
+        RDE_CORE_INFO("Vulkan Device Initialized successfully.");
     }
 
     VulkanDevice::~VulkanDevice() {
-        // Ensure all commands are finished before we start tearing things down.
-        if (m_device) {
-            vkDeviceWaitIdle(m_device);
+        wait_idle(); // Ensure GPU is not busy before we start destroying things
+        // Destruction must happen in reverse order of creation.
+
+        destroy_swapchain();
+
+        vkDestroySemaphore(m_LogicalDevice, m_RenderFinishedSemaphore, nullptr);
+        vkDestroySemaphore(m_LogicalDevice, m_ImageAvailableSemaphore, nullptr);
+        vkDestroyFence(m_LogicalDevice, m_InFlightFence, nullptr);
+
+        vkDestroyDevice(m_LogicalDevice, nullptr);
+
+        auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(m_Instance,
+                                                                                "vkDestroyDebugUtilsMessengerEXT");
+        if (func != nullptr) {
+            func(m_Instance, m_DebugMessenger, nullptr);
         }
 
-        // 1. Call our swapchain cleanup helper first.
-        cleanup_swapchain();
-
-        // 2. Destroy synchronization primitives.
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            if (m_frames_in_flight[i].render_finished_semaphore) vkDestroySemaphore(m_device, m_frames_in_flight[i].render_finished_semaphore, nullptr);
-            if (m_frames_in_flight[i].image_available_semaphore) vkDestroySemaphore(m_device, m_frames_in_flight[i].image_available_semaphore, nullptr);
-            if (m_frames_in_flight[i].in_flight_fence) vkDestroyFence(m_device, m_frames_in_flight[i].in_flight_fence], nullptr);
-        }
-
-        // 3. Destroy all remaining resources (buffers, textures, etc.)
-        // This is critical. The pImpl map owns the resources.
-        for (auto const &[key, val]: m_pimpl->buffers) {
-            vmaDestroyBuffer(m_allocator, val.buffer, val.allocation);
-        }
-        // The swapchain textures were already erased, so this only handles non-swapchain textures.
-        for (auto const &[key, val]: m_pimpl->textures) {
-            vkDestroyImageView(m_device, val.image_view, nullptr);
-            vmaDestroyImage(m_allocator, val.image, val.allocation);
-        }
-        // ... destroy pipelines, descriptor set layouts, etc. ...
-
-        // 4. Destroy the VMA allocator.
-        if (m_allocator) {
-            vmaDestroyAllocator(m_allocator);
-        }
-        if (m_command_pool) {
-            vkDestroyCommandPool(m_device, m_command_pool, nullptr);
-        }
-        // 5. Destroy the logical device.
-        if (m_device) {
-            vkDestroyDevice(m_device, nullptr);
-        }
-
-        // 6. Destroy the debug messenger.
-        if (m_debug_messenger != VK_NULL_HANDLE) {
-            // You need to load this function pointer at initialization
-            // auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(m_instance, "vkDestroyDebugUtilsMessengerEXT");
-            // if (func != nullptr) {
-            //     func(m_instance, m_debug_messenger, nullptr);
-            // }
-        }
-
-        // 7. Finally, destroy the instance.
-        if (m_instance) {
-            vkDestroyInstance(m_instance, nullptr);
-        }
-    }
-
-    void VulkanDevice::pick_physical_device() {
-        uint32_t device_count = 0;
-        vkEnumeratePhysicalDevices(m_instance, &device_count, nullptr);
-        if (device_count == 0) {
-            throw std::runtime_error("Failed to find GPUs with Vulkan support!");
-        }
-        std::vector<VkPhysicalDevice> devices(device_count);
-        vkEnumeratePhysicalDevices(m_instance, &device_count, devices.data());
-
-        // Simple selection: pick the first available discrete GPU.
-        // A real engine would score devices based on features and performance.
-        for (const auto &device: devices) {
-            VkPhysicalDeviceProperties properties;
-            vkGetPhysicalDeviceProperties(device, &properties);
-            if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-                m_physical_device = device;
-                RDE_CORE_INFO("Found discrete GPU: {}", properties.deviceName);
-                return;
-            }
-        }
-        // Fallback to the first device if no discrete GPU is found.
-        if (m_physical_device == VK_NULL_HANDLE) {
-            m_physical_device = devices[0];
-        }
-    }
-
-    void VulkanDevice::create_logical_device() {
-        // Find a queue family that supports graphics operations.
-        uint32_t queue_family_count = 0;
-        vkGetPhysicalDeviceQueueFamilyProperties(m_physical_device, &queue_family_count, nullptr);
-        std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
-        vkGetPhysicalDeviceQueueFamilyProperties(m_physical_device, &queue_family_count, queue_families.data());
-
-        for (uint32_t i = 0; i < queue_families.size(); ++i) {
-            if (queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-                m_graphics_queue_family_index = i;
-                break;
-            }
-        }
-
-        VkDeviceQueueCreateInfo queue_create_info{};
-        queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queue_create_info.queueFamilyIndex = m_graphics_queue_family_index;
-        queue_create_info.queueCount = 1;
-        float queue_priority = 1.0f;
-        queue_create_info.pQueuePriorities = &queue_priority;
-
-        VkPhysicalDeviceFeatures device_features{}; // Enable features as needed
-
-        VkDeviceCreateInfo create_info{};
-        create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        create_info.pQueueCreateInfos = &queue_create_info;
-        create_info.queueCreateInfoCount = 1;
-        create_info.pEnabledFeatures = &device_features;
-        // Enable device extensions like swapchain
-        const char *device_extension = "VK_KHR_swapchain";
-        create_info.enabledExtensionCount = 1;
-        create_info.ppEnabledExtensionNames = &device_extension;
-
-
-        if (vkCreateDevice(m_physical_device, &create_info, nullptr, &m_device) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to create logical device!");
-        }
-        RDE_CORE_INFO("Vulkan Logical Device created successfully.");
-
-        // Get a handle to the graphics queue.
-        vkGetDeviceQueue(m_device, m_graphics_queue_family_index, 0, &m_graphics_queue);
-    }
-
-    void VulkanDevice::create_allocator() {
-        VmaAllocatorCreateInfo allocator_info = {};
-        allocator_info.vulkanApiVersion = VK_API_VERSION_1_2;
-        allocator_info.physicalDevice = m_physical_device;
-        allocator_info.device = m_device;
-        allocator_info.instance = m_instance;
-
-        if (vmaCreateAllocator(&allocator_info, &m_allocator) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to create VMA allocator!");
-        }
-        RDE_CORE_INFO("VMA Allocator created successfully.");
-    }
-
-    void VulkanDevice::create_command_pool() {
-        VkCommandPoolCreateInfo pool_info{};
-        pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        // We want command buffers that can be reset individually
-        pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        // The pool must be tied to the queue family we will submit to
-        pool_info.queueFamilyIndex = m_graphics_queue_family_index;
-
-        if (vkCreateCommandPool(m_device, &pool_info, nullptr, &m_command_pool) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to create command pool!");
-        }
-        RDE_CORE_INFO("Vulkan Command Pool created successfully.");
-    }
-
-    void VulkanDevice::find_queue_families(VkPhysicalDevice device) {
-        // ... existing logic to find graphics_family ...
-
-        VkBool32 present_support = false;
-        vkGetPhysicalDeviceSurfaceSupportKHR(device, m_graphics_queue_family_index, m_surface, &present_support);
-        if (!present_support) {
-            // In a real engine, you'd search for a different queue family that supports both
-            // graphics and present, or use separate queues.
-            throw std::runtime_error("Graphics queue family does not support presentation!");
-        }
+        vkDestroySurfaceKHR(m_Instance, m_Surface, nullptr);
+        vkDestroyInstance(m_Instance, nullptr);
     }
 
     void VulkanDevice::create_swapchain(const RAL::SwapchainDescription &desc) {
-        // 1. Create the Surface
-        // This connects Vulkan to the windowing system. It's platform-specific.
-        // We use GLFW to handle this for us.
-        if (!m_instance) {
-            throw std::runtime_error("Vulkan instance is not initialized!");
-        }
-        if (!desc.native_window_handle) {
-            throw std::runtime_error("Native window handle is null!");
-        }
-        if (!glfwVulkanSupported()) {
-            throw std::runtime_error("GLFW does not support Vulkan!");
-        }
-        if (glfwCreateWindowSurface(m_instance, static_cast<GLFWwindow *>(desc.native_window_handle), nullptr,
-                                    &m_surface) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to create window surface!");
+        // Query support and choose settings
+        SwapchainSupportDetails support = querySwapchainSupport(m_PhysicalDevice, m_Surface);
+        VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(support.formats);
+        VkPresentModeKHR presentMode = chooseSwapPresentMode(support.presentModes, desc.vsync);
+        VkExtent2D extent = chooseSwapExtent(support.capabilities, m_Window);
+
+        uint32_t imageCount = support.capabilities.minImageCount + 1;
+        if (support.capabilities.maxImageCount > 0 && imageCount > support.capabilities.maxImageCount) {
+            imageCount = support.capabilities.maxImageCount;
         }
 
-        // Call our queue family finder again, now that we have a surface
-        find_queue_families(m_physical_device);
+        // Create the swapchain
+        VkSwapchainCreateInfoKHR createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+        createInfo.surface = m_Surface;
+        createInfo.minImageCount = imageCount;
+        createInfo.imageFormat = surfaceFormat.format;
+        createInfo.imageColorSpace = surfaceFormat.colorSpace;
+        createInfo.imageExtent = extent;
+        createInfo.imageArrayLayers = 1;
+        createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // We will render directly to it
 
-        // 2. Query for surface capabilities, formats, and present modes
-        // This is a lot of boilerplate to find the best settings.
-        // ... (code to call vkGetPhysicalDeviceSurfaceCapabilitiesKHR, etc.) ...
-        // For now, let's assume we found a good format (e.g., VK_FORMAT_B8G8R8A8_SRGB)
-        // and a present mode (e.g., VK_PRESENT_MODE_MAILBOX_KHR for vsync-off, or FIFO for vsync-on).
-        m_swapchain_image_format = VK_FORMAT_B8G8R8A8_SRGB;
-        m_swapchain_extent = {desc.width, desc.height};
+        // We assume graphics and present queues are the same for simplicity
+        createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        createInfo.preTransform = support.capabilities.currentTransform;
+        createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+        createInfo.presentMode = presentMode;
+        createInfo.clipped = VK_TRUE;
+        createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-        // 3. Create the Swapchain
-        VkSwapchainCreateInfoKHR create_info{};
-        create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-        create_info.surface = m_surface;
-        create_info.minImageCount = 3; // Triple buffering
-        create_info.imageFormat = m_swapchain_image_format;
-        create_info.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-        create_info.imageExtent = m_swapchain_extent;
-        create_info.imageArrayLayers = 1;
-        create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-        create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        create_info.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
-        create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-        create_info.presentMode = desc.vsync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_MAILBOX_KHR;
-        create_info.clipped = VK_TRUE;
-        create_info.oldSwapchain = VK_NULL_HANDLE;
+        VK_CHECK(vkCreateSwapchainKHR(m_LogicalDevice, &createInfo, nullptr, &m_Swapchain.handle));
 
-        if (vkCreateSwapchainKHR(m_device, &create_info, nullptr, &m_swapchain) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to create swapchain!");
+        // Store swapchain properties
+        m_Swapchain.imageFormat = surfaceFormat.format;
+        m_Swapchain.extent = extent;
+
+        // Retrieve image handles
+        vkGetSwapchainImagesKHR(m_LogicalDevice, m_Swapchain.handle, &imageCount, nullptr);
+        m_Swapchain.images.resize(imageCount);
+        vkGetSwapchainImagesKHR(m_LogicalDevice, m_Swapchain.handle, &imageCount, m_Swapchain.images.data());
+
+        // Create image views
+        m_Swapchain.imageViews.resize(imageCount);
+        for (size_t i = 0; i < m_Swapchain.images.size(); i++) {
+            VkImageViewCreateInfo viewInfo{};
+            viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            viewInfo.image = m_Swapchain.images[i];
+            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            viewInfo.format = m_Swapchain.imageFormat;
+            viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            viewInfo.subresourceRange.baseMipLevel = 0;
+            viewInfo.subresourceRange.levelCount = 1;
+            viewInfo.subresourceRange.baseArrayLayer = 0;
+            viewInfo.subresourceRange.layerCount = 1;
+
+            VK_CHECK(vkCreateImageView(m_LogicalDevice, &viewInfo, nullptr, &m_Swapchain.imageViews[i]));
         }
 
-        // 4. Get the swapchain images
-        uint32_t image_count;
-        vkGetSwapchainImagesKHR(m_device, m_swapchain, &image_count, nullptr);
-        m_swapchain_images.resize(image_count);
-        vkGetSwapchainImagesKHR(m_device, m_swapchain, &image_count, m_swapchain_images.data());
-
-        // 5. Create image views for each image
-        m_swapchain_image_views.resize(image_count);
-        for (size_t i = 0; i < image_count; i++) {
-            // ... (code to create a VkImageView for m_swapchain_images[i]) ...
-            // Store it in m_swapchain_image_views[i]
-
-            // Wrap the VkImage/VkImageView in our VulkanTexture and store it
-            VulkanTexture swapchain_texture;
-            swapchain_texture.image = m_swapchain_images[i];
-            swapchain_texture.image_view = m_swapchain_image_views[i];
-
-            uint64_t new_id = m_pimpl->next_handle_id++;
-            m_pimpl->textures[new_id] = swapchain_texture;
-
-            RAL::TextureHandle ral_handle{new_id};
-            m_swapchain_ral_textures.push_back(ral_handle);
-        }
-
-        // 6. Create Synchronization Primitives
-        m_image_available_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
-        m_render_finished_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
-        m_in_flight_fences.resize(MAX_FRAMES_IN_FLIGHT);
-
-        VkSemaphoreCreateInfo semaphore_info{};
-        semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        VkFenceCreateInfo fence_info{};
-        fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            vkCreateSemaphore(m_device, &semaphore_info, nullptr, &m_image_available_semaphores[i]);
-            vkCreateSemaphore(m_device, &semaphore_info, nullptr, &m_render_finished_semaphores[i]);
-            vkCreateFence(m_device, &fence_info, nullptr, &m_in_flight_fences[i]);
-        }
-
-        m_command_buffers.resize(MAX_FRAMES_IN_FLIGHT);
-        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            m_command_buffers[i] = std::make_unique<VulkanCommandBuffer>(*this);
+        // --- Create RAL TextureHandles for the swapchain images ---
+        // NOTE: This is a placeholder. A real resource manager would be responsible
+        // for creating these handles and associating them with the VkImageViews.
+        // For now, we are creating "unmanaged" handles. The rest of the engine
+        // doesn't know the difference, which proves the power of abstraction.
+        m_SwapchainTextureHandles.resize(m_Swapchain.imageViews.size());
+        for (size_t i = 0; i < m_Swapchain.imageViews.size(); ++i) {
+            // We'll just use the index as the handle index for simplicity.
+            // A real manager would have a free list and handle generations.
+            m_SwapchainTextureHandles[i] = RAL::TextureHandle{static_cast<uint32_t>(i), 1};
         }
     }
 
     void VulkanDevice::destroy_swapchain() {
-        cleanup_swapchain();
+        // Wait until the device is idle before destroying a swapchain,
+        // as its images may still be in use.
+        wait_idle();
+
+        for (auto imageView: m_Swapchain.imageViews) {
+            vkDestroyImageView(m_LogicalDevice, imageView, nullptr);
+        }
+        vkDestroySwapchainKHR(m_LogicalDevice, m_Swapchain.handle, nullptr);
+
+        m_Swapchain.handle = VK_NULL_HANDLE;
+        m_Swapchain.imageViews.clear();
+        m_Swapchain.images.clear();
     }
 
-    VkResult VulkanDevice::acquire_next_swapchain_image(uint32_t *out_image_index) {
-        auto& frame_data = m_frames_in_flight[m_current_frame];
-        return vkAcquireNextImageKHR(m_device, m_swapchain, UINT64_MAX,
-                                     frame_data.image_available_semaphore, VK_NULL_HANDLE, out_image_index);
-    }
+    RAL::TextureHandle VulkanDevice::acquire_next_swapchain_image() {
+        // 1. Wait for the previous frame to finish.
+        // This fence ensures that we don't start a new frame while the GPU is still
+        // working on one from two frames ago. It limits frames in flight to 1.
+        // The timeout (UINT64_MAX) means we wait indefinitely.
+        vkWaitForFences(m_LogicalDevice, 1, &m_InFlightFence, VK_TRUE, UINT64_MAX);
 
-    RAL::CommandBuffer *VulkanDevice::begin_frame() {
-        // 1. Wait for the frame we are about to reuse to be finished on the GPU.
-        // This is the call that was hanging, but now it will work because end_frame() will submit work that signals this fence.
-        vkWaitForFences(m_device, 1, &m_in_flight_fences[m_current_frame], VK_TRUE, UINT64_MAX);
+        vkResetCommandPool(m_LogicalDevice, m_CommandPool, 0);
+
+        vkResetFences(m_LogicalDevice, 1, &m_InFlightFence);
 
         // 2. Acquire an image from the swapchain.
-        uint32_t image_index;
-        VkResult result = vkAcquireNextImageKHR(m_device, m_swapchain, UINT64_MAX,
-                                                m_image_available_semaphores[m_current_frame], VK_NULL_HANDLE,
-                                                &image_index);
+        // This call will signal m_ImageAvailableSemaphore when the image is ready.
+        VkResult result = vkAcquireNextImageKHR(
+                m_LogicalDevice,
+                m_Swapchain.handle,
+                UINT64_MAX,
+                m_ImageAvailableSemaphore, // Semaphore to be signaled
+                VK_NULL_HANDLE,            // Fence to be signaled (we're using our own)
+                &m_CurrentImageIndex
+        );
 
-        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-            // Handle swapchain recreation... for now, signal failure.
-            // cleanup_swapchain(); create_swapchain(...);
-            return nullptr;
-        } else if (result != VK_SUCCESS) {
+        if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+            // Swapchain is out of date (e.g., window was resized).
+            // We need to recreate it. For now, we'll return an invalid handle.
+            // A full application would trigger a recreation here.
+            return RAL::TextureHandle::INVALID();
+        } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+            // Handle other errors
             throw std::runtime_error("Failed to acquire swapchain image!");
         }
 
-        m_current_swapchain_image_index = image_index;
-
-        // 3. Now that we know we're not waiting anymore, reset the fence for this frame.
-        vkResetFences(m_device, 1, &m_in_flight_fences[m_current_frame]);
-
-        // 4. Get the command buffer for the current frame and begin recording.
-        VulkanCommandBuffer* cmd = m_command_buffers[m_current_frame].get();
-        cmd->begin(); // Resets the VkCommandBuffer
-
-        return cmd;
+        // 3. Return the abstract handle for the acquired image.
+        // The rest of the engine can now use this handle to build a render pass.
+        return m_SwapchainTextureHandles[m_CurrentImageIndex];
     }
 
-    void VulkanDevice::end_frame() {
-        VulkanCommandBuffer* cmd = m_command_buffers[m_current_frame].get();
-        cmd->end(); // Finalizes the VkCommandBuffer
-
-        // Submit the command buffer
-        submit_command_buffers({cmd});
-
-        // Present the result
-        do_present();
-
-        // Advance to the next frame data for the next call to begin_frame()
-        m_current_frame = (m_current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
-    }
-
-    void VulkanDevice::do_present() {
-        VkPresentInfoKHR present_info{};
-        present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
-        // Wait on the semaphore that our rendering commands will signal
-        present_info.waitSemaphoreCount = 1;
-        present_info.pWaitSemaphores = &m_render_finished_semaphores[m_current_frame];
-
-        present_info.swapchainCount = 1;
-        present_info.pSwapchains = &m_swapchain;
-        present_info.pImageIndices = &m_current_swapchain_image_index;
-
-        vkQueuePresentKHR(m_graphics_queue, &present_info);
-
-        // Advance to the next frame in flight
-        m_current_frame = (m_current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
-    }
-
-    void VulkanDevice::advance_frame() {
-        // This function is called after a frame has been presented.
-        // It can be used to prepare for the next frame, but in this simple case,
-        // we just increment the current frame index.
-        m_current_frame = (m_current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
-        m_current_swapchain_image_index = 0; // Reset for the next frame
-    }
-
-    void VulkanDevice::cleanup_swapchain() {
-        if (m_device == VK_NULL_HANDLE) {
-            return; // Device doesn't exist, nothing to clean
+    // NOTE: This is a simplified Submit for a single command buffer.
+// The interface takes a vector, but we'll implement for the common case of one.
+    void VulkanDevice::submit(const std::vector<std::unique_ptr<RAL::CommandBuffer>> &command_buffers) {
+        if (command_buffers.empty()) {
+            return;
         }
 
-        // Wait for the device to be idle to ensure no swapchain resources are in use.
-        // This is a simple but heavyweight synchronization method.
-        vkDeviceWaitIdle(m_device);
+        // For now, we assume one command buffer per submission.
+        // We need to downcast from our interface to the concrete Vulkan implementation.
+        VulkanCommandBuffer *vulkanCmd = static_cast<VulkanCommandBuffer *>(command_buffers[0].get());
+        VkCommandBuffer cmdBuffer = vulkanCmd->get_handle(); // Assumes this function exists on VulkanCommandBuffer
 
-        // 1. Destroy Image Views
-        // The VkImages are owned by the swapchain and are destroyed with it,
-        // but the VkImageViews we created must be explicitly destroyed.
-        for (auto image_view: m_swapchain_image_views) {
-            vkDestroyImageView(m_device, image_view, nullptr);
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+        // Wait on the m_ImageAvailableSemaphore before executing the command buffer.
+        // We only want to start writing to the color attachment when the image is ready.
+        VkSemaphore waitSemaphores[] = {m_ImageAvailableSemaphore};
+        VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = waitSemaphores;
+        submitInfo.pWaitDstStageMask = waitStages;
+
+        // The command buffer to execute.
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &cmdBuffer;
+
+        // Signal the m_RenderFinishedSemaphore when the command buffer has finished execution.
+        VkSemaphore signalSemaphores[] = {m_RenderFinishedSemaphore};
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = signalSemaphores;
+
+        // Submit to the graphics queue.
+        // The m_InFlightFence will be signaled when this submission is complete.
+        VK_CHECK(vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, m_InFlightFence));
+    }
+
+    void VulkanDevice::present() {
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+        // Wait on the m_RenderFinishedSemaphore. This ensures presentation doesn't happen
+        // until rendering is complete.
+        VkSemaphore signalSemaphores[] = {m_RenderFinishedSemaphore};
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = signalSemaphores;
+
+        // Specify the swapchain and image index to present.
+        VkSwapchainKHR swapchains[] = {m_Swapchain.handle};
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = swapchains;
+        presentInfo.pImageIndices = &m_CurrentImageIndex;
+
+        VkResult result = vkQueuePresentKHR(m_PresentQueue, &presentInfo);
+
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+            // Swapchain is suboptimal. A robust app would flag the swapchain for recreation
+            // on the next frame.
+        } else if (result != VK_SUCCESS) {
+            throw std::runtime_error("Failed to present swapchain image!");
         }
-        m_swapchain_image_views.clear();
+    }
 
-        // We also need to remove the corresponding RAL::TextureHandle entries
-        // from our main texture map in the pImpl.
-        for (auto ral_handle: m_swapchain_ral_textures) {
-            if (ral_handle.is_valid()) {
-                m_pimpl->textures.erase(ral_handle.id);
+    uint32_t VulkanDevice::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+        VkPhysicalDeviceMemoryProperties memProperties;
+        vkGetPhysicalDeviceMemoryProperties(m_PhysicalDevice, &memProperties);
+
+        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+                return i;
             }
         }
-        m_swapchain_ral_textures.clear();
-
-
-        // 2. Destroy the Swapchain itself
-        if (m_swapchain != VK_NULL_HANDLE) {
-            vkDestroySwapchainKHR(m_device, m_swapchain, nullptr);
-            m_swapchain = VK_NULL_HANDLE;
-        }
-
-        // 3. Destroy the Surface
-        // The surface is tied to the instance, not the logical device.
-        if (m_surface != VK_NULL_HANDLE) {
-            vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
-            m_surface = VK_NULL_HANDLE;
-        }
-
-        // Note: We don't destroy the synchronization primitives here because
-        // they can persist across swapchain recreation. We will destroy them
-        // in the main device destructor.
+        throw std::runtime_error("Failed to find suitable memory type!");
     }
 
-    // --- Empty implementations for now ---
-    RAL::BufferHandle VulkanDevice::create_buffer(const RAL::BufferDescription &desc) {
-        // 1. Map RAL description to Vulkan/VMA structs
-        VkBufferCreateInfo buffer_info{};
-        buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        buffer_info.size = desc.size;
-        buffer_info.usage = VulkanMappers::ToVkBufferUsage(desc);
-        buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE; // Assume not sharing between queues
+    void VulkanDevice::createVulkanBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
+                                          VkBuffer &buffer, VkDeviceMemory &bufferMemory) {
+        VkBufferCreateInfo bufferInfo{};
+        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        bufferInfo.size = size;
+        bufferInfo.usage = usage;
+        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        VK_CHECK(vkCreateBuffer(m_LogicalDevice, &bufferInfo, nullptr, &buffer));
 
-        VmaAllocationCreateInfo alloc_info = {};
-        alloc_info.usage = VulkanMappers::ToVmaMemoryUsage(desc);
+        VkMemoryRequirements memRequirements;
+        vkGetBufferMemoryRequirements(m_LogicalDevice, buffer, &memRequirements);
 
-        // For DYNAMIC buffers, we want them to be persistently mapped for easy writing.
-        if (desc.usage == RAL::ResourceUsage::DYNAMIC) {
-            alloc_info.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
-        }
+        VkMemoryAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.allocationSize = memRequirements.size;
+        allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
+        VK_CHECK(vkAllocateMemory(m_LogicalDevice, &allocInfo, nullptr, &bufferMemory));
 
-        VulkanBuffer new_vk_buffer;
-        VkResult result = vmaCreateBuffer(
-                m_allocator,
-                &buffer_info,
-                &alloc_info,
-                &new_vk_buffer.buffer,
-                &new_vk_buffer.allocation,
-                nullptr // Optional: VmaAllocationInfo
-        );
-
-        if (result != VK_SUCCESS) {
-            // RDE_CORE_ERROR("Failed to create buffer!");
-            return {}; // Return invalid handle
-        }
-
-        // 2. Store the new VulkanBuffer and generate a RAL handle
-        uint64_t new_id = m_pimpl->next_handle_id++;
-        m_pimpl->buffers[new_id] = new_vk_buffer;
-
-        RAL::BufferHandle ral_handle;
-        ral_handle.id = new_id;
-
-        // Optional: Set a debug name for tools like RenderDoc
-        // set_debug_name(new_vk_buffer.buffer, desc.name);
-
-        return ral_handle;
+        vkBindBufferMemory(m_LogicalDevice, buffer, bufferMemory, 0);
     }
 
+    void VulkanDevice::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+        // This is a simplified copy command that should be done on a dedicated transfer queue
+        // in a real engine. For now, we use the graphics queue.
+        std::unique_ptr<RAL::CommandBuffer> cmd = create_command_buffer();
+        cmd->begin();
 
-    void VulkanDevice::destroy_buffer(RAL::BufferHandle handle) {
-        if (!handle.is_valid()) return;
+        // The cast is ugly, but necessary here. A better design might expose the VkCommandBuffer handle.
+        VkBufferCopy copyRegion{};
+        copyRegion.size = size;
+        vkCmdCopyBuffer(static_cast<VulkanCommandBuffer *>(cmd.get())->get_handle(), srcBuffer, dstBuffer, 1,
+                        &copyRegion);
 
-        auto it = m_pimpl->buffers.find(handle.id);
-        if (it != m_pimpl->buffers.end()) {
-            VulkanBuffer &vk_buffer = it->second;
+        cmd->end();
 
-            // Use VMA to destroy both the buffer and its memory allocation.
-            vmaDestroyBuffer(m_allocator, vk_buffer.buffer, vk_buffer.allocation);
-
-            // Remove from our map.
-            m_pimpl->buffers.erase(it);
-        }
+        // Submit and wait for completion. This is synchronous and inefficient, but simple.
+        std::vector<std::unique_ptr<RAL::CommandBuffer>> submissions;
+        submissions.push_back(std::move(cmd));
+        submit(submissions);
+        wait_idle(); // Extremely inefficient! For learning purposes only.
     }
 
-    RAL::TextureHandle VulkanDevice::create_texture(const RAL::TextureDescription &desc) {
-        // 1. Map RAL description to Vulkan/VMA structs
-        VkImageCreateInfo image_info{};
-        image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        // For now, assume 2D textures. A full implementation would switch on a type enum.
-        image_info.imageType = VK_IMAGE_TYPE_2D;
-        image_info.extent.width = desc.width;
-        image_info.extent.height = desc.height;
-        image_info.extent.depth = 1;
-        image_info.mipLevels = desc.mip_levels;
-        image_info.arrayLayers = 1;
-        image_info.format = VulkanMappers::ToVkFormat(desc.format);
-        image_info.tiling = VK_IMAGE_TILING_OPTIMAL; // Always use optimal tiling for performance
-        image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; // Start in undefined state
-        image_info.usage = VulkanMappers::ToVkImageUsage(desc);
-        image_info.samples = VK_SAMPLE_COUNT_1_BIT; // No multisampling for now
-        image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    VkShaderModule VulkanDevice::createShaderModule(const std::vector<char> &code) {
+        VkShaderModuleCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        createInfo.codeSize = code.size();
+        createInfo.pCode = reinterpret_cast<const uint32_t *>(code.data());
 
-        VmaAllocationCreateInfo alloc_info = {};
-        alloc_info.usage = VulkanMappers::ToVmaMemoryUsage(desc);
-
-        VulkanTexture new_vk_texture;
-        VkResult result = vmaCreateImage(
-                m_allocator,
-                &image_info,
-                &alloc_info,
-                &new_vk_texture.image,
-                &new_vk_texture.allocation,
-                nullptr
-        );
-
-        if (result != VK_SUCCESS) {
-            // RDE_CORE_ERROR("Failed to create texture image!");
-            return {}; // Return invalid handle
-        }
-
-        // 2. Create the Image View
-        VkImageViewCreateInfo view_info{};
-        view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        view_info.image = new_vk_texture.image;
-        view_info.viewType = VK_IMAGE_VIEW_TYPE_2D; // Match imageType
-        view_info.format = image_info.format;
-        view_info.subresourceRange.aspectMask = (image_info.usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
-                                                ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-        view_info.subresourceRange.baseMipLevel = 0;
-        view_info.subresourceRange.levelCount = desc.mip_levels;
-        view_info.subresourceRange.baseArrayLayer = 0;
-        view_info.subresourceRange.layerCount = 1;
-
-        if (vkCreateImageView(m_device, &view_info, nullptr, &new_vk_texture.image_view) != VK_SUCCESS) {
-            // RDE_CORE_ERROR("Failed to create texture image view!");
-            // Cleanup the image we just created
-            vmaDestroyImage(m_allocator, new_vk_texture.image, new_vk_texture.allocation);
-            return {};
-        }
-
-        // 3. Store the new VulkanTexture and generate a RAL handle
-        uint64_t new_id = m_pimpl->next_handle_id++;
-        m_pimpl->textures[new_id] = new_vk_texture;
-
-        RAL::TextureHandle ral_handle;
-        ral_handle.id = new_id;
-
-        // Optional: Set debug names for RenderDoc
-        // set_debug_name(new_vk_texture.image, desc.name);
-        // set_debug_name(new_vk_texture.image_view, desc.name + "_view");
-
-        return ral_handle;
+        VkShaderModule shaderModule;
+        VK_CHECK(vkCreateShaderModule(m_LogicalDevice, &createInfo, nullptr, &shaderModule));
+        return shaderModule;
     }
 
-    void VulkanDevice::destroy_texture(RAL::TextureHandle handle) {
-        if (!handle.is_valid()) return;
+    // Implement the public interface function
+    RAL::ShaderHandle VulkanDevice::create_shader(const RAL::ShaderDescription &desc) {
+        auto shaderCode = FileIO::ReadFile(desc.filePath);
+        VulkanShader newShader;
+        newShader.module = createShaderModule(shaderCode);
+        return m_ShaderManager.create(std::move(newShader));
+    }
 
-        auto it = m_pimpl->textures.find(handle.id);
-        if (it != m_pimpl->textures.end()) {
-            VulkanTexture &vk_texture = it->second;
-
-            // Destroy the view first, then the image
-            vkDestroyImageView(m_device, vk_texture.image_view, nullptr);
-            vmaDestroyImage(m_allocator, vk_texture.image, vk_texture.allocation);
-
-            m_pimpl->textures.erase(it);
+    void VulkanDevice::destroy_shader(RAL::ShaderHandle handle) {
+        if (m_ShaderManager.is_valid(handle)) {
+            wait_idle();
+            VulkanShader &shader = m_ShaderManager.get(handle);
+            vkDestroyShaderModule(m_LogicalDevice, shader.module, nullptr);
+            m_ShaderManager.destroy(handle);
         }
     }
 
     RAL::PipelineHandle VulkanDevice::create_pipeline(const RAL::PipelineDescription &desc) {
-        // This is a placeholder. A full implementation would create a VkPipeline
-        // and store it in a map similar to buffers and textures.
-        // For now, we return an invalid handle.
-        RAL::PipelineHandle handle;
-        handle.id = 0; // Invalid ID
-        RDE_CORE_INFO("TODO: Create Vulkan pipeline for description");
-        return handle;
+        VulkanPipeline newPipeline;
+
+        // --- 1. Shader Stages ---
+        VulkanShader &vs = m_ShaderManager.get(desc.vertexShader);
+        VulkanShader &fs = m_ShaderManager.get(desc.fragmentShader);
+
+        VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
+        vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+        vertShaderStageInfo.module = vs.module;
+        vertShaderStageInfo.pName = "main"; // Entry point
+
+        VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
+        fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        fragShaderStageInfo.module = fs.module;
+        fragShaderStageInfo.pName = "main";
+
+        VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+
+        // --- 2. Vertex Input ---
+        std::vector<VkVertexInputBindingDescription> bindings;
+        for (const auto &b: desc.vertexBindings) {
+            bindings.push_back({.binding = b.binding, .stride = b.stride, .inputRate = VK_VERTEX_INPUT_RATE_VERTEX});
+        }
+        std::vector<VkVertexInputAttributeDescription> attributes;
+        for (const auto &a: desc.vertexAttributes) {
+            attributes.push_back({.location = a.location, .binding = a.binding, .format = ToVulkanFormat(
+                    a.format), .offset = a.offset});
+        }
+
+        VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+        vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindings.size());
+        vertexInputInfo.pVertexBindingDescriptions = bindings.data();
+        vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size());
+        vertexInputInfo.pVertexAttributeDescriptions = attributes.data();
+
+        // --- 3. Fixed Function Stages (with sensible defaults) ---
+        VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+        inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+        VkPipelineViewportStateCreateInfo viewportState{};
+        viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        viewportState.viewportCount = 1; // Viewport and scissor will be set dynamically
+        viewportState.scissorCount = 1;
+
+        VkPipelineRasterizationStateCreateInfo rasterizer{};
+        rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rasterizer.depthClampEnable = VK_FALSE;
+        rasterizer.rasterizerDiscardEnable = VK_FALSE;
+        rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+        rasterizer.lineWidth = 1.0f;
+        rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+        rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+        rasterizer.depthBiasEnable = VK_FALSE;
+
+        VkPipelineMultisampleStateCreateInfo multisampling{};
+        multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        multisampling.sampleShadingEnable = VK_FALSE;
+        multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+        VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+        colorBlendAttachment.colorWriteMask =
+                VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
+                VK_COLOR_COMPONENT_A_BIT;
+        colorBlendAttachment.blendEnable = VK_FALSE; // No blending for our first triangle
+
+        VkPipelineColorBlendStateCreateInfo colorBlending{};
+        colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        colorBlending.logicOpEnable = VK_FALSE;
+        colorBlending.attachmentCount = 1;
+        colorBlending.pAttachments = &colorBlendAttachment;
+
+        // --- 4. Pipeline Layout ---
+        // Describes uniform buffers, textures, etc. For now, it's empty.
+        VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+        pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        VK_CHECK(vkCreatePipelineLayout(m_LogicalDevice, &pipelineLayoutInfo, nullptr, &newPipeline.layout));
+
+        // Set dynamic states that can be changed without recreating the pipeline
+        std::vector<VkDynamicState> dynamicStates = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+        VkPipelineDynamicStateCreateInfo dynamicState{};
+        dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+        dynamicState.pDynamicStates = dynamicStates.data();
+
+        // --- 5. Create the Pipeline ---
+        VkGraphicsPipelineCreateInfo pipelineInfo{};
+        pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipelineInfo.stageCount = 2;
+        pipelineInfo.pStages = shaderStages;
+        pipelineInfo.pVertexInputState = &vertexInputInfo;
+        pipelineInfo.pInputAssemblyState = &inputAssembly;
+        pipelineInfo.pViewportState = &viewportState;
+        pipelineInfo.pRasterizationState = &rasterizer;
+        pipelineInfo.pMultisampleState = &multisampling;
+        pipelineInfo.pDepthStencilState = nullptr; // No depth testing for now
+        pipelineInfo.pColorBlendState = &colorBlending;
+        pipelineInfo.pDynamicState = &dynamicState;
+        pipelineInfo.layout = newPipeline.layout;
+        pipelineInfo.renderPass = m_SwapchainRenderPass; // Must be compatible with this render pass
+        pipelineInfo.subpass = 0;
+
+        VK_CHECK(vkCreateGraphicsPipelines(m_LogicalDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr,
+                                           &newPipeline.handle));
+
+        return m_PipelineManager.create(std::move(newPipeline));
     }
 
     void VulkanDevice::destroy_pipeline(RAL::PipelineHandle handle) {
-        RDE_CORE_INFO("TODO: Destroy Vulkan pipeline with ID: {}", handle.id);
-        if (!handle.is_valid()) return;
-    }
-
-    RAL::DescriptorSetLayoutHandle VulkanDevice::create_descriptor_set_layout(const RAL::DescriptorSetLayoutDescription& desc) {
-        RDE_CORE_INFO("TODO: Create Vulkan descriptor set layout for description");
-        return {};
-    }
-
-    void VulkanDevice::destroy_descriptor_set_layout(RAL::DescriptorSetLayoutHandle handle) {
-        RDE_CORE_INFO("TODO: Destroy Vulkan descriptor set layout with ID: {}", handle.id);
-    }
-
-    std::vector<RAL::DescriptorSetHandle> VulkanDevice::allocate_descriptor_sets(RAL::DescriptorSetLayoutHandle layout, uint32_t count) {
-        RDE_CORE_INFO("TODO: Allocate {} Vulkan descriptor sets for layout ID: {}", count, layout.id);
-        return {};
-    }
-
-    void VulkanDevice::update_descriptor_sets(const std::vector<RAL::WriteDescriptorSet>& writes) {
-        RDE_CORE_INFO("TODO: Update Vulkan descriptor sets with {} writes", writes.size());
-    }
-
-    std::unique_ptr<RAL::CommandBuffer> VulkanDevice::create_command_buffer() {
-        // This one is important for the next step. We can implement it properly now.
-        // It requires a VulkanCommandBuffer class.
-        return std::make_unique<VulkanCommandBuffer>(*this);
-    }
-
-    void VulkanDevice::submit_command_buffers(const std::vector<RAL::CommandBuffer*>& command_buffers) {
-        if (command_buffers.empty()) return;
-
-        std::vector<VkCommandBuffer> vk_command_buffers;
-        vk_command_buffers.reserve(command_buffers.size());
-        for (const auto& cmd : command_buffers) {
-            // We must cast from the abstract RAL interface to our concrete Vulkan implementation.
-            vk_command_buffers.push_back(static_cast<VulkanCommandBuffer*>(cmd)->get_native_handle());
-        }
-
-        VkSubmitInfo submit_info{};
-        submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-        // Wait on the image_available semaphore before the color attachment output stage.
-        VkSemaphore wait_semaphores[] = { m_image_available_semaphores[m_current_frame] };
-        VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-        submit_info.waitSemaphoreCount = 1;
-        submit_info.pWaitSemaphores = wait_semaphores;
-        submit_info.pWaitDstStageMask = wait_stages;
-
-        submit_info.commandBufferCount = static_cast<uint32_t>(vk_command_buffers.size());
-        submit_info.pCommandBuffers = vk_command_buffers.data();
-
-        // Signal the render_finished semaphore when commands are done.
-        VkSemaphore signal_semaphores[] = { m_render_finished_semaphores[m_current_frame] };
-        submit_info.signalSemaphoreCount = 1;
-        submit_info.pSignalSemaphores = signal_semaphores;
-
-        // The in_flight_fence will be signaled by the GPU when this submission completes.
-        // This is what `begin_frame` will wait on.
-        if (vkQueueSubmit(m_graphics_queue, 1, &submit_info, m_in_flight_fences[m_current_frame]) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to submit draw command buffer!");
+        if (m_PipelineManager.is_valid(handle)) {
+            wait_idle();
+            VulkanPipeline &pipeline = m_PipelineManager.get(handle);
+            vkDestroyPipeline(m_LogicalDevice, pipeline.handle, nullptr);
+            vkDestroyPipelineLayout(m_LogicalDevice, pipeline.layout, nullptr);
+            m_PipelineManager.destroy(handle);
         }
     }
 
+    RAL::CommandBuffer *VulkanDevice::begin_frame(){
+        assert(m_CurrentFrameCommandBuffer == nullptr && "begin_frame() called twice without a call to end_frame()!");
+        // Acquire returns the handle, but we don't need it here. The command buffer
+        // will get it from the device when BeginRenderPass is called.
+        // We just need to know if the acquisition was successful.
+        RAL::TextureHandle swapchain_image = acquire_next_swapchain_image();
+        if (!swapchain_image.is_valid()) {
+            // Window was resized or another error occurred.
+            return nullptr;
+        }
+
+        // The user gets a raw pointer, but we return a new object each frame.
+        // This is a bit tricky for ownership. A better approach is to return
+        // a single, reusable command buffer owned by the device.
+        // For now, let's assume we create a new one.
+        m_CurrentFrameCommandBuffer = create_command_buffer();
+        m_CurrentFrameCommandBuffer->begin();
+        return m_CurrentFrameCommandBuffer.get();
+    }
+
+    void VulkanDevice::end_frame() {
+        assert(m_CurrentFrameCommandBuffer != nullptr && "end_frame() called without a call to begin_frame()!");
+
+        m_CurrentFrameCommandBuffer->end();
+
+        std::vector<std::unique_ptr<RAL::CommandBuffer>> submissions;
+        submissions.push_back(std::move(m_CurrentFrameCommandBuffer));
+
+        submit(submissions);
+        present();
+    }
+
+    // ... Stubs for other functions ...
     void VulkanDevice::wait_idle() {
-        // This one is easy and correct to implement fully now.
-        vkDeviceWaitIdle(m_device);
+        vkDeviceWaitIdle(m_LogicalDevice);
     }
-    // ... all others
+
 }

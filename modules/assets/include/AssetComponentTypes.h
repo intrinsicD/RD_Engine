@@ -2,7 +2,7 @@
 
 //#include "Properties.h"
 #include "AssetHandle.h"
-#include "AttributeRegistry.h"
+#include "core/AttributeRegistry.h"
 #include "ral/Common.h"
 
 #include <string>
