@@ -141,16 +141,13 @@ namespace RDE {
     }
 
     void InputManager::on_frame_end() {
-        // Reset the current frame state to prepare for the next frame
+        // This is the ONLY thing needed for key/mouse button buffers
         m_state->keys_last_frame = m_state->keys_current_frame;
         m_state->mouse_buttons_last_frame = m_state->mouse_buttons_current_frame;
 
-        // Reset deltas
+        // Reset ONLY the per-frame delta values
+        m_state->cursor_info.delta_from_last_frame = {0.0f, 0.0f};
         m_state->scroll_info.delta_this_frame = {0.0f, 0.0f};
-
-        // Clear current frame states
-        std::fill(m_state->keys_current_frame.begin(), m_state->keys_current_frame.end(), false);
-        std::fill(m_state->mouse_buttons_current_frame.begin(), m_state->mouse_buttons_current_frame.end(), false);
     }
 
     void InputManager::process_held_actions(float delta_time) {
@@ -188,15 +185,15 @@ namespace RDE {
     }
 
     bool InputManager::is_key_pressed(KeyCode key) {
-        return s_instance && s_instance->m_state->keys_current_frame[key];
+        return s_instance->m_state->keys_current_frame[key] && !s_instance->m_state->keys_last_frame[key];
     }
 
     bool InputManager::is_key_released(KeyCode key) {
-        return s_instance && !s_instance->m_state->keys_current_frame[key] && s_instance->m_state->keys_last_frame[key];
+        return !s_instance->m_state->keys_current_frame[key] && s_instance->m_state->keys_last_frame[key];
     }
 
     bool InputManager::is_key_held(KeyCode key) {
-        return s_instance && s_instance->m_state->keys_current_frame[key] && s_instance->m_state->keys_last_frame[key];
+        return s_instance->m_state->keys_current_frame[key];
     }
 
     bool InputManager::is_any_key_held() {
