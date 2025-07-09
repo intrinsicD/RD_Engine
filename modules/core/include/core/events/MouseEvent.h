@@ -3,6 +3,7 @@
 #pragma once
 
 #include "Event.h"
+#include "core/MouseCodes.h"
 
 namespace RDE {
 
@@ -75,16 +76,16 @@ namespace RDE {
         }
 
     protected:
-        MouseButtonEvent(const int button)
+        MouseButtonEvent(const MouseButton button)
                 : m_button(button) {
         }
 
-        int m_button;
+        MouseButton m_button;
     };
 
     class MouseButtonPressedEvent : public MouseButtonEvent {
     public:
-        MouseButtonPressedEvent(const int button)
+        MouseButtonPressedEvent(const MouseButton button)
                 : MouseButtonEvent(button) {
         }
 
@@ -101,7 +102,7 @@ namespace RDE {
 
     class MouseButtonReleasedEvent : public MouseButtonEvent {
     public:
-        MouseButtonReleasedEvent(const int button)
+        MouseButtonReleasedEvent(const MouseButton button)
                 : MouseButtonEvent(button) {
         }
 

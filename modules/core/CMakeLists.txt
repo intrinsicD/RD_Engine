@@ -16,9 +16,11 @@ target_sources(Core
         src/Log.cpp
         src/FileIOUtils.cpp
         src/Platform.cpp
+        src/InputManager.cpp
 )
 
 target_link_libraries(Core
         PUBLIC
         spdlog
+        glm::glm
 )

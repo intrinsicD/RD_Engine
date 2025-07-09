@@ -1,26 +1,27 @@
 #pragma once
 
 #include "Event.h"
+#include "core/KeyCodes.h"
 
 namespace RDE {
     class KeyEvent : public Event {
     public:
-        int get_key_code() const { return m_key_code; }
+        KeyCode get_key_code() const { return m_key_code; }
 
         int get_category_flags() const override {
             return EventCategory::EventCategoryInput | EventCategory::EventCategoryKeyboard;
         }
 
     protected:
-        KeyEvent(const int keycode) : m_key_code(keycode) {
+        KeyEvent(const KeyCode keycode) : m_key_code(keycode) {
         }
 
-        int m_key_code;
+        KeyCode m_key_code;
     };
 
     class KeyPressedEvent : public KeyEvent {
     public:
-        KeyPressedEvent(const int keycode, bool is_repeat = false)
+        KeyPressedEvent(const KeyCode keycode, bool is_repeat = false)
             : KeyEvent(keycode), m_is_repeat(is_repeat) {
         }
 
@@ -42,7 +43,7 @@ namespace RDE {
 
     class KeyReleasedEvent : public KeyEvent {
     public:
-        KeyReleasedEvent(const int keycode)
+        KeyReleasedEvent(const KeyCode keycode)
             : KeyEvent(keycode) {
         }
 

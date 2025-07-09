@@ -12,8 +12,6 @@
 #include "systems/HierarchySystem.h"
 #include "systems/BoundingVolumeSystem.h"
 
-#include "src/GlfwVulkanWindow.h"
-
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
 
@@ -24,7 +22,6 @@
 #include "ImGuiLayer.h"
 
 #include <imgui.h>
-#include <backends/imgui_impl_glfw.h>
 
 namespace RDE {
     SandboxApp::SandboxApp(std::unique_ptr<IWindow> window) : m_window(
@@ -123,9 +120,9 @@ namespace RDE {
 
         Ticker timer;
         auto *glfw_window = static_cast<GLFWwindow *>(m_window->get_native_handle());
-        while (!glfwWindowShouldClose(glfw_window) && m_is_running) {
+        while (!m_window->should_close() && m_is_running) {
             // Poll events
-            glfwPollEvents();
+            m_window->poll_events();
 
             // Check if the window is minimized
             int width, height;
