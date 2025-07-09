@@ -1,5 +1,5 @@
 # Define the path to our assets directory relative to the root source directory.
-set(RDE_ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+set(RDE_ASSET_DIR "${CMAKE_SOURCE_DIR}/data")
 message(STATUS "RDE Asset Directory: ${RDE_ASSET_DIR}")
 
 # This command takes config.h.in, replaces the @VARIABLES@,

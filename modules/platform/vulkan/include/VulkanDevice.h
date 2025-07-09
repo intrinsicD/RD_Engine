@@ -9,19 +9,22 @@
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h> // Include the VMA header
 #include <memory>
+#include <functional>
 
 struct GLFWwindow; // Forward declaration of GLFWwindow
 
 namespace RDE {
+    class VulkanHelper;
+
     // This will be our concrete implementation of the RAL::Device interface
     class VulkanDevice final : public RAL::Device {
     public:
         // The constructor will handle all the initialization.
-        VulkanDevice(GLFWwindow *window);
+        explicit VulkanDevice(GLFWwindow *window);
 
         ~VulkanDevice() override;
 
-        void* map_buffer(RAL::BufferHandle handle) override;
+        void *map_buffer(RAL::BufferHandle handle) override;
 
         void unmap_buffer(RAL::BufferHandle handle) override;
 
@@ -37,6 +40,9 @@ namespace RDE {
         std::unique_ptr<RAL::CommandBuffer> create_command_buffer() override;
 
         void submit(const std::vector<std::unique_ptr<RAL::CommandBuffer> > &command_buffers) override;
+
+        void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function); // Keep this declaration for now
+
 
         RAL::CommandBuffer *begin_frame() override;
 
@@ -76,7 +82,7 @@ namespace RDE {
 
         void destroy_sampler(RAL::SamplerHandle handle) override;
 
-    private:
+
         // --- Core Vulkan Objects ---
         VkInstance m_Instance{VK_NULL_HANDLE};
         VkDebugUtilsMessengerEXT m_DebugMessenger{VK_NULL_HANDLE};
@@ -109,10 +115,8 @@ namespace RDE {
         // --- Command & Render Pass Infrastructure ---
         VkCommandPool m_CommandPool{VK_NULL_HANDLE};
 
-        // --- HIGHLIGHT: These are the missing members ---
         VkRenderPass m_SwapchainRenderPass{VK_NULL_HANDLE};
         std::vector<VkFramebuffer> m_SwapchainFramebuffers;
-        // --- End Highlight ---
 
         VulkanSwapchain m_Swapchain;
         std::vector<RAL::TextureHandle> m_SwapchainTextureHandles;
@@ -125,6 +129,10 @@ namespace RDE {
         VkSemaphore m_RenderFinishedSemaphore{VK_NULL_HANDLE};
         VkFence m_InFlightFence{VK_NULL_HANDLE};
         std::unique_ptr<RAL::CommandBuffer> m_CurrentFrameCommandBuffer;
+
+        VkFence m_UploadFence{VK_NULL_HANDLE};
+        VkCommandPool m_UploadCommandPool{VK_NULL_HANDLE};
+        VkCommandBuffer m_UploadCommandBuffer{VK_NULL_HANDLE};
 
         friend class VulkanCommandBuffer;
 

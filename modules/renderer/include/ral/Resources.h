@@ -36,6 +36,7 @@ namespace RAL {
         HostVisible, // CPU visible, for frequent updates (e.g. UBOs)
         // No need for separate Coherent/Cached here, the backend can decide
         // the best flags based on this high-level intent.
+        CPU_To_GPU, // For buffers that will be written by CPU and read by GPU
     };
 
     enum class ShaderStage {
@@ -46,17 +47,50 @@ namespace RAL {
 
     ENABLE_ENUM_FLAG_OPERATORS(ShaderStage)
 
-    enum class CullMode { None, Front, Back, FrontAndBack };
+    enum class CullMode {
+        None, Front, Back, FrontAndBack
+    };
 
-    enum class PolygonMode { Fill, Line, Point };
+    enum class PolygonMode {
+        Fill, Line, Point
+    };
 
-    enum class FrontFace { Clockwise, CounterClockwise };
+    enum class FrontFace {
+        Clockwise, CounterClockwise
+    };
 
     enum class BlendFactor {
         Zero, One, SrcColor, OneMinusSrcColor, DstColor, OneMinusDstColor, SrcAlpha, OneMinusSrcAlpha
     };
 
-    enum class BlendOp { Add, Subtract, ReverseSubtract, Min, Max };
+    enum class BlendOp {
+        Add, Subtract, ReverseSubtract, Min, Max
+    };
+
+    enum class CompareOp {
+        Never,
+        Less,
+        Equal,
+        LessOrEqual,
+        Greater,
+        NotEqual,
+        GreaterOrEqual,
+        Always
+    };
+
+    struct StencilOpState {
+        // We can fill these in later when we need stencil testing.
+        // For now, defaults are fine.
+    };
+
+    struct DepthStencilState {
+        bool depthTestEnable   = false;
+        bool depthWriteEnable  = false;
+        CompareOp depthCompareOp = CompareOp::LessOrEqual; // A sensible default for 3D rendering
+        bool stencilTestEnable = false;
+        StencilOpState front{};
+        StencilOpState back{};
+    };
 
     // --- Resource Description Structs ---
 
@@ -73,6 +107,7 @@ namespace RAL {
         Format format; // Use the single, unified Format enum
         TextureUsage usage;
         const void *initialData = nullptr;
+        uint64_t initialDataSize = 0; // Size of initial data, if provided
     };
 
     struct ShaderDescription {
@@ -132,7 +167,7 @@ namespace RAL {
 
         RasterizationState rasterizationState;
         ColorBlendState colorBlendState;
-        // Depth/stencil state can be added later
+        DepthStencilState depthStencilState;
 
         std::vector<VertexInputBinding> vertexBindings;
         std::vector<VertexInputAttribute> vertexAttributes;
@@ -179,9 +214,13 @@ namespace RAL {
         std::vector<DescriptorWrite> writes;
     };
 
-    enum class Filter { Nearest, Linear };
+    enum class Filter {
+        Nearest, Linear
+    };
 
-    enum class SamplerAddressMode { Repeat, MirroredRepeat, ClampToEdge, ClampToBorder };
+    enum class SamplerAddressMode {
+        Repeat, MirroredRepeat, ClampToEdge, ClampToBorder
+    };
 
     struct SamplerDescription {
         Filter magFilter = Filter::Linear;

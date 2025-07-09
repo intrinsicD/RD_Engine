@@ -42,7 +42,7 @@ namespace RDE{
             throw std::runtime_error("Failed to create GLFW window!");
         }
 
-        glfwSetWindowUserPointer(m_window, this); // Set the user pointer to this Application instance
+        glfwSetWindowUserPointer(m_window, &m_data); // Set the user pointer to this Application instance
 
         glfwSetWindowSizeCallback(m_window, [](GLFWwindow *window, int width, int height) {
             WindowData &data = *(WindowData *) glfwGetWindowUserPointer(window);

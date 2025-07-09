@@ -8,6 +8,7 @@ set(IMGUI_SOURCES
         ${imgui_SOURCE_DIR}/imgui_demo.cpp
         ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
         ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
         ${ImGuiFileDialog_SOURCE_DIR}/ImGuiFileDialog.cpp
 )
 
@@ -20,6 +21,8 @@ target_include_directories(Test PUBLIC
 
 target_sources(Test PRIVATE
         SandboxApp.cpp
+        main.cpp
+        ImGuiLayer.cpp
         ${IMGUI_SOURCES}
 )
 
@@ -33,6 +36,7 @@ target_link_libraries(Test
         RDE::Platform::Glfw
         RDE::Scene
         RDE::Geometry
+        RDE::Renderer
         spdlog
         glfw
         glm

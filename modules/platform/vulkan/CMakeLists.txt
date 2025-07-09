@@ -23,7 +23,7 @@ find_package(Vulkan REQUIRED)
 target_link_libraries(VulkanPlatform
         PUBLIC
         Vulkan::Vulkan
-        RAL
+        RDE::Renderer
         RDE::Core
         glfw
 )

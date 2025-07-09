@@ -22,9 +22,9 @@ namespace RDE {
 
         // 2. Fall back to the development path (if defined).
         //    This uses the path baked in by CMake from the source tree.
-#ifdef RDE_DEVELOPMENT_ASSET_PATH
-        RDE_CORE_INFO("RDE_DEVELOPMENT_ASSET_PATH: {}", RDE_DEVELOPMENT_ASSET_PATH);
-        std::filesystem::path dev_path(exe_dir / RDE_DEVELOPMENT_ASSET_PATH);
+#ifdef RDE_ASSET_DIR
+        RDE_CORE_INFO("RDE_ASSET_DIR: {}", RDE_ASSET_DIR);
+        std::filesystem::path dev_path(exe_dir / RDE_ASSET_DIR);
         RDE_CORE_INFO("Trying dev_path: {}", dev_path.string());
         if (std::filesystem::exists(dev_path)) {
             return dev_path;
@@ -39,5 +39,19 @@ namespace RDE {
         }
 
         return std::nullopt; // Could not find assets
+    }
+
+    inline std::optional<std::filesystem::path> get_shaders_path(){
+        auto asset_path = get_asset_path();
+        if (!asset_path.has_value()) {
+            RDE_CORE_WARN("No asset path found, cannot determine shaders path");
+            return std::nullopt; // Failed to find asset path
+        }
+        auto shaders_path = asset_path.value() / "shaders";
+        if (std::filesystem::exists(shaders_path)) {
+            return shaders_path;
+        }
+        RDE_CORE_WARN("Shaders path does not exist: {}", shaders_path.string());
+        return std::nullopt; // Shaders path does not exist
     }
 }

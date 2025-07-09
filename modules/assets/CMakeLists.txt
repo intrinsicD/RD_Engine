@@ -21,10 +21,10 @@ target_sources(AssetSystem
 
 target_link_libraries(AssetSystem
         PUBLIC
-        RAL
-        efsw
-        EnTT::EnTT
         RDE::Core
+        RDE::Renderer
+        EnTT::EnTT
+        efsw
 )
 
 add_subdirectory(config)

@@ -1,3 +1,4 @@
+//vulkan/VulkanMappers.h
 #pragma once
 
 #include "ral/Common.h"
@@ -87,6 +88,7 @@ namespace RDE {
         switch (usage) {
             case RAL::MemoryUsage::DeviceLocal: return VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
             case RAL::MemoryUsage::HostVisible: return VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+            case RAL::MemoryUsage::CPU_To_GPU: return VMA_MEMORY_USAGE_CPU_TO_GPU;
         }
         return VMA_MEMORY_USAGE_AUTO;
     }
@@ -98,6 +100,17 @@ namespace RDE {
         if (has_flag(usage, RAL::BufferUsage::UniformBuffer)) flags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
         if (has_flag(usage, RAL::BufferUsage::TransferSrc)) flags |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
         if (has_flag(usage, RAL::BufferUsage::TransferDst)) flags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        return flags;
+    }
+
+    inline VkImageUsageFlags ToVulkanImageUsage(RAL::TextureUsage usage) {
+        VkImageUsageFlags flags = 0;
+        if (has_flag(usage, RAL::TextureUsage::Sampled))         flags |= VK_IMAGE_USAGE_SAMPLED_BIT;
+        if (has_flag(usage, RAL::TextureUsage::Storage))         flags |= VK_IMAGE_USAGE_STORAGE_BIT;
+        if (has_flag(usage, RAL::TextureUsage::ColorAttachment)) flags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        if (has_flag(usage, RAL::TextureUsage::DepthStencilAttachment)) flags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        if (has_flag(usage, RAL::TextureUsage::TransferSrc))     flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        if (has_flag(usage, RAL::TextureUsage::TransferDst))     flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         return flags;
     }
 }

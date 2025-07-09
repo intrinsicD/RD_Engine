@@ -2,11 +2,14 @@
 
 #include "core/Application.h"
 #include "core/IWindow.h"
+#include "renderer/Renderer.h"
 
 namespace RDE {
+    class ImGuiLayer;
+
     class SandboxApp : public Application {
     public:
-        SandboxApp(std::unique_ptr<IWindow> window = nullptr);
+        explicit SandboxApp(std::unique_ptr<IWindow> window = nullptr);
 
         ~SandboxApp() override;
 
@@ -21,15 +24,37 @@ namespace RDE {
 
         void on_render() override;
 
-        void on_render_gui() override;
-
         void on_event(Event &e) override;
 
-        ApplicationContext &get_app_context() {
-            return *m_app_context;
-        }
+        std::unique_ptr<RDE::IWindow> m_window;
+        std::unique_ptr<RDE::Renderer> m_renderer;
+        std::unique_ptr<RDE::AssetManager> m_asset_manager;
+        std::unique_ptr<RDE::FileWatcher> m_file_watcher;
+        std::unique_ptr<RDE::ThreadSafeQueue<std::string>> m_file_watcher_event_queue;
+        std::unique_ptr<RDE::SystemScheduler> m_system_scheduler;
 
-        std::unique_ptr<IWindow> m_window;
-        std::shared_ptr<ApplicationContext> m_app_context; // Application context containing the main window and state
+        // --- Data Ownership ---
+        std::shared_ptr<RDE::AssetDatabase> m_asset_database;
+        std::shared_ptr<entt::registry> m_registry;
+        std::shared_ptr<entt::dispatcher> m_dispatcher;
+        RDE::LayerStack m_layer_stack;
+        ImGuiLayer *m_imgui_layer = nullptr; // Pointer to ImGui layer for UI rendering
+
+        // --- Application State ---
+        bool m_is_running = true;
+        bool m_is_minimized = false;
+
+        // --- Input State ---
+        RDE::Mouse m_mouse_state;
+        RDE::Keyboard m_keyboard_state;
+        std::unordered_map<int, std::function<void()> > m_key_press_bindings; // Key bindings for press actions
+        std::unordered_map<int, std::function<void()> > m_key_release_bindings; // Key bindings for release actions
+        std::unordered_map<int, std::function<void()> > m_key_repeat_bindings; // Key bindings for release actions
+        std::unordered_map<int, std::function<void()> > m_key_update_bindings; // Key bindings for update actions
+
+        // --- Scene/Editor State ---
+        entt::entity m_primary_camera_entity;
+        entt::entity m_last_selected_entity;
+        std::vector<entt::entity> m_selected_entities;
     };
 }

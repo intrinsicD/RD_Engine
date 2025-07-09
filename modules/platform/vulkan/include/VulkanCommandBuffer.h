@@ -10,7 +10,7 @@ namespace RDE {
 
     class VulkanCommandBuffer : public RAL::CommandBuffer {
     public:
-        explicit VulkanCommandBuffer(VkCommandBuffer handle, VulkanDevice &device);
+        explicit VulkanCommandBuffer(VkCommandBuffer handle, VulkanDevice *device);
 
         ~VulkanCommandBuffer() override;
 
@@ -33,6 +33,10 @@ namespace RDE {
 
         void bind_index_buffer(RAL::BufferHandle buffer, RAL::IndexType indexType) override;
 
+        void bind_descriptor_set(RAL::PipelineHandle pipeline, RAL::DescriptorSetHandle set, uint32_t setIndex) override;
+
+        void push_constants(RAL::PipelineHandle pipeline, RAL::ShaderStage stages, uint32_t offset, uint32_t size, const void* data) override;
+
         void draw(uint32_t vertex_count,
                   uint32_t instance_count,
                   uint32_t first_vertex,
@@ -50,6 +54,6 @@ namespace RDE {
 
     private:
         VkCommandBuffer m_handle = VK_NULL_HANDLE;
-        VulkanDevice &m_device;
+        VulkanDevice *m_device;
     };
 }

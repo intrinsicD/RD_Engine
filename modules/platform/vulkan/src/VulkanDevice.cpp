@@ -21,18 +21,16 @@
 namespace RDE {
     // A debug callback function for the validation layers
     static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
-        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-        VkDebugUtilsMessageTypeFlagsEXT messageType,
-        const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-        void *pUserData) {
+            VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+            VkDebugUtilsMessageTypeFlagsEXT messageType,
+            const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+            void *pUserData) {
         // Only print warnings and errors
         if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
             RDE_CORE_ERROR("Validation Layer: {}", pCallbackData->pMessage);
         }
         return VK_FALSE;
     }
-
-
 
     struct SwapchainSupportDetails {
         VkSurfaceCapabilitiesKHR capabilities;
@@ -93,8 +91,8 @@ namespace RDE {
             glfwGetFramebufferSize(window, &width, &height);
 
             VkExtent2D actualExtent = {
-                static_cast<uint32_t>(width),
-                static_cast<uint32_t>(height)
+                    static_cast<uint32_t>(width),
+                    static_cast<uint32_t>(height)
             };
             actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width,
                                             capabilities.maxImageExtent.width);
@@ -110,9 +108,9 @@ namespace RDE {
         {
             VkApplicationInfo appInfo{};
             appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-            appInfo.pApplicationName = "Helios Engine";
+            appInfo.pApplicationName = "RDEngine";
             appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-            appInfo.pEngineName = "Helios";
+            appInfo.pEngineName = "RDEngine";
             appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
             appInfo.apiVersion = VK_API_VERSION_1_2;
 
@@ -133,7 +131,7 @@ namespace RDE {
 
             // Enable validation layers - this is non-negotiable for development
             const std::vector<const char *> validationLayers = {
-                "VK_LAYER_KHRONOS_validation"
+                    "VK_LAYER_KHRONOS_validation"
             };
             createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
             createInfo.ppEnabledLayerNames = validationLayers.data();
@@ -156,7 +154,7 @@ namespace RDE {
 
             // We have to load the function pointer for this extension function ourselves
             auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(m_Instance,
-                "vkCreateDebugUtilsMessengerEXT");
+                                                                                   "vkCreateDebugUtilsMessengerEXT");
             if (func != nullptr) {
                 VK_CHECK(func(m_Instance, &createInfo, nullptr, &m_DebugMessenger));
             } else {
@@ -178,6 +176,10 @@ namespace RDE {
             vkEnumeratePhysicalDevices(m_Instance, &deviceCount, devices.data());
 
             m_PhysicalDevice = devices[0]; // TODO: Implement proper device picking
+
+            vkGetPhysicalDeviceProperties(m_PhysicalDevice, &m_PhysicalDeviceProperties);
+            RDE_CORE_INFO("Selected GPU: {}", m_PhysicalDeviceProperties.deviceName);
+            RDE_CORE_INFO("Max Sampler Anisotropy: {}", m_PhysicalDeviceProperties.limits.maxSamplerAnisotropy);
 
             // Find a queue family that supports graphics operations.
             uint32_t queueFamilyCount = 0;
@@ -204,6 +206,14 @@ namespace RDE {
             queueCreateInfo.pQueuePriorities = &queuePriority;
 
             VkPhysicalDeviceFeatures deviceFeatures{}; // Enable features here if needed
+            // Check if the GPU supports samplerAnisotropy before enabling it
+            VkPhysicalDeviceFeatures supportedFeatures;
+            vkGetPhysicalDeviceFeatures(m_PhysicalDevice, &supportedFeatures);
+            if (supportedFeatures.samplerAnisotropy) {
+                deviceFeatures.samplerAnisotropy = VK_TRUE;
+            } else {
+                RDE_CORE_WARN("Sampler Anisotropy is not supported on this device!");
+            }
 
             VkDeviceCreateInfo createInfo{};
             createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -213,7 +223,7 @@ namespace RDE {
 
             // Enable the mandatory swapchain extension
             const std::vector<const char *> deviceExtensions = {
-                VK_KHR_SWAPCHAIN_EXTENSION_NAME
+                    VK_KHR_SWAPCHAIN_EXTENSION_NAME
             };
             createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
             createInfo.ppEnabledExtensionNames = deviceExtensions.data();
@@ -225,6 +235,44 @@ namespace RDE {
             // In a more complex scenario, the present queue might be different from the graphics queue.
             // For now, we assume they are the same.
             m_PresentQueue = m_GraphicsQueue;
+        }
+
+        // === 6. Create Command Pool ===
+        {
+            VkCommandPoolCreateInfo poolInfo{};
+            poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            poolInfo.queueFamilyIndex = m_GraphicsQueueFamilyIndex;
+
+            // This flag is crucial. It allows us to reset individual command buffers,
+            // which is essential for re-recording them each frame.
+            poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+            VK_CHECK(vkCreateCommandPool(m_LogicalDevice, &poolInfo, nullptr, &m_CommandPool));
+        }
+
+        // === 7. Create Upload Context ===
+        {
+            // Create a separate command pool for upload commands
+            VkCommandPoolCreateInfo poolInfo{};
+            poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            poolInfo.queueFamilyIndex = m_GraphicsQueueFamilyIndex;
+            // TRANSIENT_BIT tells the driver that these command buffers will be short-lived,
+            // which can be a performance optimization.
+            poolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+            VK_CHECK(vkCreateCommandPool(m_LogicalDevice, &poolInfo, nullptr, &m_UploadCommandPool));
+
+            // Allocate the command buffer
+            VkCommandBufferAllocateInfo allocInfo{};
+            allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            allocInfo.commandPool = m_UploadCommandPool;
+            allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            allocInfo.commandBufferCount = 1;
+            VK_CHECK(vkAllocateCommandBuffers(m_LogicalDevice, &allocInfo, &m_UploadCommandBuffer));
+
+            // Create the fence
+            VkFenceCreateInfo fenceInfo{};
+            fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+            VK_CHECK(vkCreateFence(m_LogicalDevice, &fenceInfo, nullptr, &m_UploadFence));
         }
 
         // === 6. Create Swapchain ===
@@ -240,12 +288,13 @@ namespace RDE {
             VK_CHECK(vkCreateSemaphore(m_LogicalDevice, &semaphoreInfo, nullptr, &m_ImageAvailableSemaphore));
             VK_CHECK(vkCreateSemaphore(m_LogicalDevice, &semaphoreInfo, nullptr, &m_RenderFinishedSemaphore));
             VK_CHECK(vkCreateFence(m_LogicalDevice, &fenceInfo, nullptr, &m_InFlightFence));
-        } {
+        }
+        {
             std::vector<VkDescriptorPoolSize> poolSizes = {
-                {VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
-                {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},
-                {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000}
-                // Add other types as you need them
+                    {VK_DESCRIPTOR_TYPE_SAMPLER,                1000},
+                    {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},
+                    {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         1000}
+                    // Add other types as you need them
             };
             VkDescriptorPoolCreateInfo poolInfo{};
             poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -255,7 +304,8 @@ namespace RDE {
             poolInfo.pPoolSizes = poolSizes.data();
 
             VK_CHECK(vkCreateDescriptorPool(m_LogicalDevice, &poolInfo, nullptr, &m_DescriptorPool));
-        } {
+        }
+        {
             VmaAllocatorCreateInfo allocatorInfo = {};
             allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_2; // Or your target version
             allocatorInfo.physicalDevice = m_PhysicalDevice;
@@ -272,7 +322,7 @@ namespace RDE {
         wait_idle(); // Ensure GPU is not busy before we start destroying things
         // Destruction must happen in reverse order of creation.
         vkDestroyDescriptorPool(m_LogicalDevice, m_DescriptorPool, nullptr);
-
+        vkDestroyCommandPool(m_LogicalDevice, m_CommandPool, nullptr);
         destroy_swapchain();
 
         vkDestroySemaphore(m_LogicalDevice, m_RenderFinishedSemaphore, nullptr);
@@ -281,10 +331,14 @@ namespace RDE {
 
         vmaDestroyAllocator(m_VmaAllocator);
 
+        vkDestroyFence(m_LogicalDevice, m_UploadFence, nullptr);
+        vkDestroyCommandPool(m_LogicalDevice, m_UploadCommandPool,
+                             nullptr); // The command buffer is freed with the pool
+
         vkDestroyDevice(m_LogicalDevice, nullptr);
 
         auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(m_Instance,
-            "vkDestroyDebugUtilsMessengerEXT");
+                                                                                "vkDestroyDebugUtilsMessengerEXT");
         if (func != nullptr) {
             func(m_Instance, m_DebugMessenger, nullptr);
         }
@@ -336,6 +390,13 @@ namespace RDE {
             imageCount = support.capabilities.maxImageCount;
         }
 
+        if (imageCount < 3) imageCount = 3;
+
+        // Check against max again in case our desired count (3) is too high.
+        if (support.capabilities.maxImageCount > 0 && imageCount > support.capabilities.maxImageCount) {
+            imageCount = support.capabilities.maxImageCount;
+        }
+
         // Create the swapchain
         VkSwapchainCreateInfoKHR createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -382,6 +443,68 @@ namespace RDE {
 
             VK_CHECK(vkCreateImageView(m_LogicalDevice, &viewInfo, nullptr, &m_Swapchain.imageViews[i]));
         }
+        // --- Create the Render Pass ---
+        {
+            VkAttachmentDescription colorAttachment{};
+            colorAttachment.format = m_Swapchain.imageFormat;
+            colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+            colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; // Clear the framebuffer before rendering
+            colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE; // Store the result
+            colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; // We don't care about the previous layout
+            colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; // Layout must be ready for presentation
+
+            VkAttachmentReference colorAttachmentRef{};
+            colorAttachmentRef.attachment = 0;
+            colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+            VkSubpassDescription subpass{};
+            subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+            subpass.colorAttachmentCount = 1;
+            subpass.pColorAttachments = &colorAttachmentRef;
+
+            // Add a subpass dependency to ensure layout transition happens at the right time
+            VkSubpassDependency dependency{};
+            dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+            dependency.dstSubpass = 0;
+            dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            dependency.srcAccessMask = 0;
+            dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+            VkRenderPassCreateInfo renderPassInfo{};
+            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+            renderPassInfo.attachmentCount = 1;
+            renderPassInfo.pAttachments = &colorAttachment;
+            renderPassInfo.subpassCount = 1;
+            renderPassInfo.pSubpasses = &subpass;
+            renderPassInfo.dependencyCount = 1;
+            renderPassInfo.pDependencies = &dependency;
+
+            VK_CHECK(vkCreateRenderPass(m_LogicalDevice, &renderPassInfo, nullptr, &m_SwapchainRenderPass));
+        }
+
+        // --- Create Framebuffers ---
+        {
+            m_SwapchainFramebuffers.resize(m_Swapchain.imageViews.size());
+            for (size_t i = 0; i < m_Swapchain.imageViews.size(); i++) {
+                VkImageView attachments[] = {
+                        m_Swapchain.imageViews[i]
+                };
+
+                VkFramebufferCreateInfo framebufferInfo{};
+                framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+                framebufferInfo.renderPass = m_SwapchainRenderPass;
+                framebufferInfo.attachmentCount = 1;
+                framebufferInfo.pAttachments = attachments;
+                framebufferInfo.width = m_Swapchain.extent.width;
+                framebufferInfo.height = m_Swapchain.extent.height;
+                framebufferInfo.layers = 1;
+
+                VK_CHECK(vkCreateFramebuffer(m_LogicalDevice, &framebufferInfo, nullptr, &m_SwapchainFramebuffers[i]));
+            }
+        }
 
         // --- Create RAL TextureHandles for the swapchain images ---
         // NOTE: This is a placeholder. A real resource manager would be responsible
@@ -401,6 +524,13 @@ namespace RDE {
         // as its images may still be in use.
         wait_idle();
 
+        for (auto framebuffer: m_SwapchainFramebuffers) {
+            vkDestroyFramebuffer(m_LogicalDevice, framebuffer, nullptr);
+        }
+        vkDestroyRenderPass(m_LogicalDevice, m_SwapchainRenderPass, nullptr);
+        m_SwapchainFramebuffers.clear();
+        m_SwapchainRenderPass = VK_NULL_HANDLE;
+
         for (auto imageView: m_Swapchain.imageViews) {
             vkDestroyImageView(m_LogicalDevice, imageView, nullptr);
         }
@@ -409,6 +539,7 @@ namespace RDE {
         m_Swapchain.handle = VK_NULL_HANDLE;
         m_Swapchain.imageViews.clear();
         m_Swapchain.images.clear();
+        m_SwapchainTextureHandles.clear();
     }
 
     RAL::TextureHandle VulkanDevice::acquire_next_swapchain_image() {
@@ -425,12 +556,12 @@ namespace RDE {
         // 2. Acquire an image from the swapchain.
         // This call will signal m_ImageAvailableSemaphore when the image is ready.
         VkResult result = vkAcquireNextImageKHR(
-            m_LogicalDevice,
-            m_Swapchain.handle,
-            UINT64_MAX,
-            m_ImageAvailableSemaphore, // Semaphore to be signaled
-            VK_NULL_HANDLE, // Fence to be signaled (we're using our own)
-            &m_CurrentImageIndex
+                m_LogicalDevice,
+                m_Swapchain.handle,
+                UINT64_MAX,
+                m_ImageAvailableSemaphore, // Semaphore to be signaled
+                VK_NULL_HANDLE, // Fence to be signaled (we're using our own)
+                &m_CurrentImageIndex
         );
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR) {
@@ -446,6 +577,21 @@ namespace RDE {
         // 3. Return the abstract handle for the acquired image.
         // The rest of the engine can now use this handle to build a render pass.
         return m_SwapchainTextureHandles[m_CurrentImageIndex];
+    }
+
+    std::unique_ptr<RAL::CommandBuffer> VulkanDevice::create_command_buffer() {
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.commandPool = m_CommandPool;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandBufferCount = 1;
+
+        VkCommandBuffer vkCommandBuffer;
+        VK_CHECK(vkAllocateCommandBuffers(m_LogicalDevice, &allocInfo, &vkCommandBuffer));
+
+        // Wrap the native Vulkan handle in our C++ class, passing a pointer
+        // to this device so the command buffer can access it.
+        return std::make_unique<VulkanCommandBuffer>(vkCommandBuffer, this);
     }
 
     // NOTE: This is a simplified Submit for a single command buffer.
@@ -485,6 +631,36 @@ namespace RDE {
         VK_CHECK(vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, m_InFlightFence));
     }
 
+    void VulkanDevice::immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function) {
+        // Begin the command buffer
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        VK_CHECK(vkBeginCommandBuffer(m_UploadCommandBuffer, &beginInfo));
+
+        // Execute the provided command recording function
+        function(m_UploadCommandBuffer);
+
+        // End the command buffer
+        VK_CHECK(vkEndCommandBuffer(m_UploadCommandBuffer));
+
+        // Submit the command buffer
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &m_UploadCommandBuffer;
+        VK_CHECK(vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, m_UploadFence));
+
+        // Wait for the fence to signal that the command has finished executing
+        VK_CHECK(vkWaitForFences(m_LogicalDevice, 1, &m_UploadFence, VK_TRUE, UINT64_MAX));
+        // Reset the fence for the next submission
+        VK_CHECK(vkResetFences(m_LogicalDevice, 1, &m_UploadFence));
+
+        // Reset the command pool to release the command buffer's memory.
+        // This is faster than freeing/re-allocating the command buffer itself.
+        VK_CHECK(vkResetCommandPool(m_LogicalDevice, m_UploadCommandPool, 0));
+    }
+
     void VulkanDevice::present() {
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -512,24 +688,11 @@ namespace RDE {
     }
 
     void VulkanDevice::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
-        // This is a simplified copy command that should be done on a dedicated transfer queue
-        // in a real engine. For now, we use the graphics queue.
-        std::unique_ptr<RAL::CommandBuffer> cmd = create_command_buffer();
-        cmd->begin();
-
-        // The cast is ugly, but necessary here. A better design might expose the VkCommandBuffer handle.
-        VkBufferCopy copyRegion{};
-        copyRegion.size = size;
-        vkCmdCopyBuffer(static_cast<VulkanCommandBuffer *>(cmd.get())->get_handle(), srcBuffer, dstBuffer, 1,
-                        &copyRegion);
-
-        cmd->end();
-
-        // Submit and wait for completion. This is synchronous and inefficient, but simple.
-        std::vector<std::unique_ptr<RAL::CommandBuffer> > submissions;
-        submissions.push_back(std::move(cmd));
-        submit(submissions);
-        wait_idle(); // Extremely inefficient! For learning purposes only.
+        immediate_submit([&](VkCommandBuffer cmd) {
+            VkBufferCopy copyRegion{};
+            copyRegion.size = size;
+            vkCmdCopyBuffer(cmd, srcBuffer, dstBuffer, 1, &copyRegion);
+        });
     }
 
     VkShaderModule VulkanDevice::createShaderModule(const std::vector<char> &code) {
@@ -571,7 +734,7 @@ namespace RDE {
         vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
         vertShaderStageInfo.module = vs.module;
-        vertShaderStageInfo.pName = "main"; // Entry point
+        vertShaderStageInfo.pName = "main";
 
         VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
         fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -588,11 +751,8 @@ namespace RDE {
         }
         std::vector<VkVertexInputAttributeDescription> attributes;
         for (const auto &a: desc.vertexAttributes) {
-            attributes.push_back({
-                .location = a.location, .binding = a.binding, .format = ToVulkanFormat(
-                    a.format),
-                .offset = a.offset
-            });
+            attributes.push_back({.location = a.location, .binding = a.binding, .format = ToVulkanFormat(
+                    a.format), .offset = a.offset});
         }
 
         VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
@@ -602,50 +762,66 @@ namespace RDE {
         vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size());
         vertexInputInfo.pVertexAttributeDescriptions = attributes.data();
 
-        // --- 3. Fixed Function Stages (with sensible defaults) ---
+        // --- 3. Fixed Function Stages ---
         VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
         inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
         inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         inputAssembly.primitiveRestartEnable = VK_FALSE;
 
+        // Viewport and Scissor will be dynamic, so we just need to specify the count.
         VkPipelineViewportStateCreateInfo viewportState{};
         viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-        viewportState.viewportCount = 1; // Viewport and scissor will be set dynamically
+        viewportState.viewportCount = 1;
         viewportState.scissorCount = 1;
+
+        // Dynamic states allow us to change viewport and scissor without rebuilding the pipeline
+        std::vector<VkDynamicState> dynamicStates = {
+                VK_DYNAMIC_STATE_VIEWPORT,
+                VK_DYNAMIC_STATE_SCISSOR
+        };
+        VkPipelineDynamicStateCreateInfo dynamicState{};
+        dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+        dynamicState.pDynamicStates = dynamicStates.data();
 
         VkPipelineRasterizationStateCreateInfo rasterizer{};
         rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-        // ... map desc.rasterizationState fields to the vulkan struct ...
-        rasterizer.cullMode = (desc.rasterizationState.cullMode == RAL::CullMode::Back)
-                                  ? VK_CULL_MODE_BACK_BIT
-                                  : VK_CULL_MODE_NONE; // Simplified
-        rasterizer.polygonMode = VK_POLYGON_MODE_FILL; // map from desc
+        rasterizer.depthClampEnable = VK_FALSE;
+        rasterizer.rasterizerDiscardEnable = VK_FALSE;
+        rasterizer.polygonMode = VK_POLYGON_MODE_FILL; // Map from desc.rasterizationState later
         rasterizer.lineWidth = 1.0f;
-        rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; // map from desc
+        rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;   // Map from desc.rasterizationState later
+        rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; // Map from desc.rasterizationState later
+        rasterizer.depthBiasEnable = VK_FALSE;
 
-        VkPipelineMultisampleStateCreateInfo multisampling{
-            /*...*/
-        };
+        VkPipelineMultisampleStateCreateInfo multisampling{};
+        multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        multisampling.sampleShadingEnable = VK_FALSE;
+        multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
-        // --- FIX: Use BlendState from description ---
         VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-        colorBlendAttachment.blendEnable = desc.colorBlendState.attachment.blendEnable;
-        // ... map all the blend factors and ops from desc.colorBlendState ...
-        colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                                              VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        colorBlendAttachment.colorWriteMask =
+                VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
+                VK_COLOR_COMPONENT_A_BIT;
+        // For ImGui, you need blending enabled.
+        // We should map this from desc.colorBlendState properly.
+        colorBlendAttachment.blendEnable = desc.colorBlendState.attachment.blendEnable; // VK_TRUE for ImGui
+        colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+        colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
 
-        VkPipelineColorBlendStateCreateInfo colorBlending{
-            /*...*/
-        };
+        VkPipelineColorBlendStateCreateInfo colorBlending{};
+        colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        colorBlending.logicOpEnable = VK_FALSE;
         colorBlending.attachmentCount = 1;
         colorBlending.pAttachments = &colorBlendAttachment;
 
-        // --- 4. Pipeline Layout (Driven by RAL description) ---
+        // --- 4. Pipeline Layout ---
         std::vector<VkDescriptorSetLayout> vkSetLayouts;
         for (const auto &layoutHandle: desc.descriptorSetLayouts) {
             vkSetLayouts.push_back(m_DsLayoutManager.get(layoutHandle).handle);
         }
-
         std::vector<VkPushConstantRange> vkPushRanges;
         for (const auto &pushRange: desc.pushConstantRanges) {
             vkPushRanges.push_back({ToVulkanShaderStageFlags(pushRange.stages), pushRange.offset, pushRange.size});
@@ -659,17 +835,26 @@ namespace RDE {
         pipelineLayoutInfo.pPushConstantRanges = vkPushRanges.data();
         VK_CHECK(vkCreatePipelineLayout(m_LogicalDevice, &pipelineLayoutInfo, nullptr, &newPipeline.layout));
 
-        // --- 5. Create the Pipeline ---
-        // The rest is mostly the same, it correctly uses the structs we just filled.
-        VkGraphicsPipelineCreateInfo pipelineInfo{
-            /*...*/
-        };
+        // --- 5. Create the Graphics Pipeline ---
+        VkGraphicsPipelineCreateInfo pipelineInfo{};
+        pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipelineInfo.stageCount = 2; // Vertex + Fragment
+        pipelineInfo.pStages = shaderStages;
+        pipelineInfo.pVertexInputState = &vertexInputInfo;
+        pipelineInfo.pInputAssemblyState = &inputAssembly;
+        pipelineInfo.pViewportState = &viewportState;
         pipelineInfo.pRasterizationState = &rasterizer;
+        pipelineInfo.pMultisampleState = &multisampling;
+        pipelineInfo.pDepthStencilState = nullptr; // No depth testing for now
         pipelineInfo.pColorBlendState = &colorBlending;
+        pipelineInfo.pDynamicState = &dynamicState;
         pipelineInfo.layout = newPipeline.layout;
+        // THIS IS CRUCIAL: The pipeline must know which render pass it's compatible with.
+        pipelineInfo.renderPass = m_SwapchainRenderPass;
+        pipelineInfo.subpass = 0;
 
-        VK_CHECK(
-            vkCreateGraphicsPipelines(m_LogicalDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &newPipeline.handle));
+        VK_CHECK(vkCreateGraphicsPipelines(m_LogicalDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr,
+                                           &newPipeline.handle));
 
         return m_PipelineManager.create(std::move(newPipeline));
     }
@@ -685,7 +870,7 @@ namespace RDE {
     }
 
     RAL::DescriptorSetLayoutHandle VulkanDevice::create_descriptor_set_layout(
-        const RAL::DescriptorSetLayoutDescription &desc) {
+            const RAL::DescriptorSetLayoutDescription &desc) {
         std::vector<VkDescriptorSetLayoutBinding> bindings;
         bindings.reserve(desc.bindings.size());
 
@@ -764,8 +949,9 @@ namespace RDE {
                     VulkanTexture &texture = m_TextureManager.get(ralWrite.texture);
                     VulkanSampler sampler = m_SamplerManager.get(ralWrite.sampler);
                     imageInfos.push_back({
-                        sampler.handle, texture.image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-                    });
+                                                 sampler.handle, texture.image_view,
+                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                                         });
                     write.pImageInfo = &imageInfos.back();
                     break;
                 }
@@ -839,8 +1025,8 @@ namespace RDE {
 
         VulkanBuffer newBuffer;
         VK_CHECK(
-            vmaCreateBuffer(m_VmaAllocator, &bufferInfo, &allocInfo, &newBuffer.handle, &newBuffer.allocation, nullptr))
-        ;
+                vmaCreateBuffer(m_VmaAllocator, &bufferInfo, &allocInfo, &newBuffer.handle, &newBuffer.allocation,
+                                nullptr));
 
         if (desc.initialData) {
             if (desc.memoryUsage == RAL::MemoryUsage::HostVisible) {
@@ -862,8 +1048,8 @@ namespace RDE {
                 stagingAllocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
                 VK_CHECK(
-                    vmaCreateBuffer(m_VmaAllocator, &stagingBufferInfo, &stagingAllocInfo, &stagingBuffer.handle, &
-                        stagingBuffer.allocation, nullptr));
+                        vmaCreateBuffer(m_VmaAllocator, &stagingBufferInfo, &stagingAllocInfo, &stagingBuffer.handle, &
+                                stagingBuffer.allocation, nullptr));
 
                 void *mappedData;
                 vmaMapMemory(m_VmaAllocator, stagingBuffer.allocation, &mappedData);
@@ -886,6 +1072,147 @@ namespace RDE {
             // Single call to destroy buffer and free memory
             vmaDestroyBuffer(m_VmaAllocator, buffer.handle, buffer.allocation);
             m_BufferManager.destroy(handle);
+        }
+    }
+
+    RAL::TextureHandle VulkanDevice::create_texture(const RAL::TextureDescription &desc) {
+        VulkanTexture newTexture;
+
+        // 1. Create the VkImage
+        VkImageCreateInfo imageInfo{};
+        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        imageInfo.imageType = VK_IMAGE_TYPE_2D; // Expand later for 1D/3D/Cube
+        imageInfo.extent.width = desc.width;
+        imageInfo.extent.height = desc.height;
+        imageInfo.extent.depth = 1;
+        imageInfo.mipLevels = desc.mipLevels;
+        imageInfo.arrayLayers = 1;
+        imageInfo.format = ToVulkanFormat(desc.format);
+        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL; // Always use optimal for performance
+        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageInfo.usage = ToVulkanImageUsage(desc.usage);
+        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        // Add transfer destination usage if we need to upload data
+        if (desc.initialData) {
+            imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        }
+
+        VmaAllocationCreateInfo allocInfo = {};
+        allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+
+        VK_CHECK(vmaCreateImage(m_VmaAllocator, &imageInfo, &allocInfo, &newTexture.handle, &newTexture.allocation,
+                                nullptr));
+
+        // 2. Handle Initial Data Upload (if provided)
+        if (desc.initialData) {
+            // Create the CPU-visible staging buffer
+            VulkanBuffer stagingBuffer;
+            VkBufferCreateInfo stagingBufferInfo{};
+            stagingBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+            stagingBufferInfo.size = desc.initialDataSize; // Using the size from the description
+            stagingBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+
+            VmaAllocationCreateInfo stagingAllocInfo = {};
+            stagingAllocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+            stagingAllocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+
+            VK_CHECK(vmaCreateBuffer(m_VmaAllocator, &stagingBufferInfo, &stagingAllocInfo, &stagingBuffer.handle,
+                                     &stagingBuffer.allocation, nullptr));
+
+            // Copy data from the application to the staging buffer
+            void *mappedData;
+            vmaMapMemory(m_VmaAllocator, stagingBuffer.allocation, &mappedData);
+            memcpy(mappedData, desc.initialData, static_cast<size_t>(desc.initialDataSize));
+            vmaUnmapMemory(m_VmaAllocator, stagingBuffer.allocation);
+
+            // --- USE immediate_submit TO PERFORM THE GPU-SIDE COPY AND LAYOUT TRANSITIONS ---
+            immediate_submit([&](VkCommandBuffer cmd) {
+                // 1. Transition image layout to be ready for copying
+                VkImageMemoryBarrier barrier_to_transfer{};
+                barrier_to_transfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+                barrier_to_transfer.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                barrier_to_transfer.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+                barrier_to_transfer.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                barrier_to_transfer.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                barrier_to_transfer.image = newTexture.handle;
+                barrier_to_transfer.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                barrier_to_transfer.subresourceRange.baseMipLevel = 0;
+                barrier_to_transfer.subresourceRange.levelCount = 1;
+                barrier_to_transfer.subresourceRange.baseArrayLayer = 0;
+                barrier_to_transfer.subresourceRange.layerCount = 1;
+                barrier_to_transfer.srcAccessMask = 0;
+                barrier_to_transfer.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+                vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0,
+                                     nullptr, 0, nullptr, 1, &barrier_to_transfer);
+
+                // 2. Copy the data from the staging buffer to the GPU-local image
+                VkBufferImageCopy region{};
+                region.bufferOffset = 0;
+                region.bufferRowLength = 0;
+                region.bufferImageHeight = 0;
+                region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                region.imageSubresource.mipLevel = 0;
+                region.imageSubresource.baseArrayLayer = 0;
+                region.imageSubresource.layerCount = 1;
+                region.imageOffset = {0, 0, 0};
+                region.imageExtent = {desc.width, desc.height, 1};
+                vkCmdCopyBufferToImage(cmd, stagingBuffer.handle, newTexture.handle,
+                                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+                // 3. Transition image layout to be ready for shader reading
+                VkImageMemoryBarrier barrier_to_shader_read{};
+                barrier_to_shader_read.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+                barrier_to_shader_read.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+                barrier_to_shader_read.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                barrier_to_shader_read.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                barrier_to_shader_read.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                barrier_to_shader_read.image = newTexture.handle;
+                barrier_to_shader_read.subresourceRange = barrier_to_transfer.subresourceRange; // Subresource range is the same
+                barrier_to_shader_read.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                barrier_to_shader_read.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+                vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0,
+                                     nullptr, 0, nullptr, 1, &barrier_to_shader_read);
+            });
+
+            // Clean up the temporary staging buffer now that the data is on the GPU
+            vmaDestroyBuffer(m_VmaAllocator, stagingBuffer.handle, stagingBuffer.allocation);
+        }
+
+        // 3. Create the VkImageView
+        VkImageViewCreateInfo viewInfo{};
+        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        viewInfo.image = newTexture.handle;
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.format = ToVulkanFormat(desc.format);
+        // Note: Use an appropriate aspect mask for depth/stencil images
+        if (imageInfo.usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+            viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        } else {
+            viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        }
+        viewInfo.subresourceRange.baseMipLevel = 0;
+        viewInfo.subresourceRange.levelCount = 1;
+        viewInfo.subresourceRange.baseArrayLayer = 0;
+        viewInfo.subresourceRange.layerCount = 1;
+        VK_CHECK(vkCreateImageView(m_LogicalDevice, &viewInfo, nullptr, &newTexture.image_view));
+
+        return m_TextureManager.create(std::move(newTexture));
+    }
+
+    void VulkanDevice::destroy_texture(RAL::TextureHandle handle) {
+        if (m_TextureManager.is_valid(handle)) {
+            wait_idle(); // Simple sync
+            VulkanTexture &texture = m_TextureManager.get(handle);
+
+            // Must destroy the view before the image
+            vkDestroyImageView(m_LogicalDevice, texture.image_view, nullptr);
+            vmaDestroyImage(m_VmaAllocator, texture.handle, texture.allocation);
+
+            m_TextureManager.destroy(handle);
         }
     }
 

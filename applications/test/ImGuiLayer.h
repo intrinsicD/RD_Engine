@@ -9,11 +9,11 @@ struct ImGuiContext;
 struct ImDrawData;
 
 namespace RDE {
-    struct ApplicationContext; // Forward declaration of ApplicationContext
+    struct IWindow; // Forward declaration of ApplicationContext
 
     class ImGuiLayer : public ILayer {
     public:
-        explicit ImGuiLayer(ApplicationContext *app_context);
+        explicit ImGuiLayer(IWindow *window, RAL::Device *device);
 
         ~ImGuiLayer() override;
 
@@ -23,14 +23,20 @@ namespace RDE {
 
         void on_update(float delta_time) override;
 
+        void on_render(RAL::CommandBuffer *cmd) override {
+            // This is where we would render ImGui, but we handle it in the end() method.
+        }
+
+        void on_render_gui() override;
+
         void on_event(Event &event) override;
 
-        const std::string &get_name() const override { return "ImGuiLayer"; }
+        const char * get_name() const override { return "ImGuiLayer"; }
 
         //--------------------------------------------------------------------------------------------------------------
         void begin();
 
-        void end(RAL::CommandBuffer &command_buffer);
+        void end(RAL::CommandBuffer *cmd);
         //--------------------------------------------------------------------------------------------------------------
 
     private:
@@ -39,6 +45,8 @@ namespace RDE {
         void create_ral_resources();
 
         void destroy_ral_resources();
+
+        IWindow* m_window = nullptr; // Pointer to the window, set by the application context
 
         RAL::Device* m_Device = nullptr;
         ImGuiContext* m_Context = nullptr;
@@ -60,7 +68,5 @@ namespace RDE {
         RAL::BufferHandle m_IndexBuffer;
         size_t m_VertexBufferSize = 0;
         size_t m_IndexBufferSize = 0;
-
-        ApplicationContext *m_app_context = nullptr; // Pointer to the application context
     };
 }

@@ -1,5 +1,8 @@
 #pragma once
 
+namespace RAL{
+    class CommandBuffer;
+}
 namespace RDE {
     class Event; // Forward declaration of Event class
     class ILayer {
@@ -12,12 +15,12 @@ namespace RDE {
 
         virtual void on_update(float delta_time) = 0;
 
-        virtual void on_render() = 0;
+        virtual void on_render(RAL::CommandBuffer *cmd) = 0;
 
         virtual void on_render_gui() = 0;
 
         virtual void on_event(Event &e) = 0;
 
-        virtual const std::string &get_name() const = 0;
+        virtual const char * get_name() const = 0;
     };
 }
