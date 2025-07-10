@@ -147,6 +147,12 @@ namespace RDE {
     }
 
     void SandboxApp::on_render() {
+        if (m_window_resized) {
+            m_renderer->get_device()->recreate_swapchain();
+            m_window_resized = false;
+            return; // Skip this frame, we'll start fresh on the next one
+        }
+
         if (RAL::CommandBuffer *cmd = m_renderer->begin_frame()) {
 
             // --- 1. Main Scene Render Pass ---
@@ -201,8 +207,10 @@ namespace RDE {
             cmd->end_render_pass();
             // 4. End the frame
             m_renderer->end_frame();
-            m_input_manager->on_frame_end();
+        }else{
+            m_window_resized = true;
         }
+        m_input_manager->on_frame_end();
     }
 
     void SandboxApp::on_event(Event &e) {
@@ -225,6 +233,7 @@ namespace RDE {
                     return false;
                 }
                 m_is_minimized = false;
+                m_window_resized = true;
                 return false; // Allow layers to handle the event
             });
             m_input_manager->on_event(e);

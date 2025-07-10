@@ -5,6 +5,7 @@
 #include "VulkanCommandBuffer.h"
 #include "VulkanTypes.h"
 #include "VulkanResourceManager.h"
+#include "VulkanDeletionQueue.h"
 
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h> // Include the VMA header
@@ -31,6 +32,8 @@ namespace RDE {
         // We will implement these functions one by one. For now, we'll leave them as overrides.
         void create_swapchain(const RAL::SwapchainDescription &desc) override;
 
+        void recreate_swapchain() override;
+
         void destroy_swapchain() override;
 
         RAL::TextureHandle acquire_next_swapchain_image() override;
@@ -39,7 +42,7 @@ namespace RDE {
 
         std::unique_ptr<RAL::CommandBuffer> create_command_buffer() override;
 
-        void submit(const std::vector<std::unique_ptr<RAL::CommandBuffer> > &command_buffers) override;
+        void submit(const std::vector<RAL::CommandBuffer*> &command_buffers) override;
 
         void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function); // Keep this declaration for now
 
@@ -82,6 +85,18 @@ namespace RDE {
 
         void destroy_sampler(RAL::SamplerHandle handle) override;
 
+    private:
+        friend class VulkanCommandBuffer;
+
+        static constexpr int FRAMES_IN_FLIGHT = 2; // For double buffering
+        uint32_t m_CurrentFrameIndex{0}; // Current frame index for double buffering
+
+        std::vector<DeletionQueue> m_FrameDeletionQueues;
+
+        std::vector<std::unique_ptr<VulkanCommandBuffer>> m_FrameCommandBuffers;
+        std::vector<VkSemaphore> m_ImageAvailableSemaphores;
+        std::vector<VkSemaphore> m_RenderFinishedSemaphores;
+        std::vector<VkFence> m_InFlightFences;
 
         // --- Core Vulkan Objects ---
         VkInstance m_Instance{VK_NULL_HANDLE};
@@ -91,14 +106,12 @@ namespace RDE {
         VkDevice m_LogicalDevice{VK_NULL_HANDLE};
         VkQueue m_GraphicsQueue{VK_NULL_HANDLE};
         VkQueue m_PresentQueue{VK_NULL_HANDLE};
-
         VmaAllocator m_VmaAllocator{VK_NULL_HANDLE};
+        uint32_t m_GraphicsQueueFamilyIndex;
 
         VkPhysicalDeviceProperties m_PhysicalDeviceProperties;
 
         // We'll need these later for resource creation
-        uint32_t m_GraphicsQueueFamilyIndex;
-
         ResourceManager<VulkanBuffer, RAL::BufferHandle> m_BufferManager;
         ResourceManager<VulkanShader, RAL::ShaderHandle> m_ShaderManager;
         ResourceManager<VulkanPipeline, RAL::PipelineHandle> m_PipelineManager;
@@ -107,39 +120,27 @@ namespace RDE {
         ResourceManager<VulkanDescriptorSetLayout, RAL::DescriptorSetLayoutHandle> m_DsLayoutManager;
         ResourceManager<VkDescriptorSet, RAL::DescriptorSetHandle> m_DescriptorSetManager;
 
-
         VkDescriptorPool m_DescriptorPool{VK_NULL_HANDLE};
-
         GLFWwindow *m_Window{nullptr};
 
         // --- Command & Render Pass Infrastructure ---
         VkCommandPool m_CommandPool{VK_NULL_HANDLE};
-
         VkRenderPass m_SwapchainRenderPass{VK_NULL_HANDLE};
         std::vector<VkFramebuffer> m_SwapchainFramebuffers;
 
         VulkanSwapchain m_Swapchain;
         std::vector<RAL::TextureHandle> m_SwapchainTextureHandles;
-        // We will also need a resource manager for our textures later,
-        // but the swapchain images are special, so we track them separately.
-        uint32_t m_CurrentImageIndex; // The index we get from AcquireNext...
-
-        // Synchronization objects for managing frame pacing
-        VkSemaphore m_ImageAvailableSemaphore{VK_NULL_HANDLE};
-        VkSemaphore m_RenderFinishedSemaphore{VK_NULL_HANDLE};
-        VkFence m_InFlightFence{VK_NULL_HANDLE};
-        std::unique_ptr<RAL::CommandBuffer> m_CurrentFrameCommandBuffer;
+        uint32_t m_CurrentImageIndex; // The Swapchain image index we get from AcquireNext, different from m_CurrentFrameIndex
 
         VkFence m_UploadFence{VK_NULL_HANDLE};
         VkCommandPool m_UploadCommandPool{VK_NULL_HANDLE};
         VkCommandBuffer m_UploadCommandBuffer{VK_NULL_HANDLE};
 
-        friend class VulkanCommandBuffer;
-
         // --- Private Helper Functions (we'll declare them here) ---
+        DeletionQueue& get_current_frame_deletion_queue();
 
-        void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+        void copy_buffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
-        VkShaderModule createShaderModule(const std::vector<char> &code);
+        VkShaderModule create_shader_module(const std::vector<char> &code);
     };
 }

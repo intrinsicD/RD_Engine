@@ -45,6 +45,7 @@ namespace RDE {
         // --- Application State ---
         bool m_is_running = true;
         bool m_is_minimized = false;
+        bool m_window_resized = false;
 
         // --- Scene/Editor State ---
         entt::entity m_primary_camera_entity;

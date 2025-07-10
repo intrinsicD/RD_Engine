@@ -24,6 +24,8 @@ namespace RAL {
         // --- NEW Swapchain Management ---
         virtual void create_swapchain(const SwapchainDescription &desc) = 0;
 
+        virtual void recreate_swapchain() = 0;
+
         virtual void destroy_swapchain() = 0;
 
         virtual void *map_buffer(BufferHandle handle) = 0;
@@ -64,7 +66,7 @@ namespace RAL {
 
         virtual std::unique_ptr<CommandBuffer> create_command_buffer() = 0;
 
-        virtual void submit(const std::vector<std::unique_ptr<CommandBuffer>> &command_buffers) = 0;
+        virtual void submit(const std::vector<CommandBuffer*> &command_buffers) = 0;
 
         virtual CommandBuffer *begin_frame() = 0;
 

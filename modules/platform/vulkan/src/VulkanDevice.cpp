@@ -102,7 +102,7 @@ namespace RDE {
         }
     }
 
-    VulkanDevice::VulkanDevice(GLFWwindow *window) {
+    VulkanDevice::VulkanDevice(GLFWwindow *window) : m_Window(window){
         // === 1. Create VkInstance ===
         // The instance is the connection between your application and the Vulkan library.
         {
@@ -274,21 +274,6 @@ namespace RDE {
             fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
             VK_CHECK(vkCreateFence(m_LogicalDevice, &fenceInfo, nullptr, &m_UploadFence));
         }
-
-        // === 6. Create Swapchain ===
-        {
-            VkSemaphoreCreateInfo semaphoreInfo{};
-            semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-            VkFenceCreateInfo fenceInfo{};
-            fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-            fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-            // Create it in the signaled state so the first frame doesn't wait forever
-
-            VK_CHECK(vkCreateSemaphore(m_LogicalDevice, &semaphoreInfo, nullptr, &m_ImageAvailableSemaphore));
-            VK_CHECK(vkCreateSemaphore(m_LogicalDevice, &semaphoreInfo, nullptr, &m_RenderFinishedSemaphore));
-            VK_CHECK(vkCreateFence(m_LogicalDevice, &fenceInfo, nullptr, &m_InFlightFence));
-        }
         {
             std::vector<VkDescriptorPoolSize> poolSizes = {
                     {VK_DESCRIPTOR_TYPE_SAMPLER,                1000},
@@ -306,6 +291,38 @@ namespace RDE {
             VK_CHECK(vkCreateDescriptorPool(m_LogicalDevice, &poolInfo, nullptr, &m_DescriptorPool));
         }
         {
+            m_FrameDeletionQueues.resize(FRAMES_IN_FLIGHT);
+
+            // Resize the vectors to hold resources for each frame
+            m_ImageAvailableSemaphores.resize(FRAMES_IN_FLIGHT);
+            m_RenderFinishedSemaphores.resize(FRAMES_IN_FLIGHT);
+            m_InFlightFences.resize(FRAMES_IN_FLIGHT);
+            m_FrameCommandBuffers.resize(FRAMES_IN_FLIGHT);
+
+            VkSemaphoreCreateInfo semaphoreInfo{};
+            semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+            VkFenceCreateInfo fenceInfo{};
+            fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+            fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; // Create fences in signaled state
+
+            VkCommandBufferAllocateInfo allocInfo{};
+            allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            allocInfo.commandPool = m_CommandPool;
+            allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            allocInfo.commandBufferCount = 1;
+
+            for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
+                VK_CHECK(vkCreateSemaphore(m_LogicalDevice, &semaphoreInfo, nullptr, &m_ImageAvailableSemaphores[i]));
+                VK_CHECK(vkCreateSemaphore(m_LogicalDevice, &semaphoreInfo, nullptr, &m_RenderFinishedSemaphores[i]));
+                VK_CHECK(vkCreateFence(m_LogicalDevice, &fenceInfo, nullptr, &m_InFlightFences[i]));
+
+                VkCommandBuffer vk_cmd;
+                VK_CHECK(vkAllocateCommandBuffers(m_LogicalDevice, &allocInfo, &vk_cmd));
+                m_FrameCommandBuffers[i] = std::make_unique<VulkanCommandBuffer>(vk_cmd, this);
+            }
+        }
+        {
             VmaAllocatorCreateInfo allocatorInfo = {};
             allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_2; // Or your target version
             allocatorInfo.physicalDevice = m_PhysicalDevice;
@@ -321,13 +338,17 @@ namespace RDE {
     VulkanDevice::~VulkanDevice() {
         wait_idle(); // Ensure GPU is not busy before we start destroying things
         // Destruction must happen in reverse order of creation.
+        for (int i = 0; i < FRAMES_IN_FLIGHT; ++i) {
+            m_FrameDeletionQueues[i].flush();
+            vkDestroySemaphore(m_LogicalDevice, m_RenderFinishedSemaphores[i], nullptr);
+            vkDestroySemaphore(m_LogicalDevice, m_ImageAvailableSemaphores[i], nullptr);
+            vkDestroyFence(m_LogicalDevice, m_InFlightFences[i], nullptr);
+            // Command buffers are freed with the command pool
+        }
+
         vkDestroyDescriptorPool(m_LogicalDevice, m_DescriptorPool, nullptr);
         vkDestroyCommandPool(m_LogicalDevice, m_CommandPool, nullptr);
         destroy_swapchain();
-
-        vkDestroySemaphore(m_LogicalDevice, m_RenderFinishedSemaphore, nullptr);
-        vkDestroySemaphore(m_LogicalDevice, m_ImageAvailableSemaphore, nullptr);
-        vkDestroyFence(m_LogicalDevice, m_InFlightFence, nullptr);
 
         vmaDestroyAllocator(m_VmaAllocator);
 
@@ -379,11 +400,17 @@ namespace RDE {
     }
 
     void VulkanDevice::create_swapchain(const RAL::SwapchainDescription &desc) {
+        VkSwapchainKHR old_handle_for_create_info = m_Swapchain.handle;
         // Query support and choose settings
         SwapchainSupportDetails support = querySwapchainSupport(m_PhysicalDevice, m_Surface);
         VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(support.formats);
         VkPresentModeKHR presentMode = chooseSwapPresentMode(support.presentModes, desc.vsync);
         VkExtent2D extent = chooseSwapExtent(support.capabilities, m_Window);
+
+        if (extent.width == 0 || extent.height == 0) {
+            m_Swapchain.handle = VK_NULL_HANDLE; // Ensure the handle is null
+            return;
+        }
 
         uint32_t imageCount = support.capabilities.minImageCount + 1;
         if (support.capabilities.maxImageCount > 0 && imageCount > support.capabilities.maxImageCount) {
@@ -414,11 +441,13 @@ namespace RDE {
         createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
         createInfo.presentMode = presentMode;
         createInfo.clipped = VK_TRUE;
-        createInfo.oldSwapchain = VK_NULL_HANDLE;
+        createInfo.oldSwapchain = old_handle_for_create_info;
 
-        VK_CHECK(vkCreateSwapchainKHR(m_LogicalDevice, &createInfo, nullptr, &m_Swapchain.handle));
+        VkSwapchainKHR new_handle = VK_NULL_HANDLE;
+        VK_CHECK(vkCreateSwapchainKHR(m_LogicalDevice, &createInfo, nullptr, &new_handle));
 
         // Store swapchain properties
+        m_Swapchain.handle = new_handle;
         m_Swapchain.imageFormat = surfaceFormat.format;
         m_Swapchain.extent = extent;
 
@@ -519,23 +548,46 @@ namespace RDE {
         }
     }
 
-    void VulkanDevice::destroy_swapchain() {
-        // Wait until the device is idle before destroying a swapchain,
-        // as its images may still be in use.
+    void VulkanDevice::recreate_swapchain() {
+        // Now it's safe to stop the world just for this operation
         wait_idle();
 
-        for (auto framebuffer: m_SwapchainFramebuffers) {
-            vkDestroyFramebuffer(m_LogicalDevice, framebuffer, nullptr);
-        }
-        vkDestroyRenderPass(m_LogicalDevice, m_SwapchainRenderPass, nullptr);
-        m_SwapchainFramebuffers.clear();
-        m_SwapchainRenderPass = VK_NULL_HANDLE;
+        VkSwapchainKHR old_swapchain_handle = m_Swapchain.handle;
 
-        for (auto imageView: m_Swapchain.imageViews) {
-            vkDestroyImageView(m_LogicalDevice, imageView, nullptr);
-        }
-        vkDestroySwapchainKHR(m_LogicalDevice, m_Swapchain.handle, nullptr);
+        // Destroy the old one (this now queues it for deferred deletion)
+        destroy_swapchain();
 
+        m_Swapchain.handle = old_swapchain_handle;
+
+        // Create the new one
+        RAL::SwapchainDescription desc{};
+        desc.nativeWindowHandle = m_Window;
+        desc.vsync = true; // or from config
+        create_swapchain(desc);
+    }
+
+    void VulkanDevice::destroy_swapchain() {
+        if (m_Swapchain.handle == VK_NULL_HANDLE) return;
+
+        // Capture the current swapchain state for deferred deletion
+        auto swapchain_to_delete = m_Swapchain;
+        auto swapchainFramebuffers = m_SwapchainFramebuffers;
+        auto swapchainRenderPass = m_SwapchainRenderPass;
+        auto logicalDevice = m_LogicalDevice;
+
+        get_current_frame_deletion_queue().push([=]() {
+            for (auto framebuffer: swapchainFramebuffers) {
+                vkDestroyFramebuffer(logicalDevice, framebuffer, nullptr);
+            }
+            vkDestroyRenderPass(logicalDevice, swapchainRenderPass, nullptr);
+
+            for (auto imageView: swapchain_to_delete.imageViews) {
+                vkDestroyImageView(logicalDevice, imageView, nullptr);
+            }
+            vkDestroySwapchainKHR(logicalDevice, swapchain_to_delete.handle, nullptr);
+        });
+
+        // Immediately invalidate the handles in the device class
         m_Swapchain.handle = VK_NULL_HANDLE;
         m_Swapchain.imageViews.clear();
         m_Swapchain.images.clear();
@@ -543,23 +595,13 @@ namespace RDE {
     }
 
     RAL::TextureHandle VulkanDevice::acquire_next_swapchain_image() {
-        // 1. Wait for the previous frame to finish.
-        // This fence ensures that we don't start a new frame while the GPU is still
-        // working on one from two frames ago. It limits frames in flight to 1.
-        // The timeout (UINT64_MAX) means we wait indefinitely.
-        vkWaitForFences(m_LogicalDevice, 1, &m_InFlightFence, VK_TRUE, UINT64_MAX);
-
-        vkResetCommandPool(m_LogicalDevice, m_CommandPool, 0);
-
-        vkResetFences(m_LogicalDevice, 1, &m_InFlightFence);
-
         // 2. Acquire an image from the swapchain.
         // This call will signal m_ImageAvailableSemaphore when the image is ready.
         VkResult result = vkAcquireNextImageKHR(
                 m_LogicalDevice,
                 m_Swapchain.handle,
                 UINT64_MAX,
-                m_ImageAvailableSemaphore, // Semaphore to be signaled
+                m_ImageAvailableSemaphores[m_CurrentFrameIndex],
                 VK_NULL_HANDLE, // Fence to be signaled (we're using our own)
                 &m_CurrentImageIndex
         );
@@ -572,6 +614,12 @@ namespace RDE {
         } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
             // Handle other errors
             throw std::runtime_error("Failed to acquire swapchain image!");
+        }
+
+        if (result == VK_SUBOPTIMAL_KHR) {
+            // This means the swapchain is still valid, but we should consider recreating it.
+            // A robust application would handle this gracefully.
+            RDE_CORE_WARN("Swapchain is suboptimal, consider recreating it.");
         }
 
         // 3. Return the abstract handle for the acquired image.
@@ -596,39 +644,49 @@ namespace RDE {
 
     // NOTE: This is a simplified Submit for a single command buffer.
     // The interface takes a vector, but we'll implement for the common case of one.
-    void VulkanDevice::submit(const std::vector<std::unique_ptr<RAL::CommandBuffer> > &command_buffers) {
+    void VulkanDevice::submit(const std::vector<RAL::CommandBuffer *> &command_buffers) {
         if (command_buffers.empty()) {
             return;
         }
 
-        // For now, we assume one command buffer per submission.
-        // We need to downcast from our interface to the concrete Vulkan implementation.
-        VulkanCommandBuffer *vulkanCmd = static_cast<VulkanCommandBuffer *>(command_buffers[0].get());
-        VkCommandBuffer cmdBuffer = vulkanCmd->get_handle(); // Assumes this function exists on VulkanCommandBuffer
+        // --- REPLACEMENT START ---
+
+        // 1. Create a vector to hold the native Vulkan command buffer handles.
+        std::vector<VkCommandBuffer> vkCommandBuffers;
+        vkCommandBuffers.reserve(command_buffers.size());
+
+        // 2. Iterate through the input vector of abstract command buffers.
+        for (const auto& cmd : command_buffers) {
+            // Downcast from the abstract RAL::CommandBuffer to our concrete Vulkan implementation.
+            // This is safe because we, the VulkanDevice, are the only ones creating these objects.
+            auto* vulkanCmd = static_cast<VulkanCommandBuffer*>(cmd);
+            vkCommandBuffers.push_back(vulkanCmd->get_handle());
+        }
+
+        // --- REPLACEMENT END ---
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-        // Wait on the m_ImageAvailableSemaphore before executing the command buffer.
-        // We only want to start writing to the color attachment when the image is ready.
-        VkSemaphore waitSemaphores[] = {m_ImageAvailableSemaphore};
-        VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+        // The synchronization logic remains the same. It applies to the entire batch.
+        VkSemaphore waitSemaphores[] = { m_ImageAvailableSemaphores[m_CurrentFrameIndex] };
+        VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
         submitInfo.waitSemaphoreCount = 1;
         submitInfo.pWaitSemaphores = waitSemaphores;
         submitInfo.pWaitDstStageMask = waitStages;
 
-        // The command buffer to execute.
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &cmdBuffer;
+        // --- MODIFIED TO USE THE NEW VECTOR ---
+        // The command buffers to execute.
+        submitInfo.commandBufferCount = static_cast<uint32_t>(vkCommandBuffers.size());
+        submitInfo.pCommandBuffers = vkCommandBuffers.data();
 
-        // Signal the m_RenderFinishedSemaphore when the command buffer has finished execution.
-        VkSemaphore signalSemaphores[] = {m_RenderFinishedSemaphore};
+        // The signal semaphore and fence also apply to the entire batch.
+        VkSemaphore signalSemaphores[] = { m_RenderFinishedSemaphores[m_CurrentFrameIndex] };
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = signalSemaphores;
 
-        // Submit to the graphics queue.
-        // The m_InFlightFence will be signaled when this submission is complete.
-        VK_CHECK(vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, m_InFlightFence));
+        // Submit the entire batch to the graphics queue.
+        VK_CHECK(vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, m_InFlightFences[m_CurrentFrameIndex]));
     }
 
     void VulkanDevice::immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function) {
@@ -667,7 +725,7 @@ namespace RDE {
 
         // Wait on the m_RenderFinishedSemaphore. This ensures presentation doesn't happen
         // until rendering is complete.
-        VkSemaphore signalSemaphores[] = {m_RenderFinishedSemaphore};
+        VkSemaphore signalSemaphores[] = {m_RenderFinishedSemaphores[m_CurrentFrameIndex]};
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pWaitSemaphores = signalSemaphores;
 
@@ -687,7 +745,7 @@ namespace RDE {
         }
     }
 
-    void VulkanDevice::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+    void VulkanDevice::copy_buffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
         immediate_submit([&](VkCommandBuffer cmd) {
             VkBufferCopy copyRegion{};
             copyRegion.size = size;
@@ -695,7 +753,7 @@ namespace RDE {
         });
     }
 
-    VkShaderModule VulkanDevice::createShaderModule(const std::vector<char> &code) {
+    VkShaderModule VulkanDevice::create_shader_module(const std::vector<char> &code) {
         VkShaderModuleCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
         createInfo.codeSize = code.size();
@@ -706,20 +764,27 @@ namespace RDE {
         return shaderModule;
     }
 
+    DeletionQueue &VulkanDevice::get_current_frame_deletion_queue() {
+        return m_FrameDeletionQueues[m_CurrentFrameIndex];
+    }
+
     // Implement the public interface function
     RAL::ShaderHandle VulkanDevice::create_shader(const RAL::ShaderDescription &desc) {
         auto shaderCode = FileIO::ReadFile(desc.filePath);
         VulkanShader newShader;
-        newShader.module = createShaderModule(shaderCode);
+        newShader.module = create_shader_module(shaderCode);
         return m_ShaderManager.create(std::move(newShader));
     }
 
     void VulkanDevice::destroy_shader(RAL::ShaderHandle handle) {
         if (m_ShaderManager.is_valid(handle)) {
-            wait_idle();
-            VulkanShader &shader = m_ShaderManager.get(handle);
-            vkDestroyShaderModule(m_LogicalDevice, shader.module, nullptr);
+            auto shader = m_ShaderManager.get(handle);
+            auto logicalDevice = m_LogicalDevice;
+
             m_ShaderManager.destroy(handle);
+            get_current_frame_deletion_queue().push([=]() {
+                vkDestroyShaderModule(logicalDevice, shader.module, nullptr);
+            });
         }
     }
 
@@ -788,10 +853,13 @@ namespace RDE {
         rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
         rasterizer.depthClampEnable = VK_FALSE;
         rasterizer.rasterizerDiscardEnable = VK_FALSE;
-        rasterizer.polygonMode = ToVulkanPolygonMode(desc.rasterizationState.polygonMode); // Map from desc.rasterizationState later
+        rasterizer.polygonMode = ToVulkanPolygonMode(
+                desc.rasterizationState.polygonMode); // Map from desc.rasterizationState later
         rasterizer.lineWidth = 1.0f;
-        rasterizer.cullMode = ToVulkanCullMode(desc.rasterizationState.cullMode);   // Map from desc.rasterizationState later
-        rasterizer.frontFace = ToVulkanFrontFace(desc.rasterizationState.frontFace); // Map from desc.rasterizationState later
+        rasterizer.cullMode = ToVulkanCullMode(
+                desc.rasterizationState.cullMode);   // Map from desc.rasterizationState later
+        rasterizer.frontFace = ToVulkanFrontFace(
+                desc.rasterizationState.frontFace); // Map from desc.rasterizationState later
         rasterizer.depthBiasEnable = VK_FALSE;
 
         VkPipelineMultisampleStateCreateInfo multisampling{};
@@ -805,7 +873,7 @@ namespace RDE {
                 VK_COLOR_COMPONENT_A_BIT;
         colorBlendAttachment.blendEnable = desc.colorBlendState.attachment.blendEnable; // VK_TRUE for ImGui
 
-        const auto& ralBlend = desc.colorBlendState.attachment;
+        const auto &ralBlend = desc.colorBlendState.attachment;
         colorBlendAttachment.srcColorBlendFactor = ToVulkanBlendFactor(ralBlend.srcColorBlendFactor);
         colorBlendAttachment.dstColorBlendFactor = ToVulkanBlendFactor(ralBlend.dstColorBlendFactor);
         colorBlendAttachment.colorBlendOp = ToVulkanBlendOp(ralBlend.colorBlendOp);
@@ -863,11 +931,15 @@ namespace RDE {
 
     void VulkanDevice::destroy_pipeline(RAL::PipelineHandle handle) {
         if (m_PipelineManager.is_valid(handle)) {
-            wait_idle();
-            VulkanPipeline &pipeline = m_PipelineManager.get(handle);
-            vkDestroyPipeline(m_LogicalDevice, pipeline.handle, nullptr);
-            vkDestroyPipelineLayout(m_LogicalDevice, pipeline.layout, nullptr);
+            auto pipeline = m_PipelineManager.get(handle);
+
             m_PipelineManager.destroy(handle);
+
+            auto logicalDevice = m_LogicalDevice;
+            get_current_frame_deletion_queue().push([=]() {
+                vkDestroyPipeline(logicalDevice, pipeline.handle, nullptr);
+                vkDestroyPipelineLayout(logicalDevice, pipeline.layout, nullptr);
+            });
         }
     }
 
@@ -899,10 +971,14 @@ namespace RDE {
 
     void VulkanDevice::destroy_descriptor_set_layout(RAL::DescriptorSetLayoutHandle handle) {
         if (m_DsLayoutManager.is_valid(handle)) {
-            wait_idle();
             auto layout = m_DsLayoutManager.get(handle);
-            vkDestroyDescriptorSetLayout(m_LogicalDevice, layout.handle, nullptr);
+
             m_DsLayoutManager.destroy(handle);
+
+            auto logicalDevice = m_LogicalDevice;
+            get_current_frame_deletion_queue().push([=]() {
+                vkDestroyDescriptorSetLayout(logicalDevice, layout.handle, nullptr);
+            });
         }
     }
 
@@ -969,11 +1045,15 @@ namespace RDE {
 
     void VulkanDevice::destroy_descriptor_set(RAL::DescriptorSetHandle handle) {
         if (m_DescriptorSetManager.is_valid(handle)) {
-            wait_idle();
             auto set = m_DescriptorSetManager.get(handle);
             // We FREE the set back to the pool, we don't destroy it.
-            vkFreeDescriptorSets(m_LogicalDevice, m_DescriptorPool, 1, &set);
             m_DescriptorSetManager.destroy(handle); // Reclaim the handle slot
+
+            auto logicalDevice = m_LogicalDevice;
+            auto descriptorPool = m_DescriptorPool;
+            get_current_frame_deletion_queue().push([=]() {
+                vkFreeDescriptorSets(logicalDevice, descriptorPool, 1, &set);
+            });
         }
     }
 
@@ -1004,11 +1084,13 @@ namespace RDE {
 
     void VulkanDevice::destroy_sampler(RAL::SamplerHandle handle) {
         if (m_SamplerManager.is_valid(handle)) {
-            // Defer this! For now, wait idle.
-            wait_idle();
             auto sampler = m_SamplerManager.get(handle);
-            vkDestroySampler(m_LogicalDevice, sampler.handle, nullptr);
             m_SamplerManager.destroy(handle);
+
+            auto logicalDevice = m_LogicalDevice;
+            get_current_frame_deletion_queue().push([=]() {
+                vkDestroySampler(logicalDevice, sampler.handle, nullptr);
+            });
         }
     }
 
@@ -1058,7 +1140,7 @@ namespace RDE {
                 memcpy(mappedData, desc.initialData, desc.size);
                 vmaUnmapMemory(m_VmaAllocator, stagingBuffer.allocation);
 
-                copyBuffer(stagingBuffer.handle, newBuffer.handle, desc.size);
+                copy_buffer(stagingBuffer.handle, newBuffer.handle, desc.size);
 
                 vmaDestroyBuffer(m_VmaAllocator, stagingBuffer.handle, stagingBuffer.allocation);
             }
@@ -1069,11 +1151,13 @@ namespace RDE {
 
     void VulkanDevice::destroy_buffer(RAL::BufferHandle handle) {
         if (m_BufferManager.is_valid(handle)) {
-            wait_idle();
-            VulkanBuffer &buffer = m_BufferManager.get(handle);
-            // Single call to destroy buffer and free memory
-            vmaDestroyBuffer(m_VmaAllocator, buffer.handle, buffer.allocation);
+            auto buffer = m_BufferManager.get(handle);
             m_BufferManager.destroy(handle);
+
+            auto allocator = m_VmaAllocator;
+            get_current_frame_deletion_queue().push([=]() {
+                vmaDestroyBuffer(allocator, buffer.handle, buffer.allocation);
+            });
         }
     }
 
@@ -1207,47 +1291,51 @@ namespace RDE {
 
     void VulkanDevice::destroy_texture(RAL::TextureHandle handle) {
         if (m_TextureManager.is_valid(handle)) {
-            wait_idle(); // Simple sync
-            VulkanTexture &texture = m_TextureManager.get(handle);
-
-            // Must destroy the view before the image
-            vkDestroyImageView(m_LogicalDevice, texture.image_view, nullptr);
-            vmaDestroyImage(m_VmaAllocator, texture.handle, texture.allocation);
+            auto texture = m_TextureManager.get(handle);
 
             m_TextureManager.destroy(handle);
+
+            auto logicalDevice = m_LogicalDevice;
+            auto allocator = m_VmaAllocator;
+            get_current_frame_deletion_queue().push([=]() {
+                vkDestroyImageView(logicalDevice, texture.image_view, nullptr);
+                vmaDestroyImage(allocator, texture.handle, texture.allocation);
+            });
         }
     }
 
     RAL::CommandBuffer *VulkanDevice::begin_frame() {
-        assert(m_CurrentFrameCommandBuffer == nullptr && "begin_frame() called twice without a call to end_frame()!");
-        // Acquire returns the handle, but we don't need it here. The command buffer
-        // will get it from the device when BeginRenderPass is called.
-        // We just need to know if the acquisition was successful.
+        // 1. Wait for the fence of the frame we are about to use.
+        VK_CHECK(vkWaitForFences(m_LogicalDevice, 1, &m_InFlightFences[m_CurrentFrameIndex], VK_TRUE, UINT64_MAX));
+
+        VK_CHECK(vkResetFences(m_LogicalDevice, 1, &m_InFlightFences[m_CurrentFrameIndex]));
+        // 2. Flush the deletion queue for this frame index.
+        m_FrameDeletionQueues[m_CurrentFrameIndex].flush();
+
         RAL::TextureHandle swapchain_image = acquire_next_swapchain_image();
         if (!swapchain_image.is_valid()) {
             // Window was resized or another error occurred.
             return nullptr;
         }
 
-        // The user gets a raw pointer, but we return a new object each frame.
-        // This is a bit tricky for ownership. A better approach is to return
-        // a single, reusable command buffer owned by the device.
-        // For now, let's assume we create a new one.
-        m_CurrentFrameCommandBuffer = create_command_buffer();
-        m_CurrentFrameCommandBuffer->begin();
-        return m_CurrentFrameCommandBuffer.get();
+        // 5. Prepare and return the command buffer.
+        VulkanCommandBuffer *cmd = m_FrameCommandBuffers[m_CurrentFrameIndex].get();
+        VK_CHECK(vkResetCommandBuffer(cmd->get_handle(), 0));
+        cmd->begin();
+
+        return cmd;
     }
 
     void VulkanDevice::end_frame() {
-        assert(m_CurrentFrameCommandBuffer != nullptr && "end_frame() called without a call to begin_frame()!");
+        VulkanCommandBuffer *cmd = m_FrameCommandBuffers[m_CurrentFrameIndex].get();
+        cmd->end();
 
-        m_CurrentFrameCommandBuffer->end();
-
-        std::vector<std::unique_ptr<RAL::CommandBuffer> > submissions;
-        submissions.push_back(std::move(m_CurrentFrameCommandBuffer));
+        std::vector<RAL::CommandBuffer*> submissions;
+        submissions.push_back(cmd);
 
         submit(submissions);
         present();
+        m_CurrentFrameIndex = (m_CurrentFrameIndex + 1) % FRAMES_IN_FLIGHT;
     }
 
     // ... Stubs for other functions ...
