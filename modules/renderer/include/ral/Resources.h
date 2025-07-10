@@ -42,6 +42,7 @@ namespace RAL {
     enum class ShaderStage {
         Vertex, Fragment, Compute, // Core stages
         Geometry, TessellationControl, TessellationEvaluation, // Optional stages
+        RayTracing, // Ray tracing stages
         Task, Mesh // Modern mesh pipeline stages
     };
 
@@ -60,7 +61,16 @@ namespace RAL {
     };
 
     enum class BlendFactor {
-        Zero, One, SrcColor, OneMinusSrcColor, DstColor, OneMinusDstColor, SrcAlpha, OneMinusSrcAlpha
+        Zero,
+        One,
+        SrcColor,
+        OneMinusSrcColor,
+        DstColor,
+        OneMinusDstColor,
+        SrcAlpha,
+        OneMinusSrcAlpha,
+        DstAlpha,
+        OneMinusDstAlpha,
     };
 
     enum class BlendOp {
@@ -84,8 +94,8 @@ namespace RAL {
     };
 
     struct DepthStencilState {
-        bool depthTestEnable   = false;
-        bool depthWriteEnable  = false;
+        bool depthTestEnable = false;
+        bool depthWriteEnable = false;
         CompareOp depthCompareOp = CompareOp::LessOrEqual; // A sensible default for 3D rendering
         bool stencilTestEnable = false;
         StencilOpState front{};

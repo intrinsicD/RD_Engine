@@ -1,4 +1,4 @@
-#include  "ImGuiLayer.h"
+#include "ImGuiLayer.h"
 #include "ral/Resources.h"
 #include "core/Application.h"
 #include "core/Paths.h"
@@ -8,7 +8,7 @@
 #include <backends/imgui_impl_vulkan.h>
 
 namespace RDE {
-    ImGuiLayer::ImGuiLayer(IWindow *window, RAL::Device *device) : m_window(window), m_Device(device) {
+    ImGuiLayer::ImGuiLayer(IWindow *window, RAL::Device *device) : m_window(window), m_device(device) {
     }
 
     ImGuiLayer::~ImGuiLayer() {
@@ -40,8 +40,8 @@ namespace RDE {
     }
 
     void ImGuiLayer::on_detach() {
-        if (!m_Device) return;
-        m_Device->wait_idle();
+        if (!m_device) return;
+        m_device->wait_idle();
 
         destroy_ral_resources(); // Our own cleanup function
 
@@ -78,30 +78,30 @@ namespace RDE {
         // 1. Update/Create Vertex and Index Buffers
         size_t vb_size = draw_data->TotalVtxCount * sizeof(ImDrawVert);
         if (vb_size > m_VertexBufferSize) {
-            if (m_VertexBuffer.is_valid()) m_Device->destroy_buffer(m_VertexBuffer);
+            if (m_VertexBuffer.is_valid()) m_device->destroy_buffer(m_VertexBuffer);
             RAL::BufferDescription desc{};
             desc.size = vb_size * 1.5;
             desc.usage = RAL::BufferUsage::VertexBuffer;
             desc.memoryUsage = RAL::MemoryUsage::CPU_To_GPU; // IMPORTANT
-            m_VertexBuffer = m_Device->create_buffer(desc);
+            m_VertexBuffer = m_device->create_buffer(desc);
             m_VertexBufferSize = desc.size;
         }
 
         size_t ib_size = draw_data->TotalIdxCount * sizeof(ImDrawIdx);
         if (ib_size > m_IndexBufferSize) {
-            if (m_IndexBuffer.is_valid()) m_Device->destroy_buffer(m_IndexBuffer);
+            if (m_IndexBuffer.is_valid()) m_device->destroy_buffer(m_IndexBuffer);
             RAL::BufferDescription desc{};
             desc.size = ib_size * 1.5;
             desc.usage = RAL::BufferUsage::IndexBuffer;
             desc.memoryUsage = RAL::MemoryUsage::CPU_To_GPU;
-            m_IndexBuffer = m_Device->create_buffer(desc);
+            m_IndexBuffer = m_device->create_buffer(desc);
             m_IndexBufferSize = desc.size;
         }
 
         // 2. Upload data using our mapping functions
         if (vb_size > 0 && ib_size > 0) {
-            auto *vtx_dst = (ImDrawVert *) m_Device->map_buffer(m_VertexBuffer);
-            auto *idx_dst = (ImDrawIdx *) m_Device->map_buffer(m_IndexBuffer);
+            auto *vtx_dst = (ImDrawVert *) m_device->map_buffer(m_VertexBuffer);
+            auto *idx_dst = (ImDrawIdx *) m_device->map_buffer(m_IndexBuffer);
 
             for (int n = 0; n < draw_data->CmdListsCount; n++) {
                 const ImDrawList *cmd_list = draw_data->CmdLists[n];
@@ -110,8 +110,8 @@ namespace RDE {
                 vtx_dst += cmd_list->VtxBuffer.Size;
                 idx_dst += cmd_list->IdxBuffer.Size;
             }
-            m_Device->unmap_buffer(m_VertexBuffer);
-            m_Device->unmap_buffer(m_IndexBuffer);
+            m_device->unmap_buffer(m_VertexBuffer);
+            m_device->unmap_buffer(m_IndexBuffer);
         } else {
             return; // Nothing to render
         }
@@ -188,14 +188,14 @@ namespace RDE {
         fontDesc.usage = RAL::TextureUsage::Sampled | RAL::TextureUsage::TransferDst;
         fontDesc.initialData = pixels; // Use the initial data directly
         fontDesc.initialDataSize = upload_size;
-        m_FontTexture = m_Device->create_texture(fontDesc); // Use the version that takes initial data
+        m_FontTexture = m_device->create_texture(fontDesc); // Use the version that takes initial data
 
         io.Fonts->SetTexID((ImTextureID) (intptr_t) m_FontTexture.index); // Use the handle index as an ID
 
         RAL::SamplerDescription samplerDesc{}; // You need to define this in your RAL
         // samplerDesc.magFilter = ...;
         // samplerDesc.minFilter = ...;
-        m_FontSampler = m_Device->create_sampler(samplerDesc);
+        m_FontSampler = m_device->create_sampler(samplerDesc);
 
         // === 2. Create Descriptor Set Layout ===
         RAL::DescriptorSetLayoutDescription layoutDesc{};
@@ -205,7 +205,7 @@ namespace RDE {
                                               .stages = RAL::ShaderStage::Fragment
                                       });
 
-        m_DsLayout = m_Device->create_descriptor_set_layout(layoutDesc);
+        m_DsLayout = m_device->create_descriptor_set_layout(layoutDesc);
         // === 3. Create Descriptor Set ===
         RAL::DescriptorSetDescription setDesc{};
         setDesc.layout = m_DsLayout;
@@ -215,7 +215,7 @@ namespace RDE {
                                          .texture = m_FontTexture,
                                          .sampler = m_FontSampler
                                  });
-        m_DescriptorSet = m_Device->create_descriptor_set(setDesc);
+        m_DescriptorSet = m_device->create_descriptor_set(setDesc);
 
         // === 4. Create Pipeline ===
         auto shaderDir = get_shaders_path();
@@ -227,8 +227,8 @@ namespace RDE {
         std::string fragPath = (shaderDir.value() / "spirv" / "imgui.frag.spv").string();
         RAL::ShaderDescription vsDesc{vertPath, RAL::ShaderStage::Vertex};
         RAL::ShaderDescription fsDesc{fragPath, RAL::ShaderStage::Fragment};
-        RAL::ShaderHandle vs = m_Device->create_shader(vsDesc);
-        RAL::ShaderHandle fs = m_Device->create_shader(fsDesc);
+        RAL::ShaderHandle vs = m_device->create_shader(vsDesc);
+        RAL::ShaderHandle fs = m_device->create_shader(fsDesc);
 
         RAL::PipelineDescription psoDesc{};
         psoDesc.vertexShader = vs;
@@ -259,9 +259,9 @@ namespace RDE {
         psoDesc.rasterizationState.cullMode = RAL::CullMode::None;
         psoDesc.rasterizationState.polygonMode = RAL::PolygonMode::Fill;
 
-        psoDesc.depthStencilState.depthTestEnable   = false;
-        psoDesc.depthStencilState.depthWriteEnable  = false;
-        psoDesc.depthStencilState.depthCompareOp    = RAL::CompareOp::Always;
+        psoDesc.depthStencilState.depthTestEnable = false;
+        psoDesc.depthStencilState.depthWriteEnable = false;
+        psoDesc.depthStencilState.depthCompareOp = RAL::CompareOp::Always;
 
         // ImGui vertex layout
         psoDesc.vertexBindings = {{.binding = 0, .stride = sizeof(ImDrawVert)}};
@@ -272,23 +272,23 @@ namespace RDE {
                 {.location = 2, .binding = 0, .format = RAL::Format::R8G8B8A8_UNORM, .offset = offsetof(ImDrawVert,
                                                                                                         col)}
         };
-        m_Pipeline = m_Device->create_pipeline(psoDesc);
+        m_Pipeline = m_device->create_pipeline(psoDesc);
 
         // Cleanup temporary handles
-        m_Device->destroy_shader(vs);
-        m_Device->destroy_shader(fs);
+        m_device->destroy_shader(vs);
+        m_device->destroy_shader(fs);
         // Don't destroy the layout handle yet if the pipeline needs it
     }
 
     void ImGuiLayer::destroy_ral_resources() {
-        m_Device->destroy_pipeline(m_Pipeline);
-        m_Device->destroy_descriptor_set(m_DescriptorSet);
-        m_Device->destroy_descriptor_set_layout(m_DsLayout);
+        m_device->destroy_pipeline(m_Pipeline);
+        m_device->destroy_descriptor_set(m_DescriptorSet);
+        m_device->destroy_descriptor_set_layout(m_DsLayout);
         // Need a way to get this
-        m_Device->destroy_texture(m_FontTexture);
-        m_Device->destroy_sampler(m_FontSampler);
-        if (m_VertexBuffer.is_valid()) m_Device->destroy_buffer(m_VertexBuffer);
-        if (m_IndexBuffer.is_valid()) m_Device->destroy_buffer(m_IndexBuffer);
+        m_device->destroy_texture(m_FontTexture);
+        m_device->destroy_sampler(m_FontSampler);
+        if (m_VertexBuffer.is_valid()) m_device->destroy_buffer(m_VertexBuffer);
+        if (m_IndexBuffer.is_valid()) m_device->destroy_buffer(m_IndexBuffer);
     }
 
 }

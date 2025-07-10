@@ -13,34 +13,34 @@ namespace RDE{
 
         // 1. Create and own the Device
         auto window_handle = m_window->get_native_handle();
-        m_Device = std::make_unique<VulkanDevice>(static_cast<GLFWwindow *>(window_handle));
+        m_device = std::make_unique<VulkanDevice>(static_cast<GLFWwindow *>(window_handle));
 
         // 2. Create the Swapchain
         RAL::SwapchainDescription swapDesc{};
         swapDesc.nativeWindowHandle = window_handle;
         swapDesc.vsync = true; // Or get from config
-        m_Device->create_swapchain(swapDesc);
+        m_device->create_swapchain(swapDesc);
     }
 
     void Renderer::shutdown() {
-        if (!m_Device) return;
+        if (!m_device) return;
 
         RDE_CORE_INFO("Renderer::Shutdown - Shutting Down Rendering Systems...");
-        m_Device->wait_idle();
+        m_device->wait_idle();
 
-        // The unique_ptr for m_Device will handle its own destruction
+        // The unique_ptr for m_device will handle its own destruction
         // when the Renderer is destroyed.
-        m_Device.reset();
+        m_device.reset();
     }
 
     RAL::CommandBuffer* Renderer::begin_frame() {
-        m_CurrentFrameCommandBuffer = m_Device->begin_frame();
+        m_CurrentFrameCommandBuffer = m_device->begin_frame();
         return m_CurrentFrameCommandBuffer;
     }
 
     void Renderer::end_frame() {
         if (m_CurrentFrameCommandBuffer) {
-            m_Device->end_frame();
+            m_device->end_frame();
         }
         m_CurrentFrameCommandBuffer = nullptr;
     }

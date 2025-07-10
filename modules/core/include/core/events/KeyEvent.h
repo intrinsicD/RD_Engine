@@ -13,7 +13,7 @@ namespace RDE {
         }
 
     protected:
-        KeyEvent(const KeyCode keycode) : m_key_code(keycode) {
+        explicit KeyEvent(const KeyCode keycode) : m_key_code(keycode) {
         }
 
         KeyCode m_key_code;
@@ -21,7 +21,7 @@ namespace RDE {
 
     class KeyPressedEvent : public KeyEvent {
     public:
-        KeyPressedEvent(const KeyCode keycode, bool is_repeat = false)
+        explicit KeyPressedEvent(const KeyCode keycode, bool is_repeat = false)
             : KeyEvent(keycode), m_is_repeat(is_repeat) {
         }
 
@@ -43,7 +43,7 @@ namespace RDE {
 
     class KeyReleasedEvent : public KeyEvent {
     public:
-        KeyReleasedEvent(const KeyCode keycode)
+        explicit KeyReleasedEvent(const KeyCode keycode)
             : KeyEvent(keycode) {
         }
 
@@ -57,6 +57,4 @@ namespace RDE {
 
         EVENT_CLASS_TYPE(KeyReleased)
     };
-
-    // ... Other key events like KeyReleasedEvent can be added similarly.
 }

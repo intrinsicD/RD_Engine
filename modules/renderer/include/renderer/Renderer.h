@@ -1,3 +1,4 @@
+//renderer/Renderer.h
 #pragma once
 
 #include "ral/Device.h"
@@ -26,11 +27,11 @@ namespace RDE {
                     uint32_t indexCount);
 
         // This allows access for systems that *truly* need the low-level device, like ImGui
-        RAL::Device *get_device() { return m_Device.get(); }
+        RAL::Device *get_device() { return m_device.get(); }
 
     private:
         IWindow *m_window = nullptr; // Pointer to the window, not owned by Renderer
-        std::unique_ptr<RAL::Device> m_Device;
+        std::unique_ptr<RAL::Device> m_device;
         RAL::CommandBuffer *m_CurrentFrameCommandBuffer = nullptr;
     };
 }

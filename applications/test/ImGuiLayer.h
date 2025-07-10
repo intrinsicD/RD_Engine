@@ -48,7 +48,7 @@ namespace RDE {
 
         IWindow* m_window = nullptr; // Pointer to the window, set by the application context
 
-        RAL::Device* m_Device = nullptr;
+        RAL::Device* m_device = nullptr;
         ImGuiContext* m_Context = nullptr;
 
         // --- RAL Resources for ImGui Rendering ---

@@ -6,8 +6,8 @@
 
 namespace RDE {
     struct VulkanHelper {
-        explicit VulkanHelper(RAL::Device *device) : m_Device(dynamic_cast<VulkanDevice *>(device)) {}
+        explicit VulkanHelper(RAL::Device *device) : m_device(dynamic_cast<VulkanDevice *>(device)) {}
 
-        VulkanDevice *m_Device = nullptr;
+        VulkanDevice *m_device = nullptr;
     };
 }

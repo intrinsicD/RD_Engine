@@ -76,7 +76,7 @@ namespace RDE {
         }
 
     protected:
-        MouseButtonEvent(const MouseButton button)
+        explicit MouseButtonEvent(const MouseButton button)
                 : m_button(button) {
         }
 
@@ -85,7 +85,7 @@ namespace RDE {
 
     class MouseButtonPressedEvent : public MouseButtonEvent {
     public:
-        MouseButtonPressedEvent(const MouseButton button)
+        explicit MouseButtonPressedEvent(const MouseButton button)
                 : MouseButtonEvent(button) {
         }
 
@@ -102,7 +102,7 @@ namespace RDE {
 
     class MouseButtonReleasedEvent : public MouseButtonEvent {
     public:
-        MouseButtonReleasedEvent(const MouseButton button)
+        explicit MouseButtonReleasedEvent(const MouseButton button)
                 : MouseButtonEvent(button) {
         }
 

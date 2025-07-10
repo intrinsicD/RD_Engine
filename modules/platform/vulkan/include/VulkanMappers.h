@@ -80,6 +80,16 @@ namespace RDE {
         VkShaderStageFlags flags = 0;
         if (has_flag(stages, RAL::ShaderStage::Vertex)) flags |= VK_SHADER_STAGE_VERTEX_BIT;
         if (has_flag(stages, RAL::ShaderStage::Fragment)) flags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+        if (has_flag(stages, RAL::ShaderStage::Compute)) flags |= VK_SHADER_STAGE_COMPUTE_BIT;
+        if (has_flag(stages, RAL::ShaderStage::Geometry)) flags |= VK_SHADER_STAGE_GEOMETRY_BIT;
+        if (has_flag(stages, RAL::ShaderStage::TessellationControl)) flags |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+        if (has_flag(stages, RAL::ShaderStage::TessellationEvaluation)) flags |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+        if (has_flag(stages, RAL::ShaderStage::RayTracing)) flags |= VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR |
+                                                                  VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR |
+                                                                  VK_SHADER_STAGE_INTERSECTION_BIT_KHR | VK_SHADER_STAGE_CALLABLE_BIT_KHR;
+        if (has_flag(stages, RAL::ShaderStage::Task)) flags |= VK_SHADER_STAGE_TASK_BIT_EXT;
+        if (has_flag(stages, RAL::ShaderStage::Mesh)) flags |= VK_SHADER_STAGE_MESH_BIT_EXT;
+
         // ... add other stages ...
         return flags;
     }
@@ -112,5 +122,60 @@ namespace RDE {
         if (has_flag(usage, RAL::TextureUsage::TransferSrc))     flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         if (has_flag(usage, RAL::TextureUsage::TransferDst))     flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         return flags;
+    }
+
+    inline VkBlendFactor ToVulkanBlendFactor(RAL::BlendFactor factor) {
+        switch (factor) {
+            case RAL::BlendFactor::Zero: return VK_BLEND_FACTOR_ZERO;
+            case RAL::BlendFactor::One: return VK_BLEND_FACTOR_ONE;
+            case RAL::BlendFactor::SrcColor: return VK_BLEND_FACTOR_SRC_COLOR;
+            case RAL::BlendFactor::OneMinusSrcColor: return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+            case RAL::BlendFactor::DstColor: return VK_BLEND_FACTOR_DST_COLOR;
+            case RAL::BlendFactor::OneMinusDstColor: return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+            case RAL::BlendFactor::SrcAlpha: return VK_BLEND_FACTOR_SRC_ALPHA;
+            case RAL::BlendFactor::OneMinusSrcAlpha: return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+            case RAL::BlendFactor::DstAlpha: return VK_BLEND_FACTOR_DST_ALPHA;
+            case RAL::BlendFactor::OneMinusDstAlpha: return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+            // Add other factors as needed
+        }
+        return VK_BLEND_FACTOR_ZERO; // Default fallback
+    }
+
+    inline VkBlendOp ToVulkanBlendOp(RAL::BlendOp op) {
+        switch (op) {
+            case RAL::BlendOp::Add: return VK_BLEND_OP_ADD;
+            case RAL::BlendOp::Subtract: return VK_BLEND_OP_SUBTRACT;
+            case RAL::BlendOp::ReverseSubtract: return VK_BLEND_OP_REVERSE_SUBTRACT;
+            case RAL::BlendOp::Min: return VK_BLEND_OP_MIN;
+            case RAL::BlendOp::Max: return VK_BLEND_OP_MAX;
+        }
+        return VK_BLEND_OP_ADD; // Default fallback
+    }
+
+    inline VkPolygonMode ToVulkanPolygonMode(RAL::PolygonMode mode) {
+        switch (mode) {
+            case RAL::PolygonMode::Fill: return VK_POLYGON_MODE_FILL;
+            case RAL::PolygonMode::Line: return VK_POLYGON_MODE_LINE;
+            case RAL::PolygonMode::Point: return VK_POLYGON_MODE_POINT;
+        }
+        return VK_POLYGON_MODE_FILL; // Default fallback
+    }
+
+    inline VkCullModeFlags ToVulkanCullMode(RAL::CullMode mode) {
+        switch (mode) {
+            case RAL::CullMode::None: return VK_CULL_MODE_NONE;
+            case RAL::CullMode::Front: return VK_CULL_MODE_FRONT_BIT;
+            case RAL::CullMode::Back: return VK_CULL_MODE_BACK_BIT;
+            case RAL::CullMode::FrontAndBack: return VK_CULL_MODE_FRONT_AND_BACK;
+        }
+        return VK_CULL_MODE_NONE; // Default fallback
+    }
+
+    inline VkFrontFace ToVulkanFrontFace(RAL::FrontFace frontFace) {
+        switch (frontFace) {
+            case RAL::FrontFace::Clockwise: return VK_FRONT_FACE_CLOCKWISE;
+            case RAL::FrontFace::CounterClockwise: return VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        }
+        return VK_FRONT_FACE_COUNTER_CLOCKWISE; // Default fallback
     }
 }

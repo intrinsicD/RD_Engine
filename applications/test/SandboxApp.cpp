@@ -152,7 +152,7 @@ namespace RDE {
             // --- 1. Main Scene Render Pass ---
             // For now, we are just clearing the screen. In the future, you would
             // render your 3D scene here inside a render pass.
-            RAL::RenderPassDescription passDesc{};
+/*            RAL::RenderPassDescription passDesc{};
             passDesc.colorAttachments.resize(1);
             passDesc.colorAttachments[0].texture = RAL::TextureHandle::INVALID(); // INVALID handle means use the swapchain
             passDesc.colorAttachments[0].loadOp = RAL::LoadOp::Clear;
@@ -161,8 +161,17 @@ namespace RDE {
             passDesc.colorAttachments[0].clearColor[1] = 0.1f;
             passDesc.colorAttachments[0].clearColor[2] = 0.15f;
             passDesc.colorAttachments[0].clearColor[3] = 1.0f;
-
-            cmd->begin_render_pass(passDesc);
+            cmd->begin_render_pass(passDesc);*/
+            RAL::RenderPassDescription scenePass{};
+            scenePass.colorAttachments.resize(1);
+            scenePass.colorAttachments[0].texture = RAL::TextureHandle::INVALID();
+            scenePass.colorAttachments[0].loadOp = RAL::LoadOp::Clear; // CLEAR the screen
+            scenePass.colorAttachments[0].storeOp = RAL::StoreOp::Store;
+            scenePass.colorAttachments[0].clearColor[0] = 0.1f;
+            scenePass.colorAttachments[0].clearColor[1] = 0.1f;
+            scenePass.colorAttachments[0].clearColor[2] = 0.15f;
+            scenePass.colorAttachments[0].clearColor[3] = 1.0f;
+            cmd->begin_render_pass(scenePass);
 
             // 2. Let your scene layers render themselves (e.g., the 3D world)
             for (auto &layer: m_layer_stack) {
@@ -171,15 +180,21 @@ namespace RDE {
                 }
             }
 
+            cmd->end_render_pass();
+
             // 3. Render ImGui
-            // The ImGuiLayer needs a separate render pass, or to be integrated
-            // into the main one. For now, let's assume it does its own thing.
             m_imgui_layer->begin(); // Starts a new ImGui frame
 
             // Let all layers draw their UI components
             for (auto &layer: m_layer_stack) {
                 layer->on_render_gui();
             }
+            RAL::RenderPassDescription uiPass{};
+            uiPass.colorAttachments.resize(1);
+            uiPass.colorAttachments[0].texture = RAL::TextureHandle::INVALID();
+            uiPass.colorAttachments[0].loadOp = RAL::LoadOp::Load; // LOAD the previous result
+            uiPass.colorAttachments[0].storeOp = RAL::StoreOp::Store;
+            cmd->begin_render_pass(uiPass); // Begin the UI pass
 
             m_imgui_layer->end(cmd); // Finishes ImGui frame and records draw commands to your command buffer
 
