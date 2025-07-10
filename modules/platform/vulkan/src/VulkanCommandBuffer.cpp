@@ -72,6 +72,7 @@ namespace RDE {
         if (!colorAttachmentDesc.texture.is_valid()) {
             // Rendering to the swapchain
             colorAttachmentInfo.imageView = m_device->m_Swapchain.imageViews[m_device->m_CurrentImageIndex];
+            assert(colorAttachmentInfo.imageView != VK_NULL_HANDLE && "Swapchain image view is null!");
         } else {
             // Rendering to an offscreen texture
             auto& texture = m_device->m_TextureManager.get(colorAttachmentDesc.texture);

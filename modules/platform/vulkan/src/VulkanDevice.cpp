@@ -205,16 +205,23 @@ namespace RDE {
             float queuePriority = 1.0f;
             queueCreateInfo.pQueuePriorities = &queuePriority;
 
-            VkPhysicalDeviceFeatures deviceFeatures{}; // Your existing features (e.g., anisotropy)
-            vkGetPhysicalDeviceFeatures(m_PhysicalDevice, &deviceFeatures);
-            if (!deviceFeatures.samplerAnisotropy) {
-                RDE_CORE_WARN("Sampler Anisotropy is not supported on this device!");
-                deviceFeatures.samplerAnisotropy = VK_FALSE;
-            }
-
             VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeature{};
             dynamicRenderingFeature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
             dynamicRenderingFeature.dynamicRendering = VK_TRUE;
+
+            //TODO here seems to be a problem with the dynamic rendering feature
+            VkPhysicalDeviceFeatures2 deviceFeatures2{};
+            deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+            // Chain the dynamic rendering struct to the pNext of the features2 struct.
+            deviceFeatures2.pNext = &dynamicRenderingFeature;
+
+            VkPhysicalDeviceFeatures supportedFeatures;
+            vkGetPhysicalDeviceFeatures(m_PhysicalDevice, &supportedFeatures);
+            if (supportedFeatures.samplerAnisotropy) {
+                deviceFeatures2.features.samplerAnisotropy = VK_TRUE;
+            } else {
+                RDE_CORE_WARN("Sampler Anisotropy is not supported on this device!");
+            }
 
             const std::vector<const char *> deviceExtensions = {
                     VK_KHR_SWAPCHAIN_EXTENSION_NAME,
@@ -225,10 +232,10 @@ namespace RDE {
             createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
             createInfo.pQueueCreateInfos = &queueCreateInfo;
             createInfo.queueCreateInfoCount = 1;
-            createInfo.pEnabledFeatures = &deviceFeatures;
+            createInfo.pEnabledFeatures = nullptr;
+            createInfo.pNext = &deviceFeatures2;
             createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
             createInfo.ppEnabledExtensionNames = deviceExtensions.data();
-            createInfo.pNext = &dynamicRenderingFeature;
 
             VK_CHECK(vkCreateDevice(m_PhysicalDevice, &createInfo, nullptr, &m_LogicalDevice));
 
