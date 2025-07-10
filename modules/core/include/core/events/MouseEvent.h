@@ -57,7 +57,7 @@ namespace RDE {
 
     class MouseButtonEvent : public Event {
     public:
-        int get_mouse_button() const { return m_button; }
+        MouseButton get_mouse_button() const { return m_button; }
 
         int get_category_flags() const override {
             return EventCategory::EventCategoryInput | EventCategory::EventCategoryMouse;

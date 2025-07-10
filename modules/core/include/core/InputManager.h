@@ -93,11 +93,11 @@ namespace RDE {
 
         static bool is_mouse_scrolling();
 
-        static std::optional<CursorInfo> get_cursor_info();
+        static CursorInfo get_cursor_info();
 
         static std::optional<DragInfo> get_drag_info(MouseButton button);
 
-        static std::optional<ScrollInfo> get_scroll_info();
+        static ScrollInfo get_scroll_info();
 
     private:
         // --- PIMPL (Pointer to Implementation) ---

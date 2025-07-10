@@ -2,6 +2,7 @@
 
 #include "core/Application.h"
 #include "core/IWindow.h"
+#include "core/InputManager.h"
 #include "renderer/Renderer.h"
 
 namespace RDE {
@@ -27,6 +28,7 @@ namespace RDE {
         void on_event(Event &e) override;
 
         std::unique_ptr<RDE::IWindow> m_window;
+        std::unique_ptr<RDE::InputManager> m_input_manager;
         std::unique_ptr<RDE::Renderer> m_renderer;
         std::unique_ptr<RDE::AssetManager> m_asset_manager;
         std::unique_ptr<RDE::FileWatcher> m_file_watcher;
@@ -43,14 +45,6 @@ namespace RDE {
         // --- Application State ---
         bool m_is_running = true;
         bool m_is_minimized = false;
-
-        // --- Input State ---
-        RDE::Mouse m_mouse_state;
-        RDE::Keyboard m_keyboard_state;
-        std::unordered_map<int, std::function<void()> > m_key_press_bindings; // Key bindings for press actions
-        std::unordered_map<int, std::function<void()> > m_key_release_bindings; // Key bindings for release actions
-        std::unordered_map<int, std::function<void()> > m_key_repeat_bindings; // Key bindings for release actions
-        std::unordered_map<int, std::function<void()> > m_key_update_bindings; // Key bindings for update actions
 
         // --- Scene/Editor State ---
         entt::entity m_primary_camera_entity;

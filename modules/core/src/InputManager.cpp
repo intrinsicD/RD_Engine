@@ -36,9 +36,15 @@ namespace RDE {
         std::vector<bool> mouse_buttons_current_frame;
         std::vector<bool> mouse_buttons_last_frame;
 
+        struct DragTracker {
+            enum class State { Potential, Active };
+            State state;
+            glm::vec2 press_position;
+        };
+        std::unordered_map<MouseButton, DragTracker> drag_trackers;
+
         // ... other state like mouse position, scroll deltas, etc. ...
         CursorInfo cursor_info;
-        DragInfo drag_info;
         ScrollInfo scroll_info;
         // This is used to track the last position for delta calculations
         [[nodiscard]] glm::vec2 get_last_position() const {
@@ -115,19 +121,62 @@ namespace RDE {
             return false;
         });
 
+        constexpr float DRAG_THRESHOLD = 3.0f;
+
         // ... similar dispatchers for mouse buttons ...
         dispatcher.dispatch<MouseButtonPressedEvent>([this](MouseButtonPressedEvent &e) {
             m_state->mouse_buttons_current_frame[e.get_mouse_button()] = true;
+
+            m_state->drag_trackers[e.get_mouse_button()] = {
+                    InputState::DragTracker::State::Potential,
+                    m_state->cursor_info.current_position // Store the initial press position
+            };
+
+            // Fire OnPress actions...
+            if (auto it = m_state->mouse_bindings.find(e.get_mouse_button()); it != m_state->mouse_bindings.end()) {
+                for (const auto &binding: it->second) {
+                    if (binding.trigger == InputTrigger::OnPress) {
+                        if (auto action_it = m_state->actions.find(binding.action_name);
+                            action_it != m_state->actions.end()) {
+                            action_it->second.callback(0.0f);
+                        }
+                    }
+                }
+            }
             return false;
         });
         dispatcher.dispatch<MouseButtonReleasedEvent>([this](MouseButtonReleasedEvent &e) {
             m_state->mouse_buttons_current_frame[e.get_mouse_button()] = false;
+
+            m_state->drag_trackers.erase(e.get_mouse_button());
+            // Fire OnRelease actions...
+            if (auto it = m_state->mouse_bindings.find(e.get_mouse_button()); it != m_state->mouse_bindings.end()) {
+                for (const auto &binding: it->second) {
+                    if (binding.trigger == InputTrigger::OnRelease) {
+                        if (auto action_it = m_state->actions.find(binding.action_name);
+                            action_it != m_state->actions.end()) {
+                            action_it->second.callback(0.0f);
+                        }
+                    }
+                }
+            }
             return false;
         });
         dispatcher.dispatch<MouseMovedEvent>([this](MouseMovedEvent &e) {
             glm::vec2 last_position = m_state->cursor_info.current_position;
             m_state->cursor_info.current_position = glm::vec2(e.get_x(), e.get_y());
             m_state->cursor_info.delta_from_last_frame = m_state->cursor_info.current_position - last_position;
+
+            for (auto& [button, tracker] : m_state->drag_trackers) {
+                if (tracker.state == InputState::DragTracker::State::Potential) {
+                    float distance = glm::distance(tracker.press_position, m_state->cursor_info.current_position);
+                    if (distance > DRAG_THRESHOLD) {
+                        // We've moved far enough. The drag is now active!
+                        tracker.state = InputState::DragTracker::State::Active;
+                        // Optional: This is where you would dispatch a DragStartEvent if you had one.
+                    }
+                }
+            }
             return false; // Allow layers to handle the event
         });
         dispatcher.dispatch<MouseScrolledEvent>([this](MouseScrolledEvent &e) {
@@ -230,25 +279,44 @@ namespace RDE {
         return s_instance && s_instance->m_state->cursor_info.delta_from_last_frame != glm::vec2(0.0f, 0.0f);
     }
 
-    std::optional<CursorInfo> InputManager::get_cursor_info() {
-        if (!s_instance) return std::nullopt;
-
-        return std::optional<CursorInfo>{s_instance->m_state->cursor_info};
+    CursorInfo InputManager::get_cursor_info() {
+        if (s_instance) {
+            return s_instance->m_state->cursor_info;
+        }
+        // Return a default-constructed (all zero) struct if the manager doesn't exist.
+        return {};
     }
 
     std::optional<DragInfo> InputManager::get_drag_info(MouseButton button) {
-        if (!s_instance) return std::nullopt;
-
-        // Check if the button has drag info
-        if (s_instance->m_state->drag_info.button == button) {
-            return std::optional<DragInfo>{s_instance->m_state->drag_info};
+        if (!s_instance) {
+            return std::nullopt;
         }
-        return std::nullopt; // No drag info for this button
+
+        // Look for a tracker for the requested mouse button.
+        auto it = s_instance->m_state->drag_trackers.find(button);
+        if (it != s_instance->m_state->drag_trackers.end()) {
+            const auto& tracker = it->second;
+
+            // ONLY return info if the drag is officially "Active".
+            if (tracker.state == InputState::DragTracker::State::Active) {
+                DragInfo info;
+                info.button = button;
+                info.start_position = tracker.press_position;
+                info.current_position = s_instance->m_state->cursor_info.current_position;
+                info.delta_from_last_frame = s_instance->m_state->cursor_info.delta_from_last_frame;
+                return info;
+            }
+        }
+
+        // If no tracker exists, or it's not active, there's no drag.
+        return std::nullopt;
     }
 
-    std::optional<ScrollInfo> InputManager::get_scroll_info() {
-        if (!s_instance) return std::nullopt;
-
-        return std::optional<ScrollInfo>{s_instance->m_state->scroll_info};
+    ScrollInfo InputManager::get_scroll_info() {
+        if (s_instance) {
+            return s_instance->m_state->scroll_info;
+        }
+        // Return a default-constructed (all zero) struct if the manager doesn't exist.
+        return {};
     }
 }

@@ -101,7 +101,7 @@ namespace RDE::Detail { // Use a detail namespace to hide helpers
         if (glfw_button >= 0 && glfw_button <= GLFW_MOUSE_BUTTON_8 + 1) {
             return s_glfw_to_rde_button_map[glfw_button];
         }
-        return MouseButton::BUTTO_UNKNOWN;
+        return MouseButton::BUTTON_UNKNOWN;
     }
 
 } // namespace RDE::Detail```

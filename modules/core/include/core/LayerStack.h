@@ -48,6 +48,14 @@ namespace RDE {
             }
         }
 
+        void clear() {
+            for (auto &layer : m_layers) {
+                layer->on_detach();
+            }
+            m_layers.clear();
+            m_layer_insert_index = 0; // Reset the insert index.
+        }
+
         std::vector<std::shared_ptr<ILayer> >::iterator begin() { return m_layers.begin(); }
 
         std::vector<std::shared_ptr<ILayer> >::iterator end() { return m_layers.end(); }

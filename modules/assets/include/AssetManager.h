@@ -100,6 +100,7 @@ namespace RDE {
             if (reload_callback) {
                 reload_callback(uri);
             }
+            RDE_CORE_TRACE("AssetManager: Force reloaded asset type '{}' from URI '{}'", type_id.name(), uri);
             return true;
         }
 
