@@ -205,28 +205,30 @@ namespace RDE {
             float queuePriority = 1.0f;
             queueCreateInfo.pQueuePriorities = &queuePriority;
 
-            VkPhysicalDeviceFeatures deviceFeatures{}; // Enable features here if needed
-            // Check if the GPU supports samplerAnisotropy before enabling it
-            VkPhysicalDeviceFeatures supportedFeatures;
-            vkGetPhysicalDeviceFeatures(m_PhysicalDevice, &supportedFeatures);
-            if (supportedFeatures.samplerAnisotropy) {
-                deviceFeatures.samplerAnisotropy = VK_TRUE;
-            } else {
+            VkPhysicalDeviceFeatures deviceFeatures{}; // Your existing features (e.g., anisotropy)
+            vkGetPhysicalDeviceFeatures(m_PhysicalDevice, &deviceFeatures);
+            if (!deviceFeatures.samplerAnisotropy) {
                 RDE_CORE_WARN("Sampler Anisotropy is not supported on this device!");
+                deviceFeatures.samplerAnisotropy = VK_FALSE;
             }
+
+            VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeature{};
+            dynamicRenderingFeature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
+            dynamicRenderingFeature.dynamicRendering = VK_TRUE;
+
+            const std::vector<const char *> deviceExtensions = {
+                    VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+                    VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME
+            };
 
             VkDeviceCreateInfo createInfo{};
             createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
             createInfo.pQueueCreateInfos = &queueCreateInfo;
             createInfo.queueCreateInfoCount = 1;
             createInfo.pEnabledFeatures = &deviceFeatures;
-
-            // Enable the mandatory swapchain extension
-            const std::vector<const char *> deviceExtensions = {
-                    VK_KHR_SWAPCHAIN_EXTENSION_NAME
-            };
             createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
             createInfo.ppEnabledExtensionNames = deviceExtensions.data();
+            createInfo.pNext = &dynamicRenderingFeature;
 
             VK_CHECK(vkCreateDevice(m_PhysicalDevice, &createInfo, nullptr, &m_LogicalDevice));
 
@@ -472,8 +474,8 @@ namespace RDE {
 
             VK_CHECK(vkCreateImageView(m_LogicalDevice, &viewInfo, nullptr, &m_Swapchain.imageViews[i]));
         }
-        // --- Create the Render Pass ---
-        {
+        // --- Create the Render Pass --- Removed because we will use Dynamic Rendering
+        /*{
             VkAttachmentDescription colorAttachment{};
             colorAttachment.format = m_Swapchain.imageFormat;
             colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -512,10 +514,10 @@ namespace RDE {
             renderPassInfo.pDependencies = &dependency;
 
             VK_CHECK(vkCreateRenderPass(m_LogicalDevice, &renderPassInfo, nullptr, &m_SwapchainRenderPass));
-        }
+        }*/
 
-        // --- Create Framebuffers ---
-        {
+        // --- Create Framebuffers --- Removed because we will use Dynamic Rendering
+        /*{
             m_SwapchainFramebuffers.resize(m_Swapchain.imageViews.size());
             for (size_t i = 0; i < m_Swapchain.imageViews.size(); i++) {
                 VkImageView attachments[] = {
@@ -533,7 +535,7 @@ namespace RDE {
 
                 VK_CHECK(vkCreateFramebuffer(m_LogicalDevice, &framebufferInfo, nullptr, &m_SwapchainFramebuffers[i]));
             }
-        }
+        }*/
 
         // --- Create RAL TextureHandles for the swapchain images ---
         // NOTE: This is a placeholder. A real resource manager would be responsible
@@ -571,15 +573,17 @@ namespace RDE {
 
         // Capture the current swapchain state for deferred deletion
         auto swapchain_to_delete = m_Swapchain;
-        auto swapchainFramebuffers = m_SwapchainFramebuffers;
-        auto swapchainRenderPass = m_SwapchainRenderPass;
+        //Removed because we will use Dynamic Rendering
+/*        auto swapchainFramebuffers = m_SwapchainFramebuffers;
+        auto swapchainRenderPass = m_SwapchainRenderPass;*/
         auto logicalDevice = m_LogicalDevice;
 
         get_current_frame_deletion_queue().push([=]() {
-            for (auto framebuffer: swapchainFramebuffers) {
+            //Removed because we will use Dynamic Rendering
+/*            for (auto framebuffer: swapchainFramebuffers) {
                 vkDestroyFramebuffer(logicalDevice, framebuffer, nullptr);
             }
-            vkDestroyRenderPass(logicalDevice, swapchainRenderPass, nullptr);
+            vkDestroyRenderPass(logicalDevice, swapchainRenderPass, nullptr);*/
 
             for (auto imageView: swapchain_to_delete.imageViews) {
                 vkDestroyImageView(logicalDevice, imageView, nullptr);
@@ -905,9 +909,21 @@ namespace RDE {
         pipelineLayoutInfo.pPushConstantRanges = vkPushRanges.data();
         VK_CHECK(vkCreatePipelineLayout(m_LogicalDevice, &pipelineLayoutInfo, nullptr, &newPipeline.layout));
 
+        // --- Dynamic Rendering ---
+        VkPipelineRenderingCreateInfoKHR pipelineRenderingCreateInfo{};
+        pipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+        pipelineRenderingCreateInfo.colorAttachmentCount = 1;
+        // We are telling this pipeline it will render to a single attachment of this format.
+        // This must match what we provide in vkCmdBeginRendering.
+        pipelineRenderingCreateInfo.pColorAttachmentFormats = &m_Swapchain.imageFormat;
+        // We are not using a depth buffer yet
+        pipelineRenderingCreateInfo.depthAttachmentFormat = VK_FORMAT_UNDEFINED;
+        pipelineRenderingCreateInfo.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
+
         // --- 5. Create the Graphics Pipeline ---
         VkGraphicsPipelineCreateInfo pipelineInfo{};
         pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipelineInfo.pNext = &pipelineRenderingCreateInfo;
         pipelineInfo.stageCount = 2; // Vertex + Fragment
         pipelineInfo.pStages = shaderStages;
         pipelineInfo.pVertexInputState = &vertexInputInfo;
@@ -920,7 +936,8 @@ namespace RDE {
         pipelineInfo.pDynamicState = &dynamicState;
         pipelineInfo.layout = newPipeline.layout;
         // THIS IS CRUCIAL: The pipeline must know which render pass it's compatible with.
-        pipelineInfo.renderPass = m_SwapchainRenderPass;
+        // Removed because we will use Dynamic Rendering
+        /*pipelineInfo.renderPass = m_SwapchainRenderPass;*/
         pipelineInfo.subpass = 0;
 
         VK_CHECK(vkCreateGraphicsPipelines(m_LogicalDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr,
@@ -1323,11 +1340,17 @@ namespace RDE {
         VK_CHECK(vkResetCommandBuffer(cmd->get_handle(), 0));
         cmd->begin();
 
+        VkImage swapchainImage = m_Swapchain.images[m_CurrentImageIndex];
+        cmd->transition_image_layout(swapchainImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
         return cmd;
     }
 
     void VulkanDevice::end_frame() {
         VulkanCommandBuffer *cmd = m_FrameCommandBuffers[m_CurrentFrameIndex].get();
+
+        VkImage swapchainImage = m_Swapchain.images[m_CurrentImageIndex];
+        cmd->transition_image_layout(swapchainImage, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
         cmd->end();
 
         std::vector<RAL::CommandBuffer*> submissions;

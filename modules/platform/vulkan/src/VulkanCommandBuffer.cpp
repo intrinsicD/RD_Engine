@@ -30,7 +30,8 @@ namespace RDE {
         VK_CHECK(vkEndCommandBuffer(m_handle));
     }
 
-    void VulkanCommandBuffer::begin_render_pass(const RAL::RenderPassDescription &desc) {
+    //Removed because of dynamic rendering
+    /*void VulkanCommandBuffer::begin_render_pass(const RAL::RenderPassDescription &desc) {
         VkRenderPassBeginInfo renderPassInfo{};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         renderPassInfo.renderArea.offset = {0, 0};
@@ -59,6 +60,50 @@ namespace RDE {
         renderPassInfo.pClearValues = &clearValue;
 
         vkCmdBeginRenderPass(m_handle, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    }*/
+
+    void VulkanCommandBuffer::begin_render_pass(const RAL::RenderPassDescription &desc) {
+        assert(!desc.colorAttachments.empty() && "Dynamic rendering requires at least one color attachment description.");
+
+        const auto& colorAttachmentDesc = desc.colorAttachments[0];
+        VkRenderingAttachmentInfoKHR colorAttachmentInfo{};
+        colorAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+
+        if (!colorAttachmentDesc.texture.is_valid()) {
+            // Rendering to the swapchain
+            colorAttachmentInfo.imageView = m_device->m_Swapchain.imageViews[m_device->m_CurrentImageIndex];
+        } else {
+            // Rendering to an offscreen texture
+            auto& texture = m_device->m_TextureManager.get(colorAttachmentDesc.texture);
+            colorAttachmentInfo.imageView = texture.image_view;
+        }
+
+
+
+        colorAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        colorAttachmentInfo.loadOp = (colorAttachmentDesc.loadOp == RAL::LoadOp::Load) ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR;
+        colorAttachmentInfo.storeOp = (colorAttachmentDesc.storeOp == RAL::StoreOp::Store) ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        colorAttachmentInfo.clearValue.color = {{
+                                                        colorAttachmentDesc.clearColor[0],
+                                                        colorAttachmentDesc.clearColor[1],
+                                                        colorAttachmentDesc.clearColor[2],
+                                                        colorAttachmentDesc.clearColor[3]
+                                                }};
+
+        VkRenderingInfoKHR renderingInfo{};
+        renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
+        renderingInfo.renderArea.offset = {0, 0};
+        renderingInfo.renderArea.extent = m_device->m_Swapchain.extent;
+        renderingInfo.layerCount = 1;
+        renderingInfo.colorAttachmentCount = 1;
+        renderingInfo.pColorAttachments = &colorAttachmentInfo;
+        renderingInfo.pDepthAttachment = nullptr; // No depth yet
+        renderingInfo.pStencilAttachment = nullptr;
+
+        assert(renderingInfo.renderArea.extent.width > 0 && "Render area width cannot be zero!");
+        assert(renderingInfo.renderArea.extent.height > 0 && "Render area height cannot be zero!");
+
+        vkCmdBeginRendering(m_handle, &renderingInfo);
     }
 
     void VulkanCommandBuffer::end_render_pass() {
@@ -165,5 +210,41 @@ namespace RDE {
                 size,            // The size of the data to update
                 data             // Pointer to the data
         );
+    }
+
+    void VulkanCommandBuffer::transition_image_layout(VkImage image, VkImageLayout current_layout, VkImageLayout new_layout) {
+        VkImageMemoryBarrier barrier{};
+        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barrier.oldLayout = current_layout;
+        barrier.newLayout = new_layout;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.image = image;
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        barrier.subresourceRange.baseMipLevel = 0;
+        barrier.subresourceRange.levelCount = 1;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount = 1;
+
+        VkPipelineStageFlags sourceStage;
+        VkPipelineStageFlags destinationStage;
+
+        // Define access masks and pipeline stages for the transition
+        if (current_layout == VK_IMAGE_LAYOUT_UNDEFINED && new_layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+            barrier.srcAccessMask = 0;
+            barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+            destinationStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        } else if (current_layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL && new_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
+            barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            barrier.dstAccessMask = 0;
+            sourceStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            destinationStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+        } else {
+            // You can add more transition types as needed
+            throw std::runtime_error("unsupported layout transition!");
+        }
+
+        vkCmdPipelineBarrier(m_handle, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
     }
 }

@@ -46,7 +46,6 @@ namespace RDE {
 
         void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function); // Keep this declaration for now
 
-
         RAL::CommandBuffer *begin_frame() override;
 
         void end_frame() override;
@@ -125,8 +124,10 @@ namespace RDE {
 
         // --- Command & Render Pass Infrastructure ---
         VkCommandPool m_CommandPool{VK_NULL_HANDLE};
-        VkRenderPass m_SwapchainRenderPass{VK_NULL_HANDLE};
-        std::vector<VkFramebuffer> m_SwapchainFramebuffers;
+
+        //Removed Swapchain Render Pass and Framebuffers because we will use Dynamic Rendering
+       /* VkRenderPass m_SwapchainRenderPass{VK_NULL_HANDLE};
+        std::vector<VkFramebuffer> m_SwapchainFramebuffers;*/
 
         VulkanSwapchain m_Swapchain;
         std::vector<RAL::TextureHandle> m_SwapchainTextureHandles;

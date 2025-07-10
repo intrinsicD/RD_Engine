@@ -48,6 +48,8 @@ namespace RDE {
                           int32_t vertex_offset,
                           uint32_t first_instance) override;
 
+        void transition_image_layout(VkImage image, VkImageLayout current_layout, VkImageLayout new_layout);
+
 
         // --- Vulkan Specific ---
         VkCommandBuffer get_handle() const { return m_handle; }

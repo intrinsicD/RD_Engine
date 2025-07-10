@@ -158,16 +158,6 @@ namespace RDE {
             // --- 1. Main Scene Render Pass ---
             // For now, we are just clearing the screen. In the future, you would
             // render your 3D scene here inside a render pass.
-/*            RAL::RenderPassDescription passDesc{};
-            passDesc.colorAttachments.resize(1);
-            passDesc.colorAttachments[0].texture = RAL::TextureHandle::INVALID(); // INVALID handle means use the swapchain
-            passDesc.colorAttachments[0].loadOp = RAL::LoadOp::Clear;
-            passDesc.colorAttachments[0].storeOp = RAL::StoreOp::Store;
-            passDesc.colorAttachments[0].clearColor[0] = 0.1f;
-            passDesc.colorAttachments[0].clearColor[1] = 0.1f;
-            passDesc.colorAttachments[0].clearColor[2] = 0.15f;
-            passDesc.colorAttachments[0].clearColor[3] = 1.0f;
-            cmd->begin_render_pass(passDesc);*/
             RAL::RenderPassDescription scenePass{};
             scenePass.colorAttachments.resize(1);
             scenePass.colorAttachments[0].texture = RAL::TextureHandle::INVALID();
