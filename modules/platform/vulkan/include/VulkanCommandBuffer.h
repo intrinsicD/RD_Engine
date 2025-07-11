@@ -12,7 +12,7 @@ namespace RDE {
     public:
         explicit VulkanCommandBuffer(VkCommandBuffer handle, VulkanDevice *device);
 
-        ~VulkanCommandBuffer() override;
+        ~VulkanCommandBuffer() override = default;
 
         // --- RAL Interface Implementation (all will be stubbed for now) ---
         void begin() override;

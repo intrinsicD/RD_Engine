@@ -17,6 +17,8 @@ target_sources(VulkanPlatform PRIVATE
         src/VulkanCommandBuffer.cpp
         src/VulkanDevice.cpp
         src/VulkanDeletionQueue.cpp
+        src/VulkanSwapchain.cpp
+        src/VulkanContext.cpp
 )
 
 # This module implements the renderer, so it links against the graphics libraries.

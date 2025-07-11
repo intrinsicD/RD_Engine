@@ -2,9 +2,11 @@
 #pragma once
 
 #include "ral/Device.h"
+#include "VulkanContext.h"
+#include "VulkanSwapchain.h"
+#include "VulkanResourceManager.h"
 #include "VulkanCommandBuffer.h"
 #include "VulkanTypes.h"
-#include "VulkanResourceManager.h"
 #include "VulkanDeletionQueue.h"
 
 #include <vulkan/vulkan.h>
@@ -21,38 +23,21 @@ namespace RDE {
     class VulkanDevice final : public RAL::Device {
     public:
         // The constructor will handle all the initialization.
-        explicit VulkanDevice(GLFWwindow *window);
+        explicit VulkanDevice(VulkanContext *context, VulkanSwapchain *swapchain);
 
         ~VulkanDevice() override;
 
-        void *map_buffer(RAL::BufferHandle handle) override;
-
-        void unmap_buffer(RAL::BufferHandle handle) override;
-
-        // We will implement these functions one by one. For now, we'll leave them as overrides.
-        void create_swapchain(const RAL::SwapchainDescription &desc) override;
-
-        void recreate_swapchain() override;
-
-        void destroy_swapchain() override;
-
-        RAL::TextureHandle acquire_next_swapchain_image() override;
-
-        void present() override;
-
-        std::unique_ptr<RAL::CommandBuffer> create_command_buffer() override;
-
-        void submit(const std::vector<RAL::CommandBuffer*> &command_buffers) override;
-
-        void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function); // Keep this declaration for now
-
+        // --- Frame Lifecycle ---
         RAL::CommandBuffer *begin_frame() override;
 
-        void end_frame() override;
+        void end_frame(const std::vector<RAL::CommandBuffer *> &command_buffers) override;
 
         void wait_idle() override;
 
-        // ... etc. for CreateBuffer, CreateTexture ...
+        // --- Swapchain Management ---
+        void recreate_swapchain() override;
+
+        // --- Resource Creation (implements RAL) ---
         RAL::BufferHandle create_buffer(const RAL::BufferDescription &desc) override;
 
         void destroy_buffer(RAL::BufferHandle handle) override;
@@ -60,6 +45,10 @@ namespace RDE {
         RAL::TextureHandle create_texture(const RAL::TextureDescription &desc) override;
 
         void destroy_texture(RAL::TextureHandle handle) override;
+
+        RAL::SamplerHandle create_sampler(const RAL::SamplerDescription &desc) override;
+
+        void destroy_sampler(RAL::SamplerHandle handle) override;
 
         RAL::ShaderHandle create_shader(const RAL::ShaderDescription &desc) override;
 
@@ -80,37 +69,92 @@ namespace RDE {
 
         void destroy_descriptor_set(RAL::DescriptorSetHandle handle) override;
 
-        RAL::SamplerHandle create_sampler(const RAL::SamplerDescription &desc) override;
+        // --- Resource Access ---
+        // Used by the high-level renderer to resolve handles before passing to a command buffer
 
-        void destroy_sampler(RAL::SamplerHandle handle) override;
+        VulkanBuffer &get_buffer(RAL::BufferHandle handle) { return m_BufferManager.get(handle); }
+
+        VulkanTexture &get_texture(RAL::TextureHandle handle) { return m_TextureManager.get(handle); }
+
+        VulkanSampler &get_sampler(RAL::SamplerHandle handle) { return m_SamplerManager.get(handle); }
+
+        VulkanShader &get_shader(RAL::ShaderHandle handle) { return m_ShaderManager.get(handle); }
+
+        VulkanPipeline &get_pipeline(RAL::PipelineHandle handle) { return m_PipelineManager.get(handle); }
+
+        VulkanDescriptorSetLayout &get_descriptor_set_layout(RAL::DescriptorSetLayoutHandle handle) {
+            return m_DsLayoutManager.get(handle);
+        }
+
+        VkDescriptorSet get_descriptor_set(RAL::DescriptorSetHandle handle) {
+            return m_DescriptorSetManager.get(handle);
+        }
+
+        VulkanSwapchain &get_swapchain() { return *m_Swapchain; }
+
+        bool is_valid(RAL::BufferHandle handle) const {
+            return m_BufferManager.is_valid(handle);
+        }
+
+        bool is_valid(RAL::TextureHandle handle) const {
+            return m_TextureManager.is_valid(handle);
+        }
+
+        bool is_valid(RAL::SamplerHandle handle) const {
+            return m_SamplerManager.is_valid(handle);
+        }
+
+        bool is_valid(RAL::ShaderHandle handle) const {
+            return m_ShaderManager.is_valid(handle);
+        }
+
+        bool is_valid(RAL::PipelineHandle handle) const {
+            return m_PipelineManager.is_valid(handle);
+        }
+
+        bool is_valid(RAL::DescriptorSetLayoutHandle handle) const {
+            return m_DsLayoutManager.is_valid(handle);
+        }
+
+        bool is_valid(RAL::DescriptorSetHandle handle) const {
+            return m_DescriptorSetManager.is_valid(handle);
+        }
+
+        // ... other getters for raw Vulkan handles ...
+
+        // --- Immediate Operations ---
+        void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function);
+
+        void *map_buffer(RAL::BufferHandle handle) override;
+
+        void unmap_buffer(RAL::BufferHandle handle) override;
 
     private:
-        friend class VulkanCommandBuffer;
+        void submit_internal(const std::vector<VkCommandBuffer> &vkCommandBuffers);
 
-        static constexpr int FRAMES_IN_FLIGHT = 2; // For double buffering
-        uint32_t m_CurrentFrameIndex{0}; // Current frame index for double buffering
+        //--------------------------------------------------------------------------------------------------------------
+        // --- Core Dependencies (not owned) ---
+        VulkanContext *m_Context;
+        VulkanSwapchain *m_Swapchain;
 
-        std::vector<DeletionQueue> m_FrameDeletionQueues;
+        // --- Owned Vulkan Objects ---
+        VkCommandPool m_CommandPool = VK_NULL_HANDLE;
+        VkDescriptorPool m_DescriptorPool = VK_NULL_HANDLE;
 
+        // --- Immediate Submit Context ---
+        VkCommandPool m_UploadCommandPool = VK_NULL_HANDLE;
+        VkCommandBuffer m_UploadCommandBuffer = VK_NULL_HANDLE;
+        VkFence m_UploadFence = VK_NULL_HANDLE;
+
+        // --- Frame Sync & Management ---
+        static constexpr int FRAMES_IN_FLIGHT = 2;
+        uint32_t m_CurrentFrameIndex = 0;
         std::vector<std::unique_ptr<VulkanCommandBuffer>> m_FrameCommandBuffers;
         std::vector<VkSemaphore> m_ImageAvailableSemaphores;
         std::vector<VkSemaphore> m_RenderFinishedSemaphores;
         std::vector<VkFence> m_InFlightFences;
 
-        // --- Core Vulkan Objects ---
-        VkInstance m_Instance{VK_NULL_HANDLE};
-        VkDebugUtilsMessengerEXT m_DebugMessenger{VK_NULL_HANDLE};
-        VkSurfaceKHR m_Surface{VK_NULL_HANDLE};
-        VkPhysicalDevice m_PhysicalDevice{VK_NULL_HANDLE};
-        VkDevice m_LogicalDevice{VK_NULL_HANDLE};
-        VkQueue m_GraphicsQueue{VK_NULL_HANDLE};
-        VkQueue m_PresentQueue{VK_NULL_HANDLE};
-        VmaAllocator m_VmaAllocator{VK_NULL_HANDLE};
-        uint32_t m_GraphicsQueueFamilyIndex;
-
-        VkPhysicalDeviceProperties m_PhysicalDeviceProperties;
-
-        // We'll need these later for resource creation
+        // --- Resource Management ---
         ResourceManager<VulkanBuffer, RAL::BufferHandle> m_BufferManager;
         ResourceManager<VulkanShader, RAL::ShaderHandle> m_ShaderManager;
         ResourceManager<VulkanPipeline, RAL::PipelineHandle> m_PipelineManager;
@@ -119,28 +163,12 @@ namespace RDE {
         ResourceManager<VulkanDescriptorSetLayout, RAL::DescriptorSetLayoutHandle> m_DsLayoutManager;
         ResourceManager<VkDescriptorSet, RAL::DescriptorSetHandle> m_DescriptorSetManager;
 
-        VkDescriptorPool m_DescriptorPool{VK_NULL_HANDLE};
-        GLFWwindow *m_Window{nullptr};
+        // --- Deferred Deletion ---
+        std::vector<DeletionQueue> m_FrameDeletionQueues;
 
-        // --- Command & Render Pass Infrastructure ---
-        VkCommandPool m_CommandPool{VK_NULL_HANDLE};
+        DeletionQueue &get_current_frame_deletion_queue();
 
-        //Removed Swapchain Render Pass and Framebuffers because we will use Dynamic Rendering
-       /* VkRenderPass m_SwapchainRenderPass{VK_NULL_HANDLE};
-        std::vector<VkFramebuffer> m_SwapchainFramebuffers;*/
-
-        VulkanSwapchain m_Swapchain;
-        std::vector<RAL::TextureHandle> m_SwapchainTextureHandles;
-        uint32_t m_CurrentImageIndex; // The Swapchain image index we get from AcquireNext, different from m_CurrentFrameIndex
-
-        VkFence m_UploadFence{VK_NULL_HANDLE};
-        VkCommandPool m_UploadCommandPool{VK_NULL_HANDLE};
-        VkCommandBuffer m_UploadCommandBuffer{VK_NULL_HANDLE};
-
-        // --- Private Helper Functions (we'll declare them here) ---
-        DeletionQueue& get_current_frame_deletion_queue();
-
-        void copy_buffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+        void copy_buffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
 
         VkShaderModule create_shader_module(const std::vector<char> &code);
     };

@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <vector>
+#include <functional>
 
 namespace RAL {
     // Forward declarations
@@ -21,16 +22,13 @@ namespace RAL {
     public:
         virtual ~Device() = default;
 
-        // --- NEW Swapchain Management ---
-        virtual void create_swapchain(const SwapchainDescription &desc) = 0;
+        virtual CommandBuffer *begin_frame() = 0;
+
+        virtual void end_frame(const std::vector<RAL::CommandBuffer *> &command_buffers) = 0;
+
+        virtual void wait_idle() = 0;
 
         virtual void recreate_swapchain() = 0;
-
-        virtual void destroy_swapchain() = 0;
-
-        virtual void *map_buffer(BufferHandle handle) = 0;
-
-        virtual void unmap_buffer(BufferHandle handle) = 0;
 
         virtual BufferHandle create_buffer(const BufferDescription &desc) = 0;
 
@@ -60,18 +58,8 @@ namespace RAL {
 
         virtual void destroy_sampler(SamplerHandle handle) = 0;
 
-        virtual TextureHandle acquire_next_swapchain_image() = 0;
+        virtual void *map_buffer(BufferHandle handle) = 0;
 
-        virtual void present() = 0;
-
-        virtual std::unique_ptr<CommandBuffer> create_command_buffer() = 0;
-
-        virtual void submit(const std::vector<CommandBuffer*> &command_buffers) = 0;
-
-        virtual CommandBuffer *begin_frame() = 0;
-
-        virtual void end_frame() = 0;
-
-        virtual void wait_idle() = 0;
+        virtual void unmap_buffer(BufferHandle handle) = 0;
     };
 } // namespace RAL

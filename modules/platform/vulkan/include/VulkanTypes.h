@@ -16,15 +16,6 @@ namespace RDE {
         VmaAllocation allocation = VK_NULL_HANDLE;
     };
 
-    struct VulkanSwapchain {
-        VkSwapchainKHR handle{VK_NULL_HANDLE};
-        VkFormat imageFormat;
-        VkExtent2D extent;
-        VkImageView imageView;
-        std::vector<VkImage> images;
-        std::vector<VkImageView> imageViews;
-    };
-
     struct VulkanShader {
         VkShaderModule module{VK_NULL_HANDLE};
     };

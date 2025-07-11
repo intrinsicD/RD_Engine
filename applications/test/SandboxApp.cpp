@@ -196,7 +196,7 @@ namespace RDE {
 
             cmd->end_render_pass();
             // 4. End the frame
-            m_renderer->end_frame();
+            m_renderer->end_frame({cmd});
         }else{
             m_window_resized = true;
         }

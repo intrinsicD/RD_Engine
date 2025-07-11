@@ -19,7 +19,7 @@ namespace RDE {
         // High-level frame control
         RAL::CommandBuffer* begin_frame(); // Returns true if rendering is possible
 
-        void end_frame();
+        void end_frame(const std::vector<RAL::CommandBuffer *> &command_buffers);
 
         // The new high-level "draw call"
         // For now, let's make it simple. It will evolve later.
