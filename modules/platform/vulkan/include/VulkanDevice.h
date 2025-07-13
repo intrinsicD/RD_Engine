@@ -23,7 +23,7 @@ namespace RDE {
     class VulkanDevice final : public RAL::Device {
     public:
         // The constructor will handle all the initialization.
-        explicit VulkanDevice(VulkanContext *context, VulkanSwapchain *swapchain);
+        explicit VulkanDevice(std::shared_ptr<VulkanContext> context, std::shared_ptr<VulkanSwapchain> swapchain);
 
         ~VulkanDevice() override;
 
@@ -134,8 +134,8 @@ namespace RDE {
 
         //--------------------------------------------------------------------------------------------------------------
         // --- Core Dependencies (not owned) ---
-        VulkanContext *m_Context;
-        VulkanSwapchain *m_Swapchain;
+        std::shared_ptr<VulkanContext> m_Context;
+        std::shared_ptr<VulkanSwapchain> m_Swapchain;
 
         // --- Owned Vulkan Objects ---
         VkCommandPool m_CommandPool = VK_NULL_HANDLE;

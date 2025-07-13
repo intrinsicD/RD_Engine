@@ -73,7 +73,7 @@ namespace RDE {
     }
 
     void VulkanCommandBuffer::end_render_pass() {
-        vkCmdEndRenderPass(m_handle);
+        vkCmdEndRendering(m_handle);
     }
 
     void VulkanCommandBuffer::set_viewport(const RAL::Viewport &viewport) {

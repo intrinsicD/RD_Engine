@@ -13,9 +13,9 @@ namespace RDE{
 
         // 1. Create and own the Device
         auto window_handle = static_cast<GLFWwindow *>(m_window->get_native_handle());
-        auto context = std::make_unique<RDE::VulkanContext>(window_handle);
-        auto swapchain = std::make_unique<RDE::VulkanSwapchain>(context.get(), window_handle);
-        m_device = std::make_unique<VulkanDevice>(context.get(), swapchain.get());
+        auto context = std::make_shared<VulkanContext>(window_handle);
+        auto swapchain = std::make_shared<VulkanSwapchain>(context.get(), window_handle);
+        m_device = std::make_unique<VulkanDevice>(context, swapchain);
     }
 
     void Renderer::shutdown() {

@@ -158,9 +158,8 @@ namespace RDE {
             throw std::runtime_error("Failed to find suitable queue families!");
         }
 
-        VkPhysicalDeviceProperties properties;
-        vkGetPhysicalDeviceProperties(m_PhysicalDevice, &properties);
-        RDE_CORE_INFO("Selected GPU: {}", properties.deviceName);
+        vkGetPhysicalDeviceProperties(m_PhysicalDevice, &m_PhysicalDeviceProperties);
+        RDE_CORE_INFO("Selected GPU: {}", m_PhysicalDeviceProperties.deviceName);
     }
 
     void VulkanContext::create_logical_device() {

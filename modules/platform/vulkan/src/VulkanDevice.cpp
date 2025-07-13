@@ -12,6 +12,7 @@
 
 #include <vk_mem_alloc.h>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 #include <unordered_map>
 #include <memory>
@@ -21,10 +22,10 @@
 namespace RDE {
     // A debug callback function for the validation layers
     static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
-            VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-            VkDebugUtilsMessageTypeFlagsEXT messageType,
-            const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-            void *pUserData) {
+        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+        VkDebugUtilsMessageTypeFlagsEXT messageType,
+        const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+        void *pUserData) {
         // Only print warnings and errors
         if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
             RDE_CORE_ERROR("Validation Layer: {}", pCallbackData->pMessage);
@@ -32,9 +33,8 @@ namespace RDE {
         return VK_FALSE;
     }
 
-    VulkanDevice::VulkanDevice(VulkanContext *context, VulkanSwapchain *swapchain)
-            : m_Context(context), m_Swapchain(swapchain) {
-
+    VulkanDevice::VulkanDevice(std::shared_ptr<VulkanContext> context, std::shared_ptr<VulkanSwapchain> swapchain)
+        : m_Context(std::move(context)), m_Swapchain(std::move(swapchain)) {
         auto logicalDevice = m_Context->get_logical_device();
 
         // === 1. Create Command Pool ===
@@ -67,9 +67,9 @@ namespace RDE {
         // === 3. Create Global Descriptor Pool ===
         {
             std::vector<VkDescriptorPoolSize> poolSizes = {
-                    {VK_DESCRIPTOR_TYPE_SAMPLER,                1000},
-                    {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},
-                    {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         1000}
+                {VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
+                {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},
+                {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000}
             };
             VkDescriptorPoolCreateInfo poolInfo{};
             poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -157,7 +157,8 @@ namespace RDE {
     }
 
     void VulkanDevice::end_frame(const std::vector<RAL::CommandBuffer *> &command_buffers) {
-        VulkanCommandBuffer *main_cmd = dynamic_cast<VulkanCommandBuffer *>(command_buffers[0]); // Assuming first is main
+        VulkanCommandBuffer *main_cmd = dynamic_cast<VulkanCommandBuffer *>(command_buffers[0]);
+        // Assuming first is main
 
         main_cmd->transition_image_layout(m_Swapchain->get_current_image(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                           VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
@@ -331,8 +332,11 @@ namespace RDE {
         }
         std::vector<VkVertexInputAttributeDescription> attributes;
         for (const auto &a: desc.vertexAttributes) {
-            attributes.push_back({.location = a.location, .binding = a.binding, .format = ToVulkanFormat(
-                    a.format), .offset = a.offset});
+            attributes.push_back({
+                .location = a.location, .binding = a.binding, .format = ToVulkanFormat(
+                    a.format),
+                .offset = a.offset
+            });
         }
 
         VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
@@ -356,8 +360,8 @@ namespace RDE {
 
         // Dynamic states allow us to change viewport and scissor without rebuilding the pipeline
         std::vector<VkDynamicState> dynamicStates = {
-                VK_DYNAMIC_STATE_VIEWPORT,
-                VK_DYNAMIC_STATE_SCISSOR
+            VK_DYNAMIC_STATE_VIEWPORT,
+            VK_DYNAMIC_STATE_SCISSOR
         };
         VkPipelineDynamicStateCreateInfo dynamicState{};
         dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
@@ -369,12 +373,12 @@ namespace RDE {
         rasterizer.depthClampEnable = VK_FALSE;
         rasterizer.rasterizerDiscardEnable = VK_FALSE;
         rasterizer.polygonMode = ToVulkanPolygonMode(
-                desc.rasterizationState.polygonMode); // Map from desc.rasterizationState later
+            desc.rasterizationState.polygonMode); // Map from desc.rasterizationState later
         rasterizer.lineWidth = 1.0f;
         rasterizer.cullMode = ToVulkanCullMode(
-                desc.rasterizationState.cullMode);   // Map from desc.rasterizationState later
+            desc.rasterizationState.cullMode); // Map from desc.rasterizationState later
         rasterizer.frontFace = ToVulkanFrontFace(
-                desc.rasterizationState.frontFace); // Map from desc.rasterizationState later
+            desc.rasterizationState.frontFace); // Map from desc.rasterizationState later
         rasterizer.depthBiasEnable = VK_FALSE;
 
         VkPipelineMultisampleStateCreateInfo multisampling{};
@@ -449,12 +453,12 @@ namespace RDE {
         pipelineInfo.subpass = 0;
 
         VK_CHECK(
-                vkCreateGraphicsPipelines(logicalDevice,
-                                          VK_NULL_HANDLE,
-                                          1,
-                                          &pipelineInfo,
-                                          nullptr,
-                                          &newPipeline.handle)
+            vkCreateGraphicsPipelines(logicalDevice,
+                VK_NULL_HANDLE,
+                1,
+                &pipelineInfo,
+                nullptr,
+                &newPipeline.handle)
         );
 
         return m_PipelineManager.create(std::move(newPipeline));
@@ -476,7 +480,7 @@ namespace RDE {
     }
 
     RAL::DescriptorSetLayoutHandle VulkanDevice::create_descriptor_set_layout(
-            const RAL::DescriptorSetLayoutDescription &desc) {
+        const RAL::DescriptorSetLayoutDescription &desc) {
         std::vector<VkDescriptorSetLayoutBinding> bindings;
         bindings.reserve(desc.bindings.size());
 
@@ -563,9 +567,9 @@ namespace RDE {
                     VulkanTexture &texture = m_TextureManager.get(ralWrite.texture);
                     VulkanSampler sampler = m_SamplerManager.get(ralWrite.sampler);
                     imageInfos.push_back({
-                                                 sampler.handle, texture.image_view,
-                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-                                         });
+                        sampler.handle, texture.image_view,
+                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                    });
                     write.pImageInfo = &imageInfos.back();
                     break;
                 }
@@ -602,9 +606,20 @@ namespace RDE {
         samplerInfo.minFilter = ToVulkanFilter(desc.minFilter);
         samplerInfo.addressModeU = ToVulkanAddressMode(desc.addressModeU);
         samplerInfo.addressModeV = ToVulkanAddressMode(desc.addressModeV);
-        samplerInfo.addressModeW = ToVulkanAddressMode(desc.addressModeW);
-        samplerInfo.anisotropyEnable = VK_TRUE; // Good default
-        samplerInfo.maxAnisotropy = physicalDeviceProperties.limits.maxSamplerAnisotropy; // Use max supported
+        samplerInfo.addressModeW = ToVulkanAddressMode(desc.addressModeW); {
+            const auto &properties = m_Context->get_physical_device_properties();
+            VkPhysicalDeviceFeatures features;
+            vkGetPhysicalDeviceFeatures(m_Context->get_physical_device(), &features);
+
+            if (features.samplerAnisotropy) {
+                samplerInfo.anisotropyEnable = VK_TRUE;
+                samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+            } else {
+                samplerInfo.anisotropyEnable = VK_FALSE;
+                samplerInfo.maxAnisotropy = 1.0f; // Must be 1.0 if anisotropy is disabled
+            }
+        }
+
         samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
         samplerInfo.unnormalizedCoordinates = VK_FALSE;
         samplerInfo.compareEnable = VK_FALSE;
@@ -648,12 +663,12 @@ namespace RDE {
         VmaAllocator allocator = m_Context->get_vma_allocator();
         VulkanBuffer newBuffer;
         VK_CHECK(
-                vmaCreateBuffer(allocator,
-                                &bufferInfo,
-                                &allocInfo,
-                                &newBuffer.handle,
-                                &newBuffer.allocation,
-                                nullptr)
+            vmaCreateBuffer(allocator,
+                &bufferInfo,
+                &allocInfo,
+                &newBuffer.handle,
+                &newBuffer.allocation,
+                nullptr)
         );
 
         if (desc.initialData) {
@@ -676,12 +691,12 @@ namespace RDE {
                 stagingAllocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
                 VK_CHECK(
-                        vmaCreateBuffer(allocator,
-                                        &stagingBufferInfo,
-                                        &stagingAllocInfo,
-                                        &stagingBuffer.handle,
-                                        &stagingBuffer.allocation,
-                                        nullptr)
+                    vmaCreateBuffer(allocator,
+                        &stagingBufferInfo,
+                        &stagingAllocInfo,
+                        &stagingBuffer.handle,
+                        &stagingBuffer.allocation,
+                        nullptr)
                 );
 
                 void *mappedData;
@@ -739,7 +754,7 @@ namespace RDE {
 
         VmaAllocator allocator = m_Context->get_vma_allocator();
         VK_CHECK(vmaCreateImage(allocator, &imageInfo, &allocInfo, &newTexture.handle, &newTexture.allocation,
-                                nullptr));
+            nullptr));
 
         // 2. Handle Initial Data Upload (if provided)
         if (desc.initialData) {
@@ -755,7 +770,7 @@ namespace RDE {
             stagingAllocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
             VK_CHECK(vmaCreateBuffer(allocator, &stagingBufferInfo, &stagingAllocInfo, &stagingBuffer.handle,
-                                     &stagingBuffer.allocation, nullptr));
+                &stagingBuffer.allocation, nullptr));
 
             // Copy data from the application to the staging buffer
             void *mappedData;
@@ -806,7 +821,8 @@ namespace RDE {
                 barrier_to_shader_read.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
                 barrier_to_shader_read.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
                 barrier_to_shader_read.image = newTexture.handle;
-                barrier_to_shader_read.subresourceRange = barrier_to_transfer.subresourceRange; // Subresource range is the same
+                barrier_to_shader_read.subresourceRange = barrier_to_transfer.subresourceRange;
+                // Subresource range is the same
                 barrier_to_shader_read.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
                 barrier_to_shader_read.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
