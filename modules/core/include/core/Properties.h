@@ -54,6 +54,16 @@ namespace RDE {
             return ss.str();
         }
 
+        template<>
+        std::string ToString(const std::vector<bool> &t) {
+            std::stringstream ss;
+            for (size_t i = 0; i < t.size(); ++i) {
+                if (i != 0) ss << ", ";
+                ss << (t[i] ? "1" : "0");
+            }
+            return ss.str();
+        }
+
         static std::string ToString(bool t) {
             return (t ? "1" : "0");
         }

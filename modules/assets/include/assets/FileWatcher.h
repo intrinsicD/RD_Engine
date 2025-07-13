@@ -11,7 +11,7 @@ namespace efsw {
 
 // A simple thread-safe queue for demonstration purposes.
 // In a real engine, you might use a more performant lock-free queue.
-#include "internal/ThreadSafeQueue.h" // You would create this utility header
+#include "../internal/ThreadSafeQueue.h"
 
 namespace RDE {
     class FileUpdateListener; // Forward declare our listener class

@@ -1,13 +1,19 @@
 #include "systems/RenderSystem.h"
 #include "scene/SystemDependencyBuilder.h"
+#include "components/TagComponent.h"
 #include "components/TransformComponent.h"
 #include "components/CameraComponent.h"
+#include "assets/AssetComponentTypes.h"
+#include "renderer/RendererComponentTypes.h"
+#include "core/Log.h"
 
 #include <entt/entity/registry.hpp>
 
-namespace RDE{
-    RenderSystem::RenderSystem(entt::registry &registry) : m_registry(registry){
-
+namespace RDE {
+    RenderSystem::RenderSystem(entt::registry &registry,
+                               std::shared_ptr<AssetDatabase> asset_database,
+                               RAL::Device *device) : m_registry(registry),
+                                                      m_asset_database(asset_database), m_device(device) {
     }
 
     void RenderSystem::init() {
@@ -22,6 +28,7 @@ namespace RDE{
         // Update logic for the render system
         // This could include rendering entities, updating shaders, etc.
 
+
     }
 
     void RenderSystem::declare_dependencies(SystemDependencyBuilder &builder) {
@@ -30,4 +37,5 @@ namespace RDE{
         builder.reads<CameraMatrices>();
         builder.reads<TransformWorld>();
     }
+
 }

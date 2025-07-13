@@ -4,7 +4,7 @@
 #include "AssetComponentTypes.h"
 #include "AssetDatabase.h"
 #include "core/Log.h"
-#include "internal/AssetCreationReceipt.h"
+#include "../internal/AssetCreationReceipt.h"
 
 #include <any>
 #include <typeindex>

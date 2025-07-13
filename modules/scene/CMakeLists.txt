@@ -29,6 +29,7 @@ target_sources(Scene
 target_link_libraries(Scene
         PUBLIC
         RDE::Core
+        RDE::AssetSystem
         RDE::Geometry
         EnTT::EnTT
 )

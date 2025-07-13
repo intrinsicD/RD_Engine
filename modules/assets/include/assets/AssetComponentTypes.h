@@ -1,16 +1,12 @@
 #pragma once
 
-//#include "Properties.h"
+#include "core/Properties.h"
 #include "AssetHandle.h"
-#include "core/AttributeRegistry.h"
-#include "ral/Common.h"
 
 #include <string>
 #include <vector>
 
 namespace RDE {
-    class PropertyContainer{};
-
     struct AssetFilepath {
         std::string path;
     };
@@ -31,30 +27,6 @@ namespace RDE {
         int width;
         int height;
         int channels; // Number of color channels (e.g., 3 for RGB, 4 for RGBA)
-    };
-
-    struct AssetGpuTexture {
-        RAL::TextureHandle texture_id;
-    };
-
-    struct AssetGpuBuffer {
-        RAL::BufferHandle buffer_id;
-    };
-
-    struct AssetGpuGeometry {
-        /// @brief get the attribute id from the attribute registry
-        std::unordered_map<AttributeID, RAL::BufferHandle> attribute_buffers;
-
-        /// @brief Handle to the optional index buffer.
-        RAL::BufferHandle index_buffer;
-
-        uint32_t vertex_count = 0;
-        uint32_t index_count = 0;
-        RAL::IndexType index_type = RAL::IndexType::UINT32;
-    };
-
-    struct AssetGpuPipeline {
-        RAL::PipelineHandle pipeline_id; //the shader program handle
     };
 
     struct AssetTextSource {

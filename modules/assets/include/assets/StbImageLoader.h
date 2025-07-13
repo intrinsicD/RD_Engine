@@ -1,8 +1,8 @@
 #pragma once
 
 #include "AssetDatabase.h"          // The database we will populate
-#include "AssetComponentTypes.h"    // For AssetCpuTexture, AssetFilepath, etc.
-#include "internal/AssetCreationReceipt.h"// The struct we need to return
+#include "AssetComponentTypes.h"
+#include "../internal/AssetCreationReceipt.h"
 #include "Log.h"
 #include <entt/resource/loader.hpp>        // The entt::resource_loader base
 

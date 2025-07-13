@@ -1,6 +1,6 @@
 #pragma once
 
-#include "AssetHandle.h"
+#include "assets/AssetHandle.h"
 #include <entt/entity/registry.hpp>
 
 namespace RDE {

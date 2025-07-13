@@ -7,9 +7,9 @@
 #include "core/LayerStack.h"
 #include "core/IWindow.h"
 
-#include "AssetManager.h"
-#include "AssetDatabase.h"
-#include "FileWatcher.h"
+#include "assets/AssetManager.h"
+#include "assets/AssetDatabase.h"
+#include "assets/FileWatcher.h"
 
 #include <entt/fwd.hpp>
 
