@@ -40,6 +40,8 @@ namespace RDE {
         // --- Resource Creation (implements RAL) ---
         RAL::BufferHandle create_buffer(const RAL::BufferDescription &desc) override;
 
+        const RAL::BufferDescription &get_buffer_description(RAL::BufferHandle handle) const override;
+
         void destroy_buffer(RAL::BufferHandle handle) override;
 
         RAL::TextureHandle create_texture(const RAL::TextureDescription &desc) override;
@@ -128,6 +130,10 @@ namespace RDE {
         void *map_buffer(RAL::BufferHandle handle) override;
 
         void unmap_buffer(RAL::BufferHandle handle) override;
+
+        void update_buffer_data(RAL::BufferHandle targetBuffer, const void *data, size_t size, size_t offset = 0) override;
+
+        void copy_buffer(RAL::BufferHandle source, RAL::BufferHandle target, size_t size, size_t source_offset, size_t target_offset) override;
 
     private:
         void submit_internal(const std::vector<VkCommandBuffer> &vkCommandBuffers);

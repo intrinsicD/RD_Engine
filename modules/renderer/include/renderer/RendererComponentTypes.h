@@ -28,4 +28,8 @@ namespace RDE {
     struct RenderGpuPipeline {
         RAL::PipelineHandle pipeline_id;
     };
+
+    struct Renderable{
+        AssetID geometry_id; // Reference to the asset in the AssetDatabase
+    };
 }

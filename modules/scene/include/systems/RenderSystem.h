@@ -22,6 +22,10 @@ namespace RDE {
     private:
         void declare_dependencies(SystemDependencyBuilder &builder) override;
 
+        void pull_buffer_data_to_scene_registry(AssetID source_asset_id, entt::entity target_entity, AttributeID attribute_id);
+
+        void push_buffer_data_to_assets_database(entt::entity source_entity, AssetID target_asset_id, AttributeID attribute_id);
+
         AttributeRegistry attribute_registry;
         RAL::Device *m_device;
         entt::registry &m_registry;

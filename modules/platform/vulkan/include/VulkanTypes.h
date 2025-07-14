@@ -8,6 +8,8 @@ namespace RDE {
     struct VulkanBuffer {
         VkBuffer handle = VK_NULL_HANDLE;
         VmaAllocation allocation = VK_NULL_HANDLE;
+        size_t size = 0;
+        RAL::MemoryUsage memoryUsage = RAL::MemoryUsage::DeviceLocal; // Default to DeviceLocal, can be changed later
     };
 
     struct VulkanTexture {

@@ -231,6 +231,105 @@ namespace RDE {
         vmaUnmapMemory(allocator, buffer.allocation);
     }
 
+    void VulkanDevice::update_buffer_data(RAL::BufferHandle target_handle, const void *data, size_t size, size_t offset){
+        if (!m_BufferManager.is_valid(target_handle)) {
+            RDE_CORE_ERROR("Attempted to update an invalid buffer handle: {}", target_handle.index);
+            return;
+        }
+
+        const auto& target_buffer_info = m_BufferManager.get(target_handle);
+
+        // --- INTELLIGENT PATH SELECTION ---
+        // Check how the buffer was created to decide on the update strategy.
+
+        if (target_buffer_info.memoryUsage == RAL::MemoryUsage::HostVisible ||
+            target_buffer_info.memoryUsage == RAL::MemoryUsage::HostVisibleCoherent) {
+
+            // --- PATH 1: SIMPLE MAP/MEMCPY (Using your existing functions) ---
+            // This is for CPU-visible buffers. It's simple and direct.
+            RDE_CORE_TRACE("Updating HostVisible buffer via map/memcpy.");
+
+            void* mapped_data = this->map_buffer(target_handle);
+            if (mapped_data) {
+                // memcpy to the pointer at the correct offset
+                memcpy(static_cast<uint8_t*>(mapped_data) + offset, data, size);
+                this->unmap_buffer(target_handle);
+            } else {
+                RDE_CORE_ERROR("Failed to map buffer {} for update.", target_handle.index);
+            }
+
+        } else { // Assumes RAL::MemoryUsage::DeviceLocal
+
+            // --- PATH 2: OPTIMAL STAGING BUFFER TRANSFER ---
+            // This is for GPU-only memory. It's more complex but higher performance.
+            RDE_CORE_TRACE("Updating DeviceLocal buffer via staging transfer.");
+
+            auto vma_allocator = m_Context->get_vma_allocator();
+
+            // Create and fill a temporary staging buffer
+            VulkanBuffer staging_buffer;
+
+            VkBufferCreateInfo staging_buffer_ci{};
+            staging_buffer_ci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+            staging_buffer_ci.size = size;
+            staging_buffer_ci.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+
+            VmaAllocationCreateInfo staging_alloc_ci{};
+            staging_alloc_ci.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+            staging_alloc_ci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+
+            VK_CHECK(vmaCreateBuffer(vma_allocator, &staging_buffer_ci, &staging_alloc_ci, &staging_buffer.handle, &staging_buffer.allocation, nullptr));
+
+            void* mapped_data;
+            vmaMapMemory(vma_allocator, staging_buffer.allocation, &mapped_data);
+            memcpy(mapped_data, data, size);
+            vmaUnmapMemory(vma_allocator, staging_buffer.allocation);
+
+            // Issue the copy command
+            immediate_submit([&](VkCommandBuffer cmd) {
+                VkBufferCopy copy_region{};
+                copy_region.srcOffset = 0;
+                copy_region.dstOffset = offset;
+                copy_region.size = size;
+
+                vkCmdCopyBuffer(cmd, staging_buffer.handle, target_buffer_info.handle, 1, &copy_region);
+            });
+
+            // Clean up
+            vmaDestroyBuffer(vma_allocator, staging_buffer.handle, staging_buffer.allocation);
+        }
+    }
+
+    void VulkanDevice::copy_buffer(RAL::BufferHandle source_handle, RAL::BufferHandle target_handle, size_t size, size_t source_offset, size_t target_offset) {
+        if (!m_BufferManager.is_valid(source_handle) || !m_BufferManager.is_valid(target_handle)) {
+            RDE_CORE_ERROR("Attempted to copy with an invalid buffer handle.");
+            return;
+        }
+
+        const auto& source_buffer = m_BufferManager.get(source_handle);
+        const auto& destination_buffer = m_BufferManager.get(target_handle);
+
+        // If size is -1, copy the entire source buffer (respecting offsets).
+        size_t copy_size = size;
+        if (copy_size == (size_t)-1) {
+            copy_size = source_buffer.size - source_offset;
+        }
+
+        // Safety check
+        if (copy_size > (destination_buffer.size - target_offset)) {
+            RDE_CORE_ERROR("GPU buffer copy would overflow destination buffer.");
+            return;
+        }
+
+        immediate_submit([&](VkCommandBuffer cmd) {
+            VkBufferCopy copy_region{};
+            copy_region.srcOffset = source_offset;
+            copy_region.dstOffset = target_offset;
+            copy_region.size = copy_size;
+            vkCmdCopyBuffer(cmd, source_buffer.handle, destination_buffer.handle, 1, &copy_region);
+        });
+    }
+
     void VulkanDevice::immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function) {
         // Get handles from the context
         VkDevice logicalDevice = m_Context->get_logical_device();
@@ -711,6 +810,13 @@ namespace RDE {
         }
 
         return m_BufferManager.create(std::move(newBuffer));
+    }
+
+    const RAL::BufferDescription &VulkanDevice::get_buffer_description(RAL::BufferHandle handle) const {
+        if (!m_BufferManager.is_valid(handle)) {
+            throw std::runtime_error("Invalid buffer handle");
+        }
+        return m_BufferManager.get(handle).description;
     }
 
     void VulkanDevice::destroy_buffer(RAL::BufferHandle handle) {

@@ -34,6 +34,7 @@ namespace RAL {
     enum class MemoryUsage {
         DeviceLocal, // GPU only, fastest access
         HostVisible, // CPU visible, for frequent updates (e.g. UBOs)
+        HostVisibleCoherent, // CPU visible, coherent memory (no need for explicit flush)
         // No need for separate Coherent/Cached here, the backend can decide
         // the best flags based on this high-level intent.
         CPU_To_GPU, // For buffers that will be written by CPU and read by GPU
@@ -172,6 +173,7 @@ namespace RAL {
     struct PipelineDescription {
         ShaderHandle vertexShader;
         ShaderHandle fragmentShader;
+
         std::vector<DescriptorSetLayoutHandle> descriptorSetLayouts;
         std::vector<PushConstantRange> pushConstantRanges;
 
@@ -181,11 +183,6 @@ namespace RAL {
 
         std::vector<VertexInputBinding> vertexBindings;
         std::vector<VertexInputAttribute> vertexAttributes;
-    };
-
-    struct SwapchainDescription {
-        void *nativeWindowHandle = nullptr;
-        bool vsync = true;
     };
 
     // --- NEW: Descriptor Set Descriptions ---
