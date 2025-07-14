@@ -242,8 +242,8 @@ namespace RDE {
         // --- INTELLIGENT PATH SELECTION ---
         // Check how the buffer was created to decide on the update strategy.
 
-        if (target_buffer_info.memoryUsage == RAL::MemoryUsage::HostVisible ||
-            target_buffer_info.memoryUsage == RAL::MemoryUsage::HostVisibleCoherent) {
+        if (target_buffer_info.memoryUsage == RAL::MemoryUsage::HostVisible /*||
+            target_buffer_info.memoryUsage == RAL::MemoryUsage::HostVisibleCoherent*/) {
 
             // --- PATH 1: SIMPLE MAP/MEMCPY (Using your existing functions) ---
             // This is for CPU-visible buffers. It's simple and direct.
@@ -810,13 +810,6 @@ namespace RDE {
         }
 
         return m_BufferManager.create(std::move(newBuffer));
-    }
-
-    const RAL::BufferDescription &VulkanDevice::get_buffer_description(RAL::BufferHandle handle) const {
-        if (!m_BufferManager.is_valid(handle)) {
-            throw std::runtime_error("Invalid buffer handle");
-        }
-        return m_BufferManager.get(handle).description;
     }
 
     void VulkanDevice::destroy_buffer(RAL::BufferHandle handle) {

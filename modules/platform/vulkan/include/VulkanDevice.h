@@ -40,8 +40,6 @@ namespace RDE {
         // --- Resource Creation (implements RAL) ---
         RAL::BufferHandle create_buffer(const RAL::BufferDescription &desc) override;
 
-        const RAL::BufferDescription &get_buffer_description(RAL::BufferHandle handle) const override;
-
         void destroy_buffer(RAL::BufferHandle handle) override;
 
         RAL::TextureHandle create_texture(const RAL::TextureDescription &desc) override;

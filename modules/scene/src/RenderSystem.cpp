@@ -87,12 +87,11 @@ namespace RDE {
         auto &asset_gpu_component = asset_registry.get<RenderGpuGeometry>(source_asset_id->entity_id);
         auto it = asset_gpu_component.attribute_buffers.find(attribute_id);
         if(it == asset_gpu_component.attribute_buffers.end()) {
-            RDE_CORE_ERROR("Attribute ID {} not found in asset GPU component for asset ID {}", attribute_id, source_asset_id);
+            /*RDE_CORE_ERROR("Attribute ID {} not found in asset GPU component for asset ID {}", attribute_id, source_asset_id);*/
             return;
         }
         if(it != asset_gpu_component.attribute_buffers.end()) {
             auto &buffer_handle = it->second;
-            auto &buffer_description = m_device->.get_description();
 
             // Create a new buffer in the scene registry
             auto &scene_registry = m_registry;
@@ -100,11 +99,11 @@ namespace RDE {
             auto it = render_gpu_geometry.attribute_buffers.find(attribute_id);
             if(it == render_gpu_geometry.attribute_buffers.end()) {
                 //Create a new buffer handle in the scene registry
-                RAL::BufferHandle buffer_handle = m_device->create_buffer(
+/*                RAL::BufferHandle buffer_handle = m_device->create_buffer(
                         buffer_handle.get_size(),
                         buffer_handle.get_usage_flags(),
                         buffer_handle.get_memory_flags()
-                );
+                );*/
             }
             render_gpu_geometry.attribute_buffers[attribute_id] = buffer_handle;
 
