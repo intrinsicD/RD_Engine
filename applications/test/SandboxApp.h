@@ -51,5 +51,7 @@ namespace RDE {
         entt::entity m_primary_camera_entity;
         entt::entity m_last_selected_entity;
         std::vector<entt::entity> m_selected_entities;
+
+        RDE::View m_main_view;
     };
 }

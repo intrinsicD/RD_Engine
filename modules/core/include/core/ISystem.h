@@ -10,11 +10,11 @@ namespace RDE{
         // Called once at the start of the application
         virtual void init() = 0;
 
-        // Called every frame before rendering
-        virtual void update(float delta_time) = 0;
-
         // Called once at the end of the application
         virtual void shutdown() = 0;
+
+        // Called every frame before rendering
+        virtual void update(float delta_time) = 0;
 
     private:
         friend class SystemGraph;

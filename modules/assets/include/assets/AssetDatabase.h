@@ -1,3 +1,4 @@
+//assets/AssetDatabase.h
 #pragma once
 
 #include "assets/AssetHandle.h"
@@ -13,7 +14,15 @@ namespace RDE {
         template<typename AssetComponentType, typename AssetConcept>
         AssetComponentType &get(AssetHandle<AssetConcept> &handle) {
             if (!handle) throw std::runtime_error("Attempted to use an invalid asset handle.");
-            return m_registry.get<AssetComponentType>(handle.internal_handle->entity_id);
+            return get<AssetComponentType>(handle.internal_handle);
+        }
+
+        template<typename AssetComponentType>
+        AssetComponentType &get(const AssetID& asset_id) {
+            if (!m_registry.valid(asset_id->entity_id)) {
+                throw std::runtime_error("Attempted to access an invalid entity in the asset database.");
+            }
+            return m_registry.get<AssetComponentType>(asset_id->entity_id);
         }
 
         // try_get version for safe access
@@ -22,7 +31,15 @@ namespace RDE {
             if (!handle) {
                 return nullptr;
             }
-            const entt::entity entity = handle.internal_handle->entity_id;
+            return try_get(handle.internal_handle);
+        }
+
+        template<typename AssetComponentType>
+        AssetComponentType *try_get(const AssetID& asset_id) {
+            if (!m_registry.valid(asset_id->entity_id)) {
+                return nullptr;
+            }
+            const entt::entity entity = asset_id->entity_id;
             if (!m_registry.valid(entity)) {
                 return nullptr;
             }

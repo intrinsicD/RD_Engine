@@ -25,11 +25,10 @@ namespace RDE {
         RAL::BufferHandle buffer_id;
     };
 
-    struct RenderGpuPipeline {
+    struct RenderGpuMaterial {
         RAL::PipelineHandle pipeline_id;
-    };
+        RAL::DescriptorSetHandle descriptor_set_id; // Handle to the descriptor set for this material
 
-    struct Renderable{
-        AssetID geometry_id; // Reference to the asset in the AssetDatabase
+        std::unordered_map<AttributeID, uint32_t> attribute_to_binding_map;
     };
 }

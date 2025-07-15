@@ -23,6 +23,7 @@ target_sources(Test PRIVATE
         SandboxApp.cpp
         main.cpp
         ImGuiLayer.cpp
+        TestSceneLayer.cpp
         ${IMGUI_SOURCES}
 )
 
@@ -42,4 +43,5 @@ target_link_libraries(Test
         glm
         glad_gl_core
         OpenGL::GL
+        tinyobjloader
 )

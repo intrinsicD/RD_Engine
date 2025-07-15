@@ -7,6 +7,9 @@
 #include <cassert>
 #include <memory>
 #include <unordered_map>
+#include <glm/glm.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/string_cast.hpp>
 
 namespace RDE {
     class BasePropertyArray {
@@ -44,31 +47,35 @@ namespace RDE {
             return ss.str();
         }
 
+        // Overload for bool
+        static std::string ToString(bool t) {
+            return t ? "true" : "false";
+        }
+
+        // Overload for glm::vec
+        template<glm::length_t L, typename T, glm::qualifier Q>
+        static std::string ToString(const glm::vec<L, T, Q>& value) {
+            return glm::to_string(value);
+        }
+
+        // Overload for glm::mat
+        template<glm::length_t C, glm::length_t R, typename T, glm::qualifier Q>
+        static std::string ToString(const glm::mat<C, R, T, Q>& value) {
+            return glm::to_string(value);
+        }
+
+        // Overload for std::vector. This now calls our other to_string overloads.
         template<typename T>
         static std::string ToString(const std::vector<T> &t) {
             std::stringstream ss;
-            for (const auto &elem: t) {
-                if (&elem != &t[0]) ss << ", ";
-                ss << elem;
-            }
-            return ss.str();
-        }
-
-        template<>
-        std::string ToString(const std::vector<bool> &t) {
-            std::stringstream ss;
+            ss << "[";
             for (size_t i = 0; i < t.size(); ++i) {
-                if (i != 0) ss << ", ";
-                ss << (t[i] ? "1" : "0");
+                ss << ToString(t[i]); // Recursive call to the correct to_string overload!
+                if (i < t.size() - 1) ss << ", ";
             }
+            ss << "]";
             return ss.str();
         }
-
-        static std::string ToString(bool t) {
-            return (t ? "1" : "0");
-        }
-
-        // TODO Add more specializations as needed
     };
 
     struct DimTraits {
@@ -146,7 +153,7 @@ namespace RDE {
         [[nodiscard]] const std::string &name() const override { return m_name; }
 
         [[nodiscard]] std::string to_string() const override {
-            return StringTraits::ToString(m_data);
+            return StringTraits::ToString<>(m_data);
         }
 
         [[nodiscard]] std::string to_string(size_t i) const override {

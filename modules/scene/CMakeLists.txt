@@ -24,6 +24,7 @@ target_sources(Scene
         src/HierarchySystem.cpp
         src/BoundingVolumeSystem.cpp
         src/RenderSystem.cpp
+        src/RenderPacketSystem.cpp
 )
 
 target_link_libraries(Scene

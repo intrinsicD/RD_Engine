@@ -2,14 +2,10 @@
 
 #include "AssetDatabase.h"          // The database we will populate
 #include "AssetComponentTypes.h"
-#include "../internal/AssetCreationReceipt.h"
-#include "Log.h"
-#include <entt/resource/loader.hpp>        // The entt::resource_loader base
+#include "ILoader.h"
+#include "core/Log.h"
 
-// Include stb_image. It's a single header library.
-// The IMPLEMENTATION define will go in a .cpp file.
 #include <stb_image.h>
-
 #include <filesystem> // For parsing the filename
 
 namespace RDE {
@@ -17,10 +13,10 @@ namespace RDE {
     // A concrete loader for AssetCpuTexture using the stb_image library.
     // It inherits from the entt helper to satisfy the loader concept.
     // The second template argument is the type of resource it returns.
-    struct StbImageLoader : entt::resource_loader<AssetCreationReceipt> {
+    struct StbImageLoader final: public ILoader {
         // This is the main function that entt::resource_cache will call.
         // The arguments are forwarded directly from our AssetManager::load call.
-        std::shared_ptr<AssetCreationReceipt> operator()(const std::string& uri, AssetDatabase& db) const {
+        AssetID load(const std::string& uri, AssetDatabase& db) const override{
             RDE_CORE_TRACE("StbImageLoader: Loading texture from '{}'...", uri);
 
             // 1. --- Perform the actual File I/O and Parsing ---
@@ -72,7 +68,11 @@ namespace RDE {
 
             // 4. --- Return the completed struct ---
             // The entt::resource_cache will now store this shared_ptr.
-            return std::make_shared<AssetCreationReceipt>(entity_id);
+            return std::make_shared<AssetID_Data>(entity_id, uri);
+        }
+
+        std::vector<std::string> get_supported_extensions() const override {
+            return {".png", ".jpg", ".jpeg", ".bmp", ".tga", ".hdr"}; // Add more supported extensions as needed
         }
     };
 

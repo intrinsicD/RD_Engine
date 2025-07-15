@@ -88,6 +88,28 @@ namespace RAL {
         Always
     };
 
+    enum class DescriptorType {
+        UniformBuffer,
+        CombinedImageSampler // Texture + Sampler together
+        // Other types like StorageBuffer, StorageImage can be added later
+    };
+
+    enum class Filter {
+        Nearest, Linear
+    };
+
+    enum class SamplerAddressMode {
+        Repeat, MirroredRepeat, ClampToEdge, ClampToBorder
+    };
+
+    enum class PrimitiveTopology {
+        PointList,
+        LineList,
+        LineStrip,
+        TriangleList,
+        TriangleStrip
+    };
+
     struct StencilOpState {
         // We can fill these in later when we need stencil testing.
         // For now, defaults are fine.
@@ -182,14 +204,10 @@ namespace RAL {
 
         std::vector<VertexInputBinding> vertexBindings;
         std::vector<VertexInputAttribute> vertexAttributes;
+        PrimitiveTopology topology = PrimitiveTopology::TriangleList;
     };
 
     // --- NEW: Descriptor Set Descriptions ---
-    enum class DescriptorType {
-        UniformBuffer,
-        CombinedImageSampler // Texture + Sampler together
-        // Other types like StorageBuffer, StorageImage can be added later
-    };
 
     // Describes a single binding within a descriptor set (e.g., "binding = 0")
     struct DescriptorSetLayoutBinding {
@@ -218,14 +236,6 @@ namespace RAL {
     struct DescriptorSetDescription {
         DescriptorSetLayoutHandle layout;
         std::vector<DescriptorWrite> writes;
-    };
-
-    enum class Filter {
-        Nearest, Linear
-    };
-
-    enum class SamplerAddressMode {
-        Repeat, MirroredRepeat, ClampToEdge, ClampToBorder
     };
 
     struct SamplerDescription {

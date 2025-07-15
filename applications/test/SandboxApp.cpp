@@ -1,5 +1,6 @@
 #include "SandboxApp.h"
 #include "ImGuiLayer.h"
+#include "TestSceneLayer.h"
 
 #include "core/EntryPoint.h"
 #include "core/events/ApplicationEvent.h"
@@ -11,6 +12,10 @@
 #include "systems/CameraSystem.h"
 #include "systems/HierarchySystem.h"
 #include "systems/BoundingVolumeSystem.h"
+#include "systems/RenderPacketSystem.h"
+
+#include "assets/MeshLoader.h"
+#include "assets/StbImageLoader.h"
 
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
@@ -56,12 +61,16 @@ namespace RDE {
             auto path = get_asset_path();
 
             m_file_watcher->start(path->string(), m_file_watcher_event_queue.get());
+            //TODO: register loaders for different asset types
+            m_asset_manager->register_loader(std::make_shared<MeshLoader>());
+            m_asset_manager->register_loader(std::make_shared<StbImageLoader>());
         }
         {
             m_system_scheduler->register_system<HierarchySystem>(*m_registry);
             m_system_scheduler->register_system<TransformSystem>(*m_registry);
             m_system_scheduler->register_system<BoundingVolumeSystem>(*m_registry);
             m_system_scheduler->register_system<CameraSystem>(*m_registry);
+            m_system_scheduler->register_system<RenderPacketSystem>(*m_registry, *m_asset_database, m_main_view);
             RDE_CORE_INFO("Registered systems: HierarchySystem, TransformSystem, BoundingVolumeSystem, CameraSystem");
             m_system_scheduler->bake();
             RDE_CORE_INFO("SystemScheduler baked successfully");
@@ -73,6 +82,9 @@ namespace RDE {
                                                         m_renderer->get_device());
         m_imgui_layer = imgui_layer.get();
         m_layer_stack.push_overlay(imgui_layer); // Assuming you have a push_layer method
+
+        auto test_scene_layer = std::make_shared<TestSceneLayer>(m_asset_manager.get(), *m_registry);
+        m_layer_stack.push_layer(test_scene_layer);
         return true;
     }
 
@@ -134,7 +146,7 @@ namespace RDE {
             if (file_path_opt) {
                 const std::string &file_path = *file_path_opt;
                 // Handle file change event, e.g., reload assets
-                m_asset_manager->force_load_from(file_path);
+                m_asset_manager->force_load(file_path);
             }
         }
 
@@ -197,7 +209,7 @@ namespace RDE {
             cmd->end_render_pass();
             // 4. End the frame
             m_renderer->end_frame({cmd});
-        }else{
+        } else {
             m_window_resized = true;
         }
         m_input_manager->on_frame_end();
@@ -231,7 +243,7 @@ namespace RDE {
             dispatcher.dispatch<WindowFileDropEvent>([this](WindowFileDropEvent &e) {
                 // Handle file drop event
                 for (const auto &file_path: e.get_files()) {
-                    m_asset_manager->force_load_from(file_path);
+                    m_asset_manager->force_load(file_path);
                 }
                 return false; // Allow layers to handle the event
             });
