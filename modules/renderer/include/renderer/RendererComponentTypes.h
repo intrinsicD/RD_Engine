@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ral/Common.h"
+#include "ral/Resources.h"
 #include "core/AttributeRegistry.h"
 
 #include <unordered_map>
@@ -30,5 +31,10 @@ namespace RDE {
         RAL::DescriptorSetHandle descriptor_set_id; // Handle to the descriptor set for this material
 
         std::unordered_map<AttributeID, uint32_t> attribute_to_binding_map;
+    };
+
+    struct RenderGpuShaderStage {
+        RAL::ShaderHandle handle;
+        RAL::ShaderStage stage;
     };
 }

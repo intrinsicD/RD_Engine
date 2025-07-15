@@ -3,6 +3,7 @@
 
 #include "core/Properties.h"
 #include "AssetHandle.h"
+#include "ral/Resources.h"
 
 #include <string>
 #include <vector>
@@ -23,6 +24,17 @@ namespace RDE {
         PropertyContainer faces; // Optional, used for meshes
     };
 
+    struct AssetCpuMaterial {
+        std::string name;
+        std::string shader_path; // Path to the shader file
+        RAL::CullMode cull_mode = RAL::CullMode::Back; // Default cull mode
+        bool depth_test = true; // Default depth test enabled
+        bool depth_write = true; // Default depth write enabled
+        std::unordered_map<std::string, glm::vec4> vector_params; // Vector parameters (e.g., base color)
+        std::unordered_map<std::string, float> float_params; // Float parameters (e.g., metalness, roughness)
+        std::unordered_map<std::string, AssetID> texture_asset_ids; // Maps sampler names to texture asset IDs
+    };
+
     struct AssetCpuTexture {
         std::vector<u_int8_t> data;
         int width;
@@ -34,7 +46,11 @@ namespace RDE {
         std::string source;
     };
 
+    struct AssetMetadata {
+        AssetID default_material;
+    };
+
     struct AssetPrefab {
-        std::vector<AssetID> children;
+        std::vector<AssetID> child_assets; // Asset IDs of child assets
     };
 }

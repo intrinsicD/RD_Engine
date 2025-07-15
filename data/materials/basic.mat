@@ -1,0 +1,28 @@
+# A basic opaque PBR material for standard meshes.
+name: Basic Opaque Material
+
+# Path to the shader file relative to the assets directory.
+# The loader will resolve this to find the GLSL source.
+shader: shaders/basic_lit.glsl
+
+# --- GPU Pipeline State ---
+# Defines how the mesh is rendered.
+pipeline:
+  cullMode: Back      # Options: Back, Front, None
+  polygonMode: Fill  # Options: Fill, Line, Point
+  depthTest: true    # Enable depth testing
+  depthWrite: true   # Write to the depth buffer
+
+# --- Material Parameters ---
+# These values will be uploaded to a Uniform Buffer Object (UBO).
+parameters:
+  baseColor: [1.0, 0.7, 0.2, 1.0] # RGBA
+  metalness: 0.1
+  roughness: 0.8
+
+# --- Texture Maps ---
+# Maps a sampler name in the shader to a texture asset file.
+textures:
+  albedoMap: "textures/Checkerboard.png"
+  # normalMap: "textures/default_normal.png" # Example for later
+  # roughnessMap: "textures/my_roughness_map.png" # Example for later

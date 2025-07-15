@@ -64,10 +64,7 @@ namespace RDE {
             std::string name = std::filesystem::path(uri).filename().string();
             registry.emplace<AssetName>(entity_id, name);
 
-            RDE_CORE_INFO("StbImageLoader: Successfully loaded '{}' ({}x{}, {} channels).", name, width, height, channels);
-
-            // 4. --- Return the completed struct ---
-            // The entt::resource_cache will now store this shared_ptr.
+            RDE_CORE_TRACE("StbImageLoader: Successfully loaded '{}' ({}x{}, {} channels).", name, width, height, channels);
             return std::make_shared<AssetID_Data>(entity_id, uri);
         }
 

@@ -7,7 +7,7 @@
 #include <cassert>
 #include <memory>
 #include <unordered_map>
-#include <glm/glm.hpp>
+
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/string_cast.hpp>
 

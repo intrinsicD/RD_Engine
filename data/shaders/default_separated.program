@@ -1,0 +1,25 @@
+# A standard PBR program using separate, conventional source files for each stage.
+name: default
+
+
+# --- Build-Time Information (Used by compile_shaders.py) ---
+# This section tells the offline tool how to produce the compiled artifacts.
+build:
+  stages:
+    # --- Vertex Stage ---
+    - source: pbr_standard.vert  # Source file (can be .vert, .glsl, etc.)
+      # stage key is optional if using standard extensions like .vert
+      output: pbr_standard.vert.spv # Explicit output filename
+
+    # --- Fragment Stage ---
+    - source: pbr_standard.frag
+      output: pbr_standard.frag.spv
+
+# --- Runtime Information (Used by the Engine's ShaderProgramLoader) ---
+# This section tells the engine which compiled SPIR-V files make up the final program.
+# The paths are relative to the 'assets/shaders/spirv/' directory.
+runtime:
+  stages:
+    vertex: pbr_standard.vert.spv
+    fragment: pbr_standard.frag.spv
+    # compute: my_compute.comp.spv # Example for later

@@ -8,6 +8,6 @@ namespace RDE::AssetConcepts {
     struct Texture {};
     struct Mesh {};
     struct Material {};
-    struct ShaderProgram {};
+    struct ShaderModule {};
     // etc.
 }

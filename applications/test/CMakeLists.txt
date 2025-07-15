@@ -44,4 +44,5 @@ target_link_libraries(Test
         glad_gl_core
         OpenGL::GL
         tinyobjloader
+        yaml-cpp
 )

@@ -29,12 +29,12 @@ namespace RDE {
             auto it_cache = m_cache.find(uri);
 
             if (it_cache != m_cache.end()) {
-                RDE_CORE_INFO("Asset Cache HIT for '{}'.", uri);
+                RDE_CORE_TRACE("Asset Cache HIT for '{}'.", uri);
                 // Return the cached AssetID as an AssetHandle.
                 return it_cache->second;
             }
 
-            RDE_CORE_INFO("Asset Cache MISS for '{}'. Proceeding to load.", uri);
+            RDE_CORE_TRACE("Asset Cache MISS for '{}'. Proceeding to load.", uri);
 
             //get extension from uri
             std::filesystem::path path(uri);
@@ -45,7 +45,7 @@ namespace RDE {
             }
 
             auto &loader = it_loader->second;
-            RDE_CORE_INFO("Using loader for '{}': {}", uri, ext);
+            RDE_CORE_TRACE("Using loader for '{}': {}", uri, ext);
             auto new_asset_id = loader->load(uri, m_database);
 
             if (!new_asset_id) {
@@ -54,7 +54,7 @@ namespace RDE {
             }
 
             m_cache[uri] = new_asset_id;
-            RDE_CORE_INFO("Asset loaded successfully. Entity ID: {}, URI: {}", static_cast<uint32_t>(new_asset_id->entity_id), uri);
+            RDE_CORE_TRACE("Asset loaded successfully. Entity ID: {}, URI: {}", static_cast<uint32_t>(new_asset_id->entity_id), uri);
 
             return new_asset_id;
         }
@@ -69,6 +69,9 @@ namespace RDE {
             return load(uri);
         }
 
+        AssetDatabase &get_database() {
+            return m_database;
+        }
     private:
         AssetDatabase &m_database;
 

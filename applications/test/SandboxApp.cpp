@@ -15,7 +15,9 @@
 #include "systems/RenderPacketSystem.h"
 
 #include "assets/MeshLoader.h"
+#include "assets/MaterialLoader.h"
 #include "assets/StbImageLoader.h"
+#include "assets/GenerateDefaultTextures.h"
 
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
@@ -34,6 +36,7 @@ namespace RDE {
         m_registry = std::make_shared<entt::registry>();
         m_dispatcher = std::make_shared<entt::dispatcher>();
         m_system_scheduler = std::make_unique<SystemScheduler>(*m_registry);
+        GenerateDefaultTextures();
     }
 
     SandboxApp::~SandboxApp() {
@@ -62,8 +65,9 @@ namespace RDE {
 
             m_file_watcher->start(path->string(), m_file_watcher_event_queue.get());
             //TODO: register loaders for different asset types
-            m_asset_manager->register_loader(std::make_shared<MeshLoader>());
+            m_asset_manager->register_loader(std::make_shared<MeshLoader>(m_asset_manager.get()));
             m_asset_manager->register_loader(std::make_shared<StbImageLoader>());
+            m_asset_manager->register_loader(std::make_shared<MaterialLoader>(m_asset_manager.get()));
         }
         {
             m_system_scheduler->register_system<HierarchySystem>(*m_registry);

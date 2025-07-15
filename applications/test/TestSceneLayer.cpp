@@ -4,9 +4,11 @@
 #include "components/MaterialComponent.h"
 #include "components/HierarchyComponent.h"
 #include "components/RenderableComponent.h"
+#include "assets/AssetComponentTypes.h"
 
-namespace RDE{
-    TestSceneLayer::TestSceneLayer(AssetManager *asset_manager, entt::registry &registry) : m_asset_manager(asset_manager) , m_registry(registry) {
+namespace RDE {
+    TestSceneLayer::TestSceneLayer(AssetManager *asset_manager, entt::registry &registry) : m_asset_manager(
+        asset_manager), m_registry(registry) {
         // Constructor logic if needed
     }
 
@@ -50,7 +52,7 @@ namespace RDE{
         }
 
         AssetID cube_mesh_id = m_asset_manager->load(path.value() / "meshes" / "venus.obj");
-        AssetID basic_material_id = m_asset_manager->load("materials/basic.mat"); //TODO continue here...
+        AssetID basic_material_id = m_asset_manager->load(path.value() / "materials" / "basic.mat");
 
         // 2. Create an entity
         auto entity = m_registry.create();

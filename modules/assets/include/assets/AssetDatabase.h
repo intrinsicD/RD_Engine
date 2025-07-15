@@ -46,6 +46,10 @@ namespace RDE {
             return m_registry.try_get<AssetComponentType>(entity);
         }
 
+        void destroy_asset(const AssetID& asset_id) {
+            m_registry.destroy(asset_id->entity_id);
+        }
+
         entt::registry &get_registry() {
             return m_registry;
         }
@@ -60,10 +64,6 @@ namespace RDE {
         entt::entity create_asset() {
             // Create a new entity in the registry for the asset
             return m_registry.create();
-        }
-
-        void destroy_asset(entt::entity entity) {
-            m_registry.destroy(entity);
         }
 
         template<typename... Args>

@@ -23,9 +23,9 @@ namespace RDE {
         // 2. Fall back to the development path (if defined).
         //    This uses the path baked in by CMake from the source tree.
 #ifdef RDE_ASSET_DIR
-        RDE_CORE_INFO("RDE_ASSET_DIR: {}", RDE_ASSET_DIR);
+        //RDE_CORE_INFO("RDE_ASSET_DIR: {}", RDE_ASSET_DIR);
         std::filesystem::path dev_path(exe_dir / RDE_ASSET_DIR);
-        RDE_CORE_INFO("Trying dev_path: {}", dev_path.string());
+        //RDE_CORE_INFO("Trying dev_path: {}", dev_path.string());
         if (std::filesystem::exists(dev_path)) {
             return dev_path;
         }
