@@ -37,4 +37,10 @@ namespace RDE {
         RAL::ShaderHandle handle;
         RAL::ShaderStage stage;
     };
+
+    struct RenderGpuPipeline {
+        RAL::PipelineHandle handle;
+        std::vector<RenderGpuShaderStage> shader_stages; // List of shader stages in the pipeline
+        RAL::DescriptorSetLayoutHandle descriptor_set_layout; // Layout used by this pipeline
+    };
 }

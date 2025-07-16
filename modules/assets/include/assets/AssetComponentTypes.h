@@ -46,6 +46,34 @@ namespace RDE {
         std::string source;
     };
 
+    struct AssetCpuShaderProgram {
+        //Shading
+        AssetID vertex_shader;
+        AssetID fragment_shader;
+        AssetID geometry_shader; // Optional, for geometry shaders
+        AssetID tessellation_control_shader; // Optional, for tessellation control shaders
+        AssetID tessellation_evaluation_shader; // Optional, for tessellation evaluation shaders
+
+        //Compute
+        AssetID compute_shader;
+
+        // Ray Tracing
+/*        AssetID raygen_shader; // Optional, for ray tracing
+        AssetID raymiss_shader; // Optional, for ray tracing
+        AssetID rayhit_closest_shader; // Optional, for ray tracing
+        AssetID rayhit_any_shader; // Optional, for ray tracing
+        AssetID intersection_shader; // Optional, for ray tracing*/
+
+        // Task and Mesh Shaders
+        AssetID task_shader; // Optional, for task shaders
+        AssetID mesh_shader; // Optional, for mesh shaders
+    };
+
+    struct AssetSpirvBytecode {
+        std::vector<uint32_t> bytecode; // SPIR-V bytecode
+        RAL::ShaderStage stage; // Shader stage (e.g., Vertex, Fragment)
+    };
+
     struct AssetMetadata {
         AssetID default_material;
     };

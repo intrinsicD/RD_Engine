@@ -26,7 +26,7 @@ namespace RDE {
         // This is the main entry point called by AssetManager for .obj files.
         // It creates a "Prefab" asset that contains links to all the sub-assets (meshes).
         AssetID load(const std::string &uri, AssetDatabase &db) const override {
-            RDE_CORE_TRACE("MeshLoader: Loading prefab from '{}'...", uri);
+            RDE_CORE_INFO("MeshLoader: Loading prefab from '{}'...", uri);
 
             tinyobj::attrib_t attrib;
             std::vector<tinyobj::shape_t> shapes;

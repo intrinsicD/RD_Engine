@@ -77,11 +77,12 @@ namespace RDE {
             auto &registry = db.get_registry();
             auto entity_id = registry.create();
 
+            auto name = cpu_mat.name;
             registry.emplace<AssetCpuMaterial>(entity_id, std::move(cpu_mat));
             registry.emplace<AssetFilepath>(entity_id, uri);
-            registry.emplace<AssetName>(entity_id, cpu_mat.name);
+            registry.emplace<AssetName>(entity_id, name);
 
-            RDE_CORE_TRACE("MaterialLoader: Successfully loaded '{}'", cpu_mat.name);
+            RDE_CORE_TRACE("MaterialLoader: Successfully loaded '{}'", name);
 
             return std::make_shared<AssetID_Data>(entity_id, uri);
         }

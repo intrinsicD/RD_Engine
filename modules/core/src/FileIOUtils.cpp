@@ -39,7 +39,7 @@ namespace RDE::FileIO {
         if (buffer.empty()) {
             RDE_CORE_WARN("File is empty: {}", path.string());
         } else {
-            RDE_CORE_INFO("Successfully read file: {}", path.string());
+            RDE_CORE_TRACE("Successfully read file: {}", path.string());
         }
         return buffer;
     }
@@ -56,7 +56,7 @@ namespace RDE::FileIO {
             RDE_CORE_ERROR("Failed to write to file: {}", path.string());
             return false;
         }
-        RDE_CORE_INFO("Successfully wrote to file: {}", path.string());
+        RDE_CORE_TRACE("Successfully wrote to file: {}", path.string());
         return true;
     }
 }

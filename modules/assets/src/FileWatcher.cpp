@@ -116,13 +116,13 @@ namespace RDE {
         // 3. Launch the thread.
         // We move the listener into the lambda to ensure its lifetime.
         m_thread = std::thread([this]() {
-            RDE_CORE_INFO("FileWatcher: Thread started. Now blocking on watch().");
+            RDE_CORE_TRACE("FileWatcher: Thread started. Now blocking on watch().");
 
             // This is the blocking call. It will only return when the
             // m_watcher object is destroyed from another thread.
             m_watcher->watch();
 
-            RDE_CORE_INFO("FileWatcher: watch() unblocked. Thread exiting.");
+            RDE_CORE_TRACE("FileWatcher: watch() unblocked. Thread exiting.");
         });
     }
 
@@ -131,7 +131,7 @@ namespace RDE {
             return;
         }
 
-        RDE_CORE_INFO("FileWatcher: Stopping...");
+        RDE_CORE_TRACE("FileWatcher: Stopping...");
 
         // 1. Destroy the efsw::FileWatcher object.
         // This is the key: The destructor of efsw::FileWatcher is thread-safe.
@@ -146,6 +146,6 @@ namespace RDE {
 
         m_listener.reset();
         m_is_running = false;
-        RDE_CORE_INFO("FileWatcher: Stopped successfully.");
+        RDE_CORE_TRACE("FileWatcher: Stopped successfully.");
     }
 }

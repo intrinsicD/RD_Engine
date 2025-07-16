@@ -34,7 +34,7 @@ namespace RDE {
                 return it_cache->second;
             }
 
-            RDE_CORE_TRACE("Asset Cache MISS for '{}'. Proceeding to load.", uri);
+            RDE_CORE_INFO("Asset Cache MISS for '{}'. Proceeding to load.", uri);
 
             //get extension from uri
             std::filesystem::path path(uri);

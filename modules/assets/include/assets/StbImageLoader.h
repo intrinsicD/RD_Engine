@@ -17,7 +17,7 @@ namespace RDE {
         // This is the main function that entt::resource_cache will call.
         // The arguments are forwarded directly from our AssetManager::load call.
         AssetID load(const std::string& uri, AssetDatabase& db) const override{
-            RDE_CORE_TRACE("StbImageLoader: Loading texture from '{}'...", uri);
+            RDE_CORE_INFO("StbImageLoader: Loading texture from '{}'...", uri);
 
             // 1. --- Perform the actual File I/O and Parsing ---
             int width, height, channels;

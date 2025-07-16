@@ -24,5 +24,5 @@ parameters:
 # Maps a sampler name in the shader to a texture asset file.
 textures:
   albedoMap: "textures/Checkerboard.png"
-  # normalMap: "textures/default_normal.png" # Example for later
-  # roughnessMap: "textures/my_roughness_map.png" # Example for later
+  normalMap: "textures/default_normal.png" # Example for later
+  #roughnessMap: "textures/my_roughness_map.png" # Example for later

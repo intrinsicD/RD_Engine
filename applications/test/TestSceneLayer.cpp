@@ -47,7 +47,7 @@ namespace RDE {
         // You need a simple material (shader, pipeline) and a mesh (cube, etc.)
         auto path = get_asset_path();
         if (!path.has_value()) {
-            RDE_CORE_ERROR("Failed to get asset path");
+            RDE_ERROR("Failed to get asset path");
             return;
         }
 

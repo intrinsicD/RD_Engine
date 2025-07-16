@@ -1,0 +1,9 @@
+name: imgui
+
+build:
+  vertex: imgui.vert
+  fragment: imgui.frag
+
+runtime:
+  vertex: imgui.vert.spv
+  fragment: imgui.frag.spv

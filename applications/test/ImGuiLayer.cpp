@@ -223,6 +223,7 @@ namespace RDE {
             RDE_CORE_ERROR("Failed to get shader directory for ImGuiLayer");
             return;
         }
+
         std::string vertPath = (shaderDir.value() / "spirv" / "imgui.vert.spv").string();
         std::string fragPath = (shaderDir.value() / "spirv" / "imgui.frag.spv").string();
         RAL::ShaderDescription vsDesc{vertPath, RAL::ShaderStage::Vertex};

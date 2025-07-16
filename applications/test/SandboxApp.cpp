@@ -17,6 +17,7 @@
 #include "assets/MeshLoader.h"
 #include "assets/MaterialLoader.h"
 #include "assets/StbImageLoader.h"
+#include "assets/ProgramLoader.h"
 #include "assets/GenerateDefaultTextures.h"
 
 #include <entt/entity/registry.hpp>
@@ -68,6 +69,7 @@ namespace RDE {
             m_asset_manager->register_loader(std::make_shared<MeshLoader>(m_asset_manager.get()));
             m_asset_manager->register_loader(std::make_shared<StbImageLoader>());
             m_asset_manager->register_loader(std::make_shared<MaterialLoader>(m_asset_manager.get()));
+            m_asset_manager->register_loader(std::make_shared<ProgramLoader>(m_asset_manager.get()));
         }
         {
             m_system_scheduler->register_system<HierarchySystem>(*m_registry);
@@ -75,9 +77,9 @@ namespace RDE {
             m_system_scheduler->register_system<BoundingVolumeSystem>(*m_registry);
             m_system_scheduler->register_system<CameraSystem>(*m_registry);
             m_system_scheduler->register_system<RenderPacketSystem>(*m_registry, *m_asset_database, m_main_view);
-            RDE_CORE_INFO("Registered systems: HierarchySystem, TransformSystem, BoundingVolumeSystem, CameraSystem");
+            RDE_INFO("Registered systems: HierarchySystem, TransformSystem, BoundingVolumeSystem, CameraSystem");
             m_system_scheduler->bake();
-            RDE_CORE_INFO("SystemScheduler baked successfully");
+            RDE_INFO("SystemScheduler baked successfully");
         }
 
         m_renderer->init();
