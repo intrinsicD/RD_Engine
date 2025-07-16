@@ -78,7 +78,6 @@ namespace RAL {
         uint32_t width, height;
     };
 
-
     enum class Format {
         UNKNOWN,
 
@@ -119,4 +118,43 @@ namespace RAL {
         BC3_UNORM, // DXT5
         BC7_UNORM, // High quality compression
     };
+
+    inline uint32_t get_size_of_format(RAL::Format format) {
+        switch (format) {
+            // 8-bit
+            case RAL::Format::R8_UNORM: return 1;
+            case RAL::Format::R8G8_UNORM: return 2;
+            case RAL::Format::R8G8B8A8_UNORM:
+            case RAL::Format::B8G8R8A8_UNORM:
+            case RAL::Format::R8_SRGB: // sRGB affects interpretation, not size
+            case RAL::Format::R8G8_SRGB:
+            case RAL::Format::R8G8B8A8_SRGB:
+            case RAL::Format::B8G8R8A8_SRGB: return 4;
+
+                // 16-bit
+            case RAL::Format::R16_SFLOAT: return 2;
+            case RAL::Format::R16G16_SFLOAT: return 4;
+            case RAL::Format::R16G16B16A16_SFLOAT: return 8;
+
+                // 32-bit
+            case RAL::Format::R32_SFLOAT:
+            case RAL::Format::R32_UINT: return 4;
+
+            case RAL::Format::R32G32_SFLOAT:
+            case RAL::Format::R32G32_UINT: return 8;
+
+            case RAL::Format::R32G32B32_SFLOAT:
+            case RAL::Format::R32G32B32_UINT: return 12;
+
+            case RAL::Format::R32G32B32A32_SFLOAT:
+            case RAL::Format::R32G32B32A32_UINT: return 16;
+
+                // Depth/Stencil - we usually care about the depth part for size.
+            case RAL::Format::D32_SFLOAT: return 4;
+            case RAL::Format::D24_UNORM_S8_UINT: return 4; // 32 bits total
+            case RAL::Format::D32_SFLOAT_S8_UINT: return 5; // Not standard, but for completeness
+
+            default: return 0; // Unknown or block-compressed formats
+        }
+    }
 }

@@ -9,10 +9,13 @@ target_include_directories(Renderer
 target_sources(Renderer
         PRIVATE
         src/Renderer.cpp
+        src/ShaderReflector.cpp
+        src/PipelineCache.cpp
 )
 
 target_link_libraries(Renderer
         PUBLIC
         RDE::Core
+        RDE::AssetSystem
         RDE::Platform::Vulkan
 )

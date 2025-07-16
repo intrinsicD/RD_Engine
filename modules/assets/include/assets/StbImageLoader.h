@@ -1,76 +1,73 @@
+// assets/loaders/StbImageLoader.h
 #pragma once
 
-#include "AssetDatabase.h"          // The database we will populate
-#include "AssetComponentTypes.h"
-#include "ILoader.h"
+#include "assets/ILoader.h"
+#include "assets/AssetDatabase.h"
+#include "assets/AssetComponentTypes.h"
 #include "core/Log.h"
 
 #include <stb_image.h>
-#include <filesystem> // For parsing the filename
+#include <filesystem>
 
 namespace RDE {
+    class StbImageLoader final : public ILoader {
+    public:
+        // No constructor or members needed. The loader is stateless.
+        StbImageLoader() = default;
 
-    // A concrete loader for AssetCpuTexture using the stb_image library.
-    // It inherits from the entt helper to satisfy the loader concept.
-    // The second template argument is the type of resource it returns.
-    struct StbImageLoader final: public ILoader {
-        // This is the main function that entt::resource_cache will call.
-        // The arguments are forwarded directly from our AssetManager::load call.
-        AssetID load(const std::string& uri, AssetDatabase& db) const override{
+        // --- 1. Fast Dependency Discovery ---
+        // A standard image file has no external file dependencies.
+        // Therefore, this function correctly returns an empty list.
+        std::vector<std::string> get_dependencies(const std::string& uri) const override {
+            // Unused parameter `uri`
+            (void)uri;
+            return {};
+        }
+
+        // --- 2. The Actual Loading Function ---
+        // This function's logic is almost identical to your original `load` function.
+        // It's just renamed to `load_asset` to match the new interface.
+        AssetID load_asset(const std::string& uri, AssetDatabase& db, AssetManager& manager) const override {
+            // Unused parameter `manager` as textures have no dependencies to look up.
+            (void)manager;
+
             RDE_CORE_INFO("StbImageLoader: Loading texture from '{}'...", uri);
 
-            // 1. --- Perform the actual File I/O and Parsing ---
             int width, height, channels;
-            
-            // stb_image loads images from the top-left corner, but GPUs often expect the
-            // 0.0 V-coordinate at the bottom. Flipping it on load is standard practice.
             stbi_set_flip_vertically_on_load(true);
-
-            // This call reads the file and allocates memory for the image data.
             stbi_uc* data = stbi_load(uri.c_str(), &width, &height, &channels, 0);
 
-            // CRITICAL: Always handle errors.
             if (!data) {
                 RDE_CORE_ERROR("StbImageLoader: Failed to load texture '{}'. Reason: {}", uri, stbi_failure_reason());
-                return nullptr; // Returning nullptr signals failure to the AssetManager.
+                return nullptr;
             }
 
-            // 2. --- Create the CachedResource and transfer data into it ---
-
-            AssetCpuTexture resource;
-
-            resource.width = width;
-            resource.height = height;
-            resource.channels = channels;
-            
-            // Calculate the size and copy the raw pixel data into our managed vector.
+            // Create the CPU-side resource component.
+            AssetCpuTexture cpu_texture;
+            cpu_texture.width = width;
+            cpu_texture.height = height;
+            cpu_texture.channels = channels;
             size_t image_size = width * height * channels;
-            resource.data.assign(data, data + image_size);
+            cpu_texture.data.assign(data, data + image_size);
 
-            // CRITICAL: Now that we've copied the data, free the memory allocated by stb_image.
+            // Free the temporary buffer allocated by stb_image.
             stbi_image_free(data);
 
-            // 3. --- Populate the AssetDatabase with the new entity and components ---
-            auto &registry = db.get_registry();
+            // Populate the AssetDatabase with the new entity and its components.
+            auto& registry = db.get_registry();
             auto entity_id = registry.create();
             
-            // Emplace the primary data component
-            registry.emplace<AssetCpuTexture>(entity_id, resource);
-
-            // Emplace metadata components
+            registry.emplace<AssetCpuTexture>(entity_id, std::move(cpu_texture));
             registry.emplace<AssetFilepath>(entity_id, uri);
-            
-            // Let's also give it a name based on the filename for easier debugging/UI.
-            std::string name = std::filesystem::path(uri).filename().string();
-            registry.emplace<AssetName>(entity_id, name);
+            registry.emplace<AssetName>(entity_id, std::filesystem::path(uri).filename().string());
 
-            RDE_CORE_TRACE("StbImageLoader: Successfully loaded '{}' ({}x{}, {} channels).", name, width, height, channels);
+            RDE_CORE_TRACE("StbImageLoader: Successfully populated asset for '{}'", uri);
             return std::make_shared<AssetID_Data>(entity_id, uri);
         }
 
+        // --- 3. Unchanged ---
         std::vector<std::string> get_supported_extensions() const override {
-            return {".png", ".jpg", ".jpeg", ".bmp", ".tga", ".hdr"}; // Add more supported extensions as needed
+            return {".png", ".jpg", ".jpeg", ".bmp", ".tga", ".hdr"};
         }
     };
-
-} // namespace RDE
+} // namespace RDE```

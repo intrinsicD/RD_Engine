@@ -54,4 +54,18 @@ namespace RDE {
         RDE_CORE_WARN("Shaders path does not exist: {}", shaders_path.string());
         return std::nullopt; // Shaders path does not exist
     }
+
+    inline std::optional<std::filesystem::path> get_spirv_path() {
+        auto shaders_path = get_shaders_path();
+        if (!shaders_path.has_value()) {
+            RDE_CORE_WARN("No shaders path found, cannot determine SPIR-V path");
+            return std::nullopt; // Failed to find shaders path
+        }
+        auto spirv_path = shaders_path.value() / "spirv";
+        if (std::filesystem::exists(spirv_path)) {
+            return spirv_path;
+        }
+        RDE_CORE_WARN("SPIR-V path does not exist: {}", spirv_path.string());
+        return std::nullopt; // SPIR-V path does not exist
+    }
 }

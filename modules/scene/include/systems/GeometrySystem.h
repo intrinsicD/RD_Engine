@@ -16,9 +16,10 @@ namespace RDE{
         void update(float delta_time) override;
 
         void shutdown() override;
-    private:
+
         void declare_dependencies(SystemDependencyBuilder &builder) override;
 
+    private:
         entt::registry &m_registry;
     };
 }

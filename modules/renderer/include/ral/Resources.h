@@ -40,6 +40,7 @@ namespace RAL {
     };
 
     enum class ShaderStage {
+        None,
         Vertex, Fragment, Compute, // Core stages
         Geometry, TessellationControl, TessellationEvaluation, // Optional stages
         RayTracing, // Ray tracing stages
@@ -194,6 +195,16 @@ namespace RAL {
     struct PipelineDescription {
         ShaderHandle vertexShader;
         ShaderHandle fragmentShader;
+
+        ShaderHandle geometryShader;
+        ShaderHandle tessControlShader;
+        ShaderHandle tessEvalShader;
+
+        ShaderHandle computeShader;
+
+        ShaderHandle taskShader;
+        ShaderHandle meshShader;
+
 
         std::vector<DescriptorSetLayoutHandle> descriptorSetLayouts;
         std::vector<PushConstantRange> pushConstantRanges;

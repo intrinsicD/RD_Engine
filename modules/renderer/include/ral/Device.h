@@ -42,6 +42,7 @@ namespace RAL {
 
         virtual ShaderHandle create_shader(const ShaderDescription &desc) = 0;
 
+        virtual ShaderHandle create_shader_module(const std::vector<char> &bytecode, ShaderStage stage) = 0;
 
         virtual void destroy_shader(ShaderHandle handle) = 0;
 

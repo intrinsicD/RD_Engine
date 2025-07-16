@@ -52,6 +52,8 @@ namespace RDE {
 
         RAL::ShaderHandle create_shader(const RAL::ShaderDescription &desc) override;
 
+        RAL::ShaderHandle create_shader_module(const std::vector<char> &bytecode, RAL::ShaderStage stage) override;
+
         void destroy_shader(RAL::ShaderHandle handle) override;
 
         RAL::PipelineHandle create_pipeline(const RAL::PipelineDescription &desc) override;

@@ -19,9 +19,9 @@ namespace RDE {
 
         void update(float delta_time) override;
 
-    private:
         void declare_dependencies(SystemDependencyBuilder &builder) override;
 
+    private:
         void pull_buffer_data_to_scene_registry(AssetID source_asset_id, entt::entity target_entity, AttributeID attribute_id);
 
         void push_buffer_data_to_assets_database(entt::entity source_entity, AssetID target_asset_id, AttributeID attribute_id);

@@ -20,11 +20,10 @@ namespace RDE {
         void shutdown() override;
 
         void update(float delta_time) override;
-    private:
 
-        // Declare dependencies for this system
         void declare_dependencies(SystemDependencyBuilder &builder) override;
 
+    private:
         entt::registry& m_registry; // The registry we operate on
         AssetDatabase& m_asset_database;
         View& m_target_view; // A reference to the view we will fill

@@ -58,7 +58,7 @@ namespace RDE {
         AssetID compute_shader;
 
         // Ray Tracing
-/*        AssetID raygen_shader; // Optional, for ray tracing
+        /*        AssetID raygen_shader; // Optional, for ray tracing
         AssetID raymiss_shader; // Optional, for ray tracing
         AssetID rayhit_closest_shader; // Optional, for ray tracing
         AssetID rayhit_any_shader; // Optional, for ray tracing
@@ -72,6 +72,26 @@ namespace RDE {
     struct AssetSpirvBytecode {
         std::vector<uint32_t> bytecode; // SPIR-V bytecode
         RAL::ShaderStage stage; // Shader stage (e.g., Vertex, Fragment)
+    };
+
+    struct VertexAttributeDesc {
+        std::string semantic_name; // e.g., "POSITION", "NORMAL"
+        RAL::Format format;
+    };
+
+    struct AssetCpuShaderDefinition {
+        std::string name;
+        std::unordered_map<RAL::ShaderStage, std::string> base_spirv_paths;
+        std::vector<std::string> features; // Permutation defines like "HAS_NORMAL_MAP"
+
+        // Fixed pipeline state for all permutations
+        RAL::CullMode cull_mode = RAL::CullMode::Back;
+        bool depth_test = true;
+        bool depth_write = true;
+        // ... add blend modes, topology, etc. here ...
+
+        // The vertex layout this shader program expects
+        std::vector<VertexAttributeDesc> vertex_layout;
     };
 
     struct AssetMetadata {

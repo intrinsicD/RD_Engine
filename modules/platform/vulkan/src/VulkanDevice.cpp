@@ -384,8 +384,21 @@ namespace RDE {
     // Implement the public interface function
     RAL::ShaderHandle VulkanDevice::create_shader(const RAL::ShaderDescription &desc) {
         auto shaderCode = FileIO::ReadFile(desc.filePath);
+        return create_shader_module(shaderCode, desc.stage);
+    }
+
+    RAL::ShaderHandle VulkanDevice::create_shader_module(const std::vector<char> &bytecode, RAL::ShaderStage stage) {
+        VkShaderModuleCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        createInfo.codeSize = bytecode.size();
+        createInfo.pCode = reinterpret_cast<const uint32_t *>(bytecode.data());
+
+        VkShaderModule shaderModule;
+        VkDevice logicalDevice = m_Context->get_logical_device();
+        VK_CHECK(vkCreateShaderModule(logicalDevice, &createInfo, nullptr, &shaderModule));
+
         VulkanShader newShader;
-        newShader.module = create_shader_module(shaderCode);
+        newShader.module = shaderModule;
         return m_ShaderManager.create(std::move(newShader));
     }
 

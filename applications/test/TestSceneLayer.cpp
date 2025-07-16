@@ -51,8 +51,8 @@ namespace RDE {
             return;
         }
 
-        AssetID cube_mesh_id = m_asset_manager->load(path.value() / "meshes" / "venus.obj");
-        AssetID basic_material_id = m_asset_manager->load(path.value() / "materials" / "basic.mat");
+        auto cube_mesh_id = m_asset_manager->load_async(path.value() / "meshes" / "venus.obj");
+        auto basic_material_id = m_asset_manager->load_async(path.value() / "materials" / "basic.mat");
 
         // 2. Create an entity
         auto entity = m_registry.create();

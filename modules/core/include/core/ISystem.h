@@ -16,9 +16,6 @@ namespace RDE{
         // Called every frame before rendering
         virtual void update(float delta_time) = 0;
 
-    private:
-        friend class SystemGraph;
-
         virtual void declare_dependencies(SystemDependencyBuilder &builder) = 0;
     };
 }

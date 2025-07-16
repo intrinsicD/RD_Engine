@@ -17,7 +17,6 @@ target_sources(Scene
         src/CameraComponent.cpp
         src/HierarchyComponent.cpp
         src/TransformComponent.cpp
-        src/SystemScheduler.cpp
 
         src/CameraSystem.cpp
         src/TransformSystem.cpp
