@@ -3,6 +3,7 @@
 
 #include "Common.h"
 #include "CommandBuffer.h"
+#include "ResourcesDatabase.h"
 
 #include <memory>
 #include <vector>
@@ -70,5 +71,14 @@ namespace RAL {
 
         virtual void copy_buffer(RAL::BufferHandle source, RAL::BufferHandle target, size_t size, size_t source_offset, size_t target_offset) = 0;
 
+        ResourcesDatabase &get_resources_database() {
+            return m_resources_db;
+        }
+
+        const ResourcesDatabase &get_resources_database() const {
+            return m_resources_db;
+        }
+    protected:
+        ResourcesDatabase m_resources_db;
     };
 } // namespace RAL

@@ -37,6 +37,10 @@ namespace RDE {
         // --- Swapchain Management ---
         void recreate_swapchain() override;
 
+        VulkanSwapchain &get_swapchain() {
+            return *m_Swapchain;
+        }
+
         // --- Resource Creation (implements RAL) ---
         RAL::BufferHandle create_buffer(const RAL::BufferDescription &desc) override;
 
@@ -70,59 +74,6 @@ namespace RDE {
         RAL::DescriptorSetHandle create_descriptor_set(const RAL::DescriptorSetDescription &desc) override;
 
         void destroy_descriptor_set(RAL::DescriptorSetHandle handle) override;
-
-        // --- Resource Access ---
-        // Used by the high-level renderer to resolve handles before passing to a command buffer
-
-        VulkanBuffer &get_buffer(RAL::BufferHandle handle) { return m_BufferManager.get(handle); }
-
-        VulkanTexture &get_texture(RAL::TextureHandle handle) { return m_TextureManager.get(handle); }
-
-        VulkanSampler &get_sampler(RAL::SamplerHandle handle) { return m_SamplerManager.get(handle); }
-
-        VulkanShader &get_shader(RAL::ShaderHandle handle) { return m_ShaderManager.get(handle); }
-
-        VulkanPipeline &get_pipeline(RAL::PipelineHandle handle) { return m_PipelineManager.get(handle); }
-
-        VulkanDescriptorSetLayout &get_descriptor_set_layout(RAL::DescriptorSetLayoutHandle handle) {
-            return m_DsLayoutManager.get(handle);
-        }
-
-        VkDescriptorSet get_descriptor_set(RAL::DescriptorSetHandle handle) {
-            return m_DescriptorSetManager.get(handle);
-        }
-
-        VulkanSwapchain &get_swapchain() { return *m_Swapchain; }
-
-        bool is_valid(RAL::BufferHandle handle) const {
-            return m_BufferManager.is_valid(handle);
-        }
-
-        bool is_valid(RAL::TextureHandle handle) const {
-            return m_TextureManager.is_valid(handle);
-        }
-
-        bool is_valid(RAL::SamplerHandle handle) const {
-            return m_SamplerManager.is_valid(handle);
-        }
-
-        bool is_valid(RAL::ShaderHandle handle) const {
-            return m_ShaderManager.is_valid(handle);
-        }
-
-        bool is_valid(RAL::PipelineHandle handle) const {
-            return m_PipelineManager.is_valid(handle);
-        }
-
-        bool is_valid(RAL::DescriptorSetLayoutHandle handle) const {
-            return m_DsLayoutManager.is_valid(handle);
-        }
-
-        bool is_valid(RAL::DescriptorSetHandle handle) const {
-            return m_DescriptorSetManager.is_valid(handle);
-        }
-
-        // ... other getters for raw Vulkan handles ...
 
         // --- Immediate Operations ---
         void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function);
@@ -159,15 +110,6 @@ namespace RDE {
         std::vector<VkSemaphore> m_ImageAvailableSemaphores;
         std::vector<VkSemaphore> m_RenderFinishedSemaphores;
         std::vector<VkFence> m_InFlightFences;
-
-        // --- Resource Management ---
-        ResourceManager<VulkanBuffer, RAL::BufferHandle> m_BufferManager;
-        ResourceManager<VulkanShader, RAL::ShaderHandle> m_ShaderManager;
-        ResourceManager<VulkanPipeline, RAL::PipelineHandle> m_PipelineManager;
-        ResourceManager<VulkanTexture, RAL::TextureHandle> m_TextureManager;
-        ResourceManager<VulkanSampler, RAL::SamplerHandle> m_SamplerManager;
-        ResourceManager<VulkanDescriptorSetLayout, RAL::DescriptorSetLayoutHandle> m_DsLayoutManager;
-        ResourceManager<VkDescriptorSet, RAL::DescriptorSetHandle> m_DescriptorSetManager;
 
         // --- Deferred Deletion ---
         std::vector<DeletionQueue> m_FrameDeletionQueues;

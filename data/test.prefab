@@ -1,0 +1,16 @@
+# A unique name for the prefab asset itself.
+name: "VenusPrefab"
+
+# A list of entities that make up this prefab.
+# Each entity has a local ID (for parenting) and a name.
+entities:
+  - id: 0 # Local ID within this prefab
+    name: "VenusMesh"
+    components:
+      - type: "TransformComponent"
+        position: [ 0.0, 0.0, 0.0 ]
+        rotation: [ 0.0, 0.0, 0.0 ]
+        scale: [ 1.0, 1.0, 1.0 ]
+      - type: "RenderableComponent"
+        mesh: "assets/meshes/venus.obj" # Dependency
+        material: "assets/materials/default.mat" # Dependency

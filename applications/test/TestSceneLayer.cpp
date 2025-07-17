@@ -51,16 +51,25 @@ namespace RDE {
             return;
         }
 
-        auto cube_mesh_id = m_asset_manager->load_async(path.value() / "meshes" / "venus.obj");
-        auto basic_material_id = m_asset_manager->load_async(path.value() / "materials" / "basic.mat");
+        auto f_cube_mesh_id = m_asset_manager->load_async(path.value() / "meshes" / "venus.obj");
+        auto f_basic_material_id = m_asset_manager->load_async(path.value() / "materials" / "basic.mat");
 
         // 2. Create an entity
         auto entity = m_registry.create();
 
         // 3. Add components
         auto &local_transform = m_registry.emplace<TransformLocal>(entity);
-        m_registry.emplace<RenderableComponent>(entity, cube_mesh_id); // Assuming get_id() returns AssetID
-        m_registry.emplace<MaterialComponent>(entity, basic_material_id);
+        f_cube_mesh_id.wait();
+        auto cube_mesh_id = f_cube_mesh_id.get();
+        if(cube_mesh_id && cube_mesh_id->is_valid()){
+            m_registry.emplace<RenderableComponent>(entity, cube_mesh_id); // Assuming get_id() returns AssetID
+        }
+
+        f_basic_material_id.wait();
+        auto basic_material_id = f_basic_material_id.get();
+        if(basic_material_id && basic_material_id->is_valid()) {
+            m_registry.emplace<MaterialComponent>(entity, basic_material_id);
+        }
         m_registry.emplace<Hierarchy>(entity); // If needed
     }
 }

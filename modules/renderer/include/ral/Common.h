@@ -2,12 +2,13 @@
 #pragma once
 
 #include "core/EnumFlags.h" // For ENABLE_ENUM_FLAG_OPERATORS
+#include "RenderHandle.h"
 
 #include <cstdint>
 #include <limits>
 
 namespace RAL {
-    struct RenderHandle {
+    /*struct RenderHandle {
         uint32_t index{std::numeric_limits<uint32_t>::max()};
         uint32_t generation{0};
 
@@ -28,7 +29,7 @@ namespace RAL {
         bool operator==(const RenderHandle &other) const {
             return index == other.index && generation == other.generation;
         }
-    };
+    };*/
 
     struct BufferHandle : RenderHandle {
         static constexpr BufferHandle INVALID() { return {}; }

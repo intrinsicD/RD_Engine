@@ -5,6 +5,7 @@
 #include "assets/AssetDatabase.h"
 #include "assets/AssetComponentTypes.h"
 #include "core/Log.h"
+#include "ral/EnumUtils.h"
 
 #include <yaml-cpp/yaml.h>
 

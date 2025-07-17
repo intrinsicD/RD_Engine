@@ -24,12 +24,14 @@ namespace RDE {
             std::vector<std::string> dependencies;
 
             // We must parse the materials to find their texture dependencies.
+            tinyobj::attrib_t attrib; // Dummy, won't be used
+            std::vector<tinyobj::shape_t> shapes; // Dummy, won't be used
             std::vector<tinyobj::material_t> materials;
             std::string warn, err;
             std::string base_dir = std::filesystem::path(uri).parent_path().string();
 
             // We only need the materials, not the full geometry, but LoadObj gives us all.
-            tinyobj::LoadObj(nullptr, nullptr, &materials, &warn, &err, uri.c_str(), base_dir.c_str(), true);
+            tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, uri.c_str(), base_dir.c_str(), true);
 
             // A. Find all texture dependencies from the .mtl file.
             for (const auto &mtl: materials) {

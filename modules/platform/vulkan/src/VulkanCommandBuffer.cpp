@@ -40,7 +40,7 @@ namespace RDE {
             assert(colorAttachmentInfo.imageView != VK_NULL_HANDLE && "Swapchain image view is null!");
         } else {
             // Rendering to an offscreen texture
-            auto& texture = m_device->get_texture(colorAttachmentDesc.texture);
+            auto& texture = m_device->get_resources_database().get<VulkanTexture>(colorAttachmentDesc.texture);
             colorAttachmentInfo.imageView = texture.image_view;
         }
 
@@ -107,19 +107,19 @@ namespace RDE {
     }
 
     void VulkanCommandBuffer::bind_pipeline(RAL::PipelineHandle pipeline_handle) {
-        VulkanPipeline &pipeline = m_device->get_pipeline(pipeline_handle);
+        auto &pipeline = m_device->get_resources_database().get<VulkanPipeline>(pipeline_handle);
         vkCmdBindPipeline(m_handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.handle);
     }
 
     void VulkanCommandBuffer::bind_vertex_buffer(RAL::BufferHandle buffer_handle, uint32_t binding) {
-        VulkanBuffer &buffer = m_device->get_buffer(buffer_handle);
+        auto &buffer = m_device->get_resources_database().get<VulkanBuffer>(buffer_handle);
         VkBuffer buffers[] = {buffer.handle};
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(m_handle, binding, 1, buffers, offsets);
     }
 
     void VulkanCommandBuffer::bind_index_buffer(RAL::BufferHandle buffer_handle, RAL::IndexType indexType) {
-        VulkanBuffer &buffer = m_device->get_buffer(buffer_handle);
+        auto &buffer = m_device->get_resources_database().get<VulkanBuffer>(buffer_handle);
         VkIndexType vkIndexType = (indexType == RAL::IndexType::UINT16) ? VK_INDEX_TYPE_UINT16
                                                                         : VK_INDEX_TYPE_UINT32;
         vkCmdBindIndexBuffer(m_handle, buffer.handle, 0, vkIndexType);
@@ -127,18 +127,19 @@ namespace RDE {
 
     void VulkanCommandBuffer::bind_descriptor_set(RAL::PipelineHandle pipeline_handle, RAL::DescriptorSetHandle set_handle,
                                                   uint32_t setIndex) {
+        auto &resources_db = m_device->get_resources_database();
         // Assert that the handles are valid before proceeding.
         // In a release build, these checks might be compiled out.
-        assert(m_device->is_valid(pipeline_handle) && "Invalid pipeline handle provided to bind_descriptor_set");
-        assert(m_device->is_valid(set_handle) && "Invalid descriptor set handle provided to bind_descriptor_set");
+        assert(resources_db.is_valid(pipeline_handle) && "Invalid pipeline handle provided to bind_descriptor_set");
+        assert(resources_db.is_valid(set_handle) && "Invalid descriptor set handle provided to bind_descriptor_set");
 
         // 1. Get the concrete Vulkan pipeline layout from the pipeline handle.
         // The layout defines the "shape" that the descriptor sets must conform to.
-        VulkanPipeline& pipeline = m_device->get_pipeline(pipeline_handle);
+        auto& pipeline = resources_db.get<VulkanPipeline>(pipeline_handle);
         VkPipelineLayout pipelineLayout = pipeline.layout;
 
         // 2. Get the concrete VkDescriptorSet from our RAL handle.
-        VkDescriptorSet vkSet = m_device->get_descriptor_set(set_handle);
+        auto &vkSet = resources_db.get<VulkanDescriptorSet>(set_handle);
 
         // 3. Record the command.
         vkCmdBindDescriptorSets(
@@ -147,7 +148,7 @@ namespace RDE {
                 pipelineLayout,                   // The layout the pipeline was created with
                 setIndex,                         // The set index to bind to (e.g., set=0, set=1 in GLSL)
                 1,                                // We are binding one set at a time
-                &vkSet,                           // Pointer to the descriptor set handle
+                &vkSet.handle,                           // Pointer to the descriptor set handle
                 0,                                // No dynamic offsets (an advanced feature)
                 nullptr                           // No dynamic offsets
         );
@@ -155,12 +156,12 @@ namespace RDE {
 
     void VulkanCommandBuffer::push_constants(RAL::PipelineHandle pipeline_handle, RAL::ShaderStage stages, uint32_t offset,
                                              uint32_t size, const void *data) {
-        assert(m_device->is_valid(pipeline_handle) && "Invalid pipeline handle provided to push_constants");
+        assert(m_device->get_resources_database().is_valid(pipeline_handle) && "Invalid pipeline handle provided to push_constants");
         assert(data != nullptr && "Data pointer for push_constants cannot be null");
         assert(size > 0 && "Push constant size must be greater than 0");
 
         // 1. Get the pipeline layout, as this is what the push constants are associated with.
-        VulkanPipeline& pipeline = m_device->get_pipeline(pipeline_handle);
+        auto& pipeline = m_device->get_resources_database().get<VulkanPipeline>(pipeline_handle);
         VkPipelineLayout pipelineLayout = pipeline.layout;
 
         // 2. Convert our RAL shader stage bitmask to Vulkan's bitmask.

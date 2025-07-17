@@ -88,7 +88,7 @@ namespace RDE {
         RAL::CullMode cull_mode = RAL::CullMode::Back;
         bool depth_test = true;
         bool depth_write = true;
-        // ... add blend modes, topology, etc. here ...
+        //TODO ... add blend modes, topology, etc. here ...
 
         // The vertex layout this shader program expects
         std::vector<VertexAttributeDesc> vertex_layout;
@@ -99,6 +99,7 @@ namespace RDE {
     };
 
     struct AssetPrefab {
+        std::string name;
         std::vector<AssetID> child_assets; // Asset IDs of child assets
     };
 }

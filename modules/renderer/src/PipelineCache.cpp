@@ -7,59 +7,71 @@
 #include "core/Paths.h"          // Include our new utility
 #include "core/Log.h"          // For logging
 
-#include <functional>
-
-// And the hash specialization
-namespace std {
-    template<>
-    struct hash<RDE::PipelineCache::PipelineVariantKey> {
-        size_t operator()(const RDE::PipelineCache::PipelineVariantKey &key) const {
-            size_t h1 = std::hash<entt::entity>()(key.shader_def_entity);
-            size_t h2 = std::hash<RDE::ShaderFeatureMask>()(key.mask);
-            return h1 ^ (h2 << 1);
-        }
-    };
-}
 
 namespace RDE {
     // Note: The rest of the PipelineCache implementation is in the header in your example.
     // This is the full implementation of the build function.
 
+    PipelineCache::PipelineCache(AssetManager &asset_manager, RAL::Device &device)
+            : m_asset_manager(asset_manager), m_device(device), m_cache() {
+    }
+
+    PipelineCache::~PipelineCache() {
+        RDE_CORE_INFO("PipelineCache shutting down. Cleaning up {} cached pipeline variants.", m_cache.size());
+        for (const auto& [key, cached_pipeline] : m_cache) {
+            // Destroy resources in reverse order of creation
+            m_device.destroy_pipeline(cached_pipeline.pipeline);
+            for (auto handle : cached_pipeline.shaderModules) {
+                m_device.destroy_shader(handle);
+            }
+            for (auto handle : cached_pipeline.setLayouts) {
+                m_device.destroy_descriptor_set_layout(handle);
+            }
+        }
+        m_cache.clear();
+    }
+
+    // The main interface for the renderer.
+    RAL::PipelineHandle PipelineCache::getPipeline(const AssetID &shader_def_id, ShaderFeatureMask feature_mask) {
+        // 1. Create a unique key for this specific pipeline variant.
+        PipelineVariantKey key = {shader_def_id->entity_id, feature_mask};
+        if (auto it = m_cache.find(key); it != m_cache.end()) {
+            return it->second.pipeline;
+        }
+
+        // 2. Cache miss: We need to build it.
+        return buildAndCachePipeline(shader_def_id, feature_mask, key);
+    }
+
     RAL::PipelineHandle PipelineCache::buildAndCachePipeline(AssetID shader_def_id, ShaderFeatureMask mask,
                                                              const PipelineVariantKey &key) {
         // A. Get the recipe from the AssetDatabase
-        auto *def = m_asset_manager.get_database().try_get<AssetCpuShaderDefinition>(shader_def_id);
+        auto* def = m_asset_manager.get_database().try_get<AssetCpuShaderDefinition>(shader_def_id);
         if (!def) {
-            RDE_CORE_ERROR("PipelineCache: Could not find shader definition for asset!");
+            RDE_CORE_ERROR("PipelineCache: Could not find shader definition asset!");
             return RAL::PipelineHandle::INVALID();
         }
 
-        RAL::PipelineDescription pso_info = {};
-        std::map<RAL::ShaderStage, const std::vector<char> *> shader_stages_map;
-        std::vector<char> vert_bytecode, frag_bytecode, geom_bytecode, tess_cntrl_bytecode, tess_eval_bytecode,
-                compute_bytecode, task_bytecode, mesh_bytecode; // etc.
-
         // B. Load required shader bytecodes
-        auto load_shader = [&](RAL::ShaderStage stage, std::vector<char> &out_bytecode) {
+        std::map<RAL::ShaderStage, std::vector<char>> loaded_bytecodes;
+        std::map<RAL::ShaderStage, const std::vector<char>*> shader_stages_map;
+
+        auto load_shader = [&](RAL::ShaderStage stage) {
             auto it = def->base_spirv_paths.find(stage);
             if (it != def->base_spirv_paths.end()) {
                 const std::string path = it->second + "." + std::to_string(mask) + ".spv";
-                out_bytecode = FileIO::ReadFile(get_spirv_path().value() / path);
-                if (!out_bytecode.empty()) {
-                    shader_stages_map[stage] = &out_bytecode;
+                loaded_bytecodes[stage] = FileIO::ReadFile(get_spirv_path().value() / path);
+                if (!loaded_bytecodes[stage].empty()) {
+                    shader_stages_map[stage] = &loaded_bytecodes[stage];
+                } else {
+                    RDE_CORE_ERROR("PipelineCache: Failed to load SPIR-V file: {}", path);
                 }
             }
         };
 
-        load_shader(RAL::ShaderStage::Vertex, vert_bytecode);
-        load_shader(RAL::ShaderStage::Fragment, frag_bytecode);
-        load_shader(RAL::ShaderStage::Geometry, geom_bytecode);
-        load_shader(RAL::ShaderStage::TessellationControl, tess_cntrl_bytecode);
-        load_shader(RAL::ShaderStage::TessellationEvaluation, tess_eval_bytecode);
-        load_shader(RAL::ShaderStage::Compute, compute_bytecode);
-        load_shader(RAL::ShaderStage::Task, task_bytecode);
-        load_shader(RAL::ShaderStage::Mesh, mesh_bytecode);
-        // ... load other stages if needed ...
+        for(const auto& [stage, path] : def->base_spirv_paths) {
+            load_shader(stage);
+        }
 
         if (shader_stages_map.empty()) {
             RDE_CORE_ERROR("PipelineCache: No shader stages loaded for '{}'!", def->name);
@@ -69,64 +81,87 @@ namespace RDE {
         // C. REFLECT the loaded bytecode to get the pipeline layout
         ReflectedLayout reflected = ShaderReflector::reflect(shader_stages_map);
 
-        // D. CREATE the descriptor set layouts and populate the PSO description
-        for (const auto &[set_index, layout_desc]: reflected.setLayouts) {
-            pso_info.descriptorSetLayouts.push_back(m_device.create_descriptor_set_layout(layout_desc));
-        }
-        pso_info.pushConstantRanges = reflected.pushConstantRanges;
+        // This is our ownership bundle for all created resources.
+        CachedPipeline new_cached_pipeline;
 
-        // E. CREATE the shader modules
-        if (shader_stages_map.count(RAL::ShaderStage::Vertex)) {
-            pso_info.vertexShader = m_device.create_shader_module(vert_bytecode, RAL::ShaderStage::Vertex);
+        // D. CREATE the descriptor set layouts and store them in our ownership bundle
+        for (const auto& [set_index, layout_desc] : reflected.setLayouts) {
+            auto handle = m_device.create_descriptor_set_layout(layout_desc);
+            new_cached_pipeline.setLayouts.push_back(handle);
         }
-        if (shader_stages_map.count(RAL::ShaderStage::Fragment)) {
-            pso_info.fragmentShader = m_device.create_shader_module(frag_bytecode, RAL::ShaderStage::Fragment);
+
+        // E. CREATE the shader modules and store them in our ownership bundle
+        for(const auto& [stage, bytecode_ptr] : shader_stages_map) {
+            auto handle = m_device.create_shader_module(*bytecode_ptr, stage);
+            new_cached_pipeline.shaderModules.push_back(handle);
         }
-        if (shader_stages_map.count(RAL::ShaderStage::Geometry)) {
-            pso_info.geometryShader = m_device.create_shader_module(geom_bytecode, RAL::ShaderStage::Geometry);
-        }
-        if (shader_stages_map.count(RAL::ShaderStage::TessellationControl)) {
-            pso_info.tessControlShader = m_device.create_shader_module(tess_cntrl_bytecode, RAL::ShaderStage::TessellationControl);
-        }
-        if (shader_stages_map.count(RAL::ShaderStage::TessellationEvaluation)) {
-            pso_info.tessEvalShader = m_device.create_shader_module(tess_eval_bytecode, RAL::ShaderStage::TessellationEvaluation);
-        }
+
+        // F. BUILD the appropriate pipeline description (Graphics vs Compute)
         if (shader_stages_map.count(RAL::ShaderStage::Compute)) {
-            pso_info.computeShader = m_device.create_shader_module(compute_bytecode, RAL::ShaderStage::Compute);
-        }
-        if (shader_stages_map.count(RAL::ShaderStage::Task)) {
-            pso_info.taskShader = m_device.create_shader_module(task_bytecode, RAL::ShaderStage::Task);
-        }
-        if (shader_stages_map.count(RAL::ShaderStage::Mesh)) {
-            pso_info.meshShader = m_device.create_shader_module(mesh_bytecode, RAL::ShaderStage::Mesh);
+            // --- COMPUTE PIPELINE PATH ---
+            RAL::PipelineDescription compute_pso_info;
+            compute_pso_info.computeShader = find_shader_handle(new_cached_pipeline.shaderModules, RAL::ShaderStage::Compute);
+            compute_pso_info.descriptorSetLayouts = new_cached_pipeline.setLayouts; // Copy handles
+            compute_pso_info.pushConstantRanges = reflected.pushConstantRanges;
+
+            new_cached_pipeline.pipeline = m_device.create_pipeline(compute_pso_info);
+
+        } else {
+            // --- GRAPHICS PIPELINE PATH ---
+            RAL::PipelineDescription graphics_pso_info;
+
+            // F-1: Assign layouts and push constants
+            graphics_pso_info.descriptorSetLayouts = new_cached_pipeline.setLayouts; // Copy handles
+            graphics_pso_info.pushConstantRanges = reflected.pushConstantRanges;
+
+            // F-2: Assign shader modules
+            graphics_pso_info.vertexShader = find_shader_handle(new_cached_pipeline.shaderModules, RAL::ShaderStage::Vertex);
+            graphics_pso_info.fragmentShader = find_shader_handle(new_cached_pipeline.shaderModules, RAL::ShaderStage::Fragment);
+            // ... assign other graphics stages (geometry, mesh, etc.) ...
+
+            // F-3: Apply fixed state and vertex layout from the definition
+            graphics_pso_info.rasterizationState.cullMode = def->cull_mode;
+            graphics_pso_info.depthStencilState.depthTestEnable = def->depth_test;
+            graphics_pso_info.depthStencilState.depthWriteEnable = def->depth_write;
+            // ... copy all other state from *def to graphics_pso_info ...
+
+            uint32_t current_offset = 0;
+            for (size_t i = 0; i < def->vertex_layout.size(); ++i) {
+                const auto& attr = def->vertex_layout[i];
+                graphics_pso_info.vertexAttributes.push_back({ static_cast<uint32_t>(i), 0, attr.format, current_offset });
+                current_offset += get_size_of_format(attr.format);
+            }
+            if (current_offset > 0) {
+                graphics_pso_info.vertexBindings.push_back({0, current_offset});
+            }
+
+            new_cached_pipeline.pipeline = m_device.create_pipeline(graphics_pso_info);
         }
 
-        // F. APPLY fixed state and vertex layout from the definition
-        pso_info.rasterizationState.cullMode = def->cull_mode;
-        pso_info.depthStencilState.depthTestEnable = def->depth_test;
-        pso_info.depthStencilState.depthWriteEnable = def->depth_write;
-        // ... copy all other state from *def to pso_info ...
-
-        uint32_t current_offset = 0;
-        for (size_t i = 0; i < def->vertex_layout.size(); ++i) {
-            const auto &attr = def->vertex_layout[i];
-            pso_info.vertexAttributes.push_back({
-                static_cast<uint32_t>(i), // location
-                0, // binding
-                attr.format,
-                current_offset
-            });
-            current_offset += get_size_of_format(attr.format);
+        // G. VALIDATE and CACHE the final result
+        if (!new_cached_pipeline.pipeline.is_valid()) {
+            RDE_CORE_ERROR("PipelineCache: Device failed to create pipeline for '{}' with mask {}.", def->name, mask);
+            // Manually clean up the resources we just created for this failed attempt
+            for (auto handle : new_cached_pipeline.shaderModules) m_device.destroy_shader(handle);
+            for (auto handle : new_cached_pipeline.setLayouts) m_device.destroy_descriptor_set_layout(handle);
+            return RAL::PipelineHandle::INVALID();
         }
-        if (current_offset > 0) {
-            pso_info.vertexBindings.push_back({0, current_offset});
-        }
-
-        // G. CREATE the final GPU pipeline object via the RAL
-        RAL::PipelineHandle pipeline_handle = m_device.create_pipeline(pso_info);
-        m_cache[key] = pipeline_handle;
 
         RDE_CORE_INFO("PipelineCache: Compiled and cached pipeline for '{}' with mask {}.", def->name, mask);
-        return pipeline_handle;
+
+        auto [it, success] = m_cache.emplace(key, std::move(new_cached_pipeline));
+        return it->second.pipeline;
+    }
+
+    // Helper function to find a specific shader handle from a list
+    RAL::ShaderHandle PipelineCache::find_shader_handle(const std::vector<RAL::ShaderHandle>& handles, RAL::ShaderStage stage) const {
+        for(auto handle : handles) {
+            // This assumes your RAL::Device can query the stage of a ShaderHandle.
+            // If not, you'll need to store the stage alongside the handle when creating them.
+            if (m_device.get_resources_database().get<RAL::ShaderDescription>(handle).stage == stage) {
+                return handle;
+            }
+        }
+        return RAL::ShaderHandle::INVALID();
     }
 }

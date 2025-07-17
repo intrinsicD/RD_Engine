@@ -14,18 +14,15 @@
 #include <stdexcept>
 #include <utility>
 #include <vector>
-#include <unordered_map>
-#include <memory>
 #include <GLFW/glfw3.h>
-
 
 namespace RDE {
     // A debug callback function for the validation layers
     static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
-        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-        VkDebugUtilsMessageTypeFlagsEXT messageType,
-        const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-        void *pUserData) {
+            VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+            VkDebugUtilsMessageTypeFlagsEXT messageType,
+            const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+            void *pUserData) {
         // Only print warnings and errors
         if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
             RDE_CORE_ERROR("Validation Layer: {}", pCallbackData->pMessage);
@@ -34,7 +31,7 @@ namespace RDE {
     }
 
     VulkanDevice::VulkanDevice(std::shared_ptr<VulkanContext> context, std::shared_ptr<VulkanSwapchain> swapchain)
-        : m_Context(std::move(context)), m_Swapchain(std::move(swapchain)) {
+            : m_Context(std::move(context)), m_Swapchain(std::move(swapchain)) {
         auto logicalDevice = m_Context->get_logical_device();
 
         // === 1. Create Command Pool ===
@@ -67,9 +64,9 @@ namespace RDE {
         // === 3. Create Global Descriptor Pool ===
         {
             std::vector<VkDescriptorPoolSize> poolSizes = {
-                {VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
-                {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},
-                {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000}
+                    {VK_DESCRIPTOR_TYPE_SAMPLER,                1000},
+                    {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},
+                    {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         1000}
             };
             VkDescriptorPoolCreateInfo poolInfo{};
             poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -206,10 +203,10 @@ namespace RDE {
 
 
     void *VulkanDevice::map_buffer(RAL::BufferHandle handle) {
-        if (!m_BufferManager.is_valid(handle)) {
+        if (!m_resources_db.is_valid(handle)) {
             return nullptr;
         }
-        VulkanBuffer &buffer = m_BufferManager.get(handle);
+        auto &buffer = m_resources_db.get<VulkanBuffer>(handle);
         VmaAllocator allocator = m_Context->get_vma_allocator();
         void *mappedData = nullptr;
         VkResult result = vmaMapMemory(allocator, buffer.allocation, &mappedData);
@@ -223,22 +220,22 @@ namespace RDE {
     }
 
     void VulkanDevice::unmap_buffer(RAL::BufferHandle handle) {
-        if (!m_BufferManager.is_valid(handle)) {
+        if (!m_resources_db.is_valid(handle)) {
             return;
         }
-        VulkanBuffer &buffer = m_BufferManager.get(handle);
+        auto &buffer = m_resources_db.get<VulkanBuffer>(handle);
         VmaAllocator allocator = m_Context->get_vma_allocator();
         vmaUnmapMemory(allocator, buffer.allocation);
     }
 
-    void VulkanDevice::update_buffer_data(RAL::BufferHandle target_handle, const void *data, size_t size, size_t offset){
-        if (!m_BufferManager.is_valid(target_handle)) {
-            RDE_CORE_ERROR("Attempted to update an invalid buffer handle: {}", target_handle.index);
+    void
+    VulkanDevice::update_buffer_data(RAL::BufferHandle target_handle, const void *data, size_t size, size_t offset) {
+        if (!m_resources_db.is_valid(target_handle)) {
+            RDE_CORE_ERROR("Attempted to update an invalid buffer handle: {}", entt::to_integral(target_handle.index));
             return;
         }
 
-        const auto& target_buffer_info = m_BufferManager.get(target_handle);
-
+        auto &target_buffer_info = m_resources_db.get<VulkanBuffer>(target_handle);
         // --- INTELLIGENT PATH SELECTION ---
         // Check how the buffer was created to decide on the update strategy.
 
@@ -249,13 +246,13 @@ namespace RDE {
             // This is for CPU-visible buffers. It's simple and direct.
             RDE_CORE_TRACE("Updating HostVisible buffer via map/memcpy.");
 
-            void* mapped_data = this->map_buffer(target_handle);
+            void *mapped_data = this->map_buffer(target_handle);
             if (mapped_data) {
                 // memcpy to the pointer at the correct offset
-                memcpy(static_cast<uint8_t*>(mapped_data) + offset, data, size);
+                memcpy(static_cast<uint8_t *>(mapped_data) + offset, data, size);
                 this->unmap_buffer(target_handle);
             } else {
-                RDE_CORE_ERROR("Failed to map buffer {} for update.", target_handle.index);
+                RDE_CORE_ERROR("Failed to map buffer {} for update.", entt::to_integral(target_handle.index));
             }
 
         } else { // Assumes RAL::MemoryUsage::DeviceLocal
@@ -278,9 +275,10 @@ namespace RDE {
             staging_alloc_ci.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
             staging_alloc_ci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
-            VK_CHECK(vmaCreateBuffer(vma_allocator, &staging_buffer_ci, &staging_alloc_ci, &staging_buffer.handle, &staging_buffer.allocation, nullptr));
+            VK_CHECK(vmaCreateBuffer(vma_allocator, &staging_buffer_ci, &staging_alloc_ci, &staging_buffer.handle,
+                                     &staging_buffer.allocation, nullptr));
 
-            void* mapped_data;
+            void *mapped_data;
             vmaMapMemory(vma_allocator, staging_buffer.allocation, &mapped_data);
             memcpy(mapped_data, data, size);
             vmaUnmapMemory(vma_allocator, staging_buffer.allocation);
@@ -300,18 +298,19 @@ namespace RDE {
         }
     }
 
-    void VulkanDevice::copy_buffer(RAL::BufferHandle source_handle, RAL::BufferHandle target_handle, size_t size, size_t source_offset, size_t target_offset) {
-        if (!m_BufferManager.is_valid(source_handle) || !m_BufferManager.is_valid(target_handle)) {
+    void VulkanDevice::copy_buffer(RAL::BufferHandle source_handle, RAL::BufferHandle target_handle, size_t size,
+                                   size_t source_offset, size_t target_offset) {
+        if (!m_resources_db.is_valid(source_handle) || !m_resources_db.is_valid(target_handle)) {
             RDE_CORE_ERROR("Attempted to copy with an invalid buffer handle.");
             return;
         }
 
-        const auto& source_buffer = m_BufferManager.get(source_handle);
-        const auto& destination_buffer = m_BufferManager.get(target_handle);
+        const auto &source_buffer = m_resources_db.get<VulkanBuffer>(source_handle);
+        const auto &destination_buffer = m_resources_db.get<VulkanBuffer>(target_handle);
 
         // If size is -1, copy the entire source buffer (respecting offsets).
         size_t copy_size = size;
-        if (copy_size == (size_t)-1) {
+        if (copy_size == (size_t) -1) {
             copy_size = source_buffer.size - source_offset;
         }
 
@@ -393,26 +392,30 @@ namespace RDE {
         createInfo.codeSize = bytecode.size();
         createInfo.pCode = reinterpret_cast<const uint32_t *>(bytecode.data());
 
-        VkShaderModule shaderModule;
+        VkShaderModule vk_shader_module;
         VkDevice logicalDevice = m_Context->get_logical_device();
-        VK_CHECK(vkCreateShaderModule(logicalDevice, &createInfo, nullptr, &shaderModule));
+        VK_CHECK(vkCreateShaderModule(logicalDevice, &createInfo, nullptr, &vk_shader_module));
 
-        VulkanShader newShader;
-        newShader.module = shaderModule;
-        return m_ShaderManager.create(std::move(newShader));
+        // 2. Create the handle/entity in the database
+        auto handle = RAL::ShaderHandle{m_resources_db.create()};
+
+        // 3. Emplace the components
+        m_resources_db.emplace<VulkanShader>(handle, vk_shader_module); // Your Vulkan-specific struct
+        m_resources_db.emplace<RAL::ShaderStage>(handle, stage); // The metadata!
+        return handle;
     }
 
     void VulkanDevice::destroy_shader(RAL::ShaderHandle handle) {
-        if (m_ShaderManager.is_valid(handle)) {
-            auto shader = m_ShaderManager.get(handle);
+        if (!m_resources_db.is_valid(handle)) return;
 
-            m_ShaderManager.destroy(handle);
+        const auto &vk_shader = m_resources_db.get<VulkanShader>(handle);
+        VkDevice logicalDevice = m_Context->get_logical_device();
 
-            VkDevice logicalDevice = m_Context->get_logical_device();
-            get_current_frame_deletion_queue().push([=]() {
-                vkDestroyShaderModule(logicalDevice, shader.module, nullptr);
-            });
-        }
+        get_current_frame_deletion_queue().push([=]() {
+            vkDestroyShaderModule(logicalDevice, vk_shader.module, nullptr);
+        });
+
+        m_resources_db.destroy(handle);
     }
 
     RAL::PipelineHandle VulkanDevice::create_pipeline(const RAL::PipelineDescription &desc) {
@@ -420,8 +423,8 @@ namespace RDE {
         auto logicalDevice = m_Context->get_logical_device();
 
         // --- 1. Shader Stages ---
-        VulkanShader &vs = m_ShaderManager.get(desc.vertexShader);
-        VulkanShader &fs = m_ShaderManager.get(desc.fragmentShader);
+        const auto &vs = m_resources_db.get<VulkanShader>(desc.vertexShader);
+        const auto &fs = m_resources_db.get<VulkanShader>(desc.fragmentShader);
 
         VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
         vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -445,10 +448,10 @@ namespace RDE {
         std::vector<VkVertexInputAttributeDescription> attributes;
         for (const auto &a: desc.vertexAttributes) {
             attributes.push_back({
-                .location = a.location, .binding = a.binding, .format = ToVulkanFormat(
-                    a.format),
-                .offset = a.offset
-            });
+                                         .location = a.location, .binding = a.binding, .format = ToVulkanFormat(
+                            a.format),
+                                         .offset = a.offset
+                                 });
         }
 
         VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
@@ -472,8 +475,8 @@ namespace RDE {
 
         // Dynamic states allow us to change viewport and scissor without rebuilding the pipeline
         std::vector<VkDynamicState> dynamicStates = {
-            VK_DYNAMIC_STATE_VIEWPORT,
-            VK_DYNAMIC_STATE_SCISSOR
+                VK_DYNAMIC_STATE_VIEWPORT,
+                VK_DYNAMIC_STATE_SCISSOR
         };
         VkPipelineDynamicStateCreateInfo dynamicState{};
         dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
@@ -485,12 +488,12 @@ namespace RDE {
         rasterizer.depthClampEnable = VK_FALSE;
         rasterizer.rasterizerDiscardEnable = VK_FALSE;
         rasterizer.polygonMode = ToVulkanPolygonMode(
-            desc.rasterizationState.polygonMode); // Map from desc.rasterizationState later
+                desc.rasterizationState.polygonMode); // Map from desc.rasterizationState later
         rasterizer.lineWidth = 1.0f;
         rasterizer.cullMode = ToVulkanCullMode(
-            desc.rasterizationState.cullMode); // Map from desc.rasterizationState later
+                desc.rasterizationState.cullMode); // Map from desc.rasterizationState later
         rasterizer.frontFace = ToVulkanFrontFace(
-            desc.rasterizationState.frontFace); // Map from desc.rasterizationState later
+                desc.rasterizationState.frontFace); // Map from desc.rasterizationState later
         rasterizer.depthBiasEnable = VK_FALSE;
 
         VkPipelineMultisampleStateCreateInfo multisampling{};
@@ -521,7 +524,8 @@ namespace RDE {
         // --- 4. Pipeline Layout ---
         std::vector<VkDescriptorSetLayout> vkSetLayouts;
         for (const auto &layoutHandle: desc.descriptorSetLayouts) {
-            vkSetLayouts.push_back(m_DsLayoutManager.get(layoutHandle).handle);
+            const auto &vk_layout = m_resources_db.get<VulkanDescriptorSetLayout>(layoutHandle);
+            vkSetLayouts.push_back(vk_layout.handle);
         }
         std::vector<VkPushConstantRange> vkPushRanges;
         for (const auto &pushRange: desc.pushConstantRanges) {
@@ -565,34 +569,37 @@ namespace RDE {
         pipelineInfo.subpass = 0;
 
         VK_CHECK(
-            vkCreateGraphicsPipelines(logicalDevice,
-                VK_NULL_HANDLE,
-                1,
-                &pipelineInfo,
-                nullptr,
-                &newPipeline.handle)
+                vkCreateGraphicsPipelines(logicalDevice,
+                                          VK_NULL_HANDLE,
+                                          1,
+                                          &pipelineInfo,
+                                          nullptr,
+                                          &newPipeline.handle)
         );
 
-        return m_PipelineManager.create(std::move(newPipeline));
+        auto handle = RAL::PipelineHandle{m_resources_db.create()};
+        m_resources_db.emplace<VulkanPipeline>(handle, newPipeline);
+        m_resources_db.emplace<RAL::PipelineDescription>(handle, desc); // Store the recipe!
+
+        return handle;
     }
 
     void VulkanDevice::destroy_pipeline(RAL::PipelineHandle handle) {
-        if (m_PipelineManager.is_valid(handle)) {
-            auto pipeline = m_PipelineManager.get(handle);
+        if (!m_resources_db.is_valid(handle)) return;
 
-            m_PipelineManager.destroy(handle);
+        const auto &vk_pipeline = m_resources_db.get<VulkanPipeline>(handle);
+        VkDevice logicalDevice = m_Context->get_logical_device();
 
-            VkDevice logicalDevice = m_Context->get_logical_device();
+        get_current_frame_deletion_queue().push([=]() {
+            vkDestroyPipeline(logicalDevice, vk_pipeline.handle, nullptr);
+            vkDestroyPipelineLayout(logicalDevice, vk_pipeline.layout, nullptr);
+        });
 
-            get_current_frame_deletion_queue().push([=]() {
-                vkDestroyPipeline(logicalDevice, pipeline.handle, nullptr);
-                vkDestroyPipelineLayout(logicalDevice, pipeline.layout, nullptr);
-            });
-        }
+        m_resources_db.destroy(handle);
     }
 
     RAL::DescriptorSetLayoutHandle VulkanDevice::create_descriptor_set_layout(
-        const RAL::DescriptorSetLayoutDescription &desc) {
+            const RAL::DescriptorSetLayoutDescription &desc) {
         std::vector<VkDescriptorSetLayoutBinding> bindings;
         bindings.reserve(desc.bindings.size());
 
@@ -615,52 +622,53 @@ namespace RDE {
         VkDevice logicalDevice = m_Context->get_logical_device();
         VK_CHECK(vkCreateDescriptorSetLayout(logicalDevice, &layoutInfo, nullptr, &layout.handle));
 
-        return m_DsLayoutManager.create(std::move(layout));
+        auto handle = RAL::DescriptorSetLayoutHandle{m_resources_db.create()};
+        m_resources_db.emplace<VulkanDescriptorSetLayout>(handle, layout);
+        m_resources_db.emplace<RAL::DescriptorSetLayoutDescription>(handle, desc); // Store the recipe!
+
+        return handle;
     }
 
     void VulkanDevice::destroy_descriptor_set_layout(RAL::DescriptorSetLayoutHandle handle) {
-        if (m_DsLayoutManager.is_valid(handle)) {
-            auto layout = m_DsLayoutManager.get(handle);
 
-            m_DsLayoutManager.destroy(handle);
+        if (!m_resources_db.is_valid(handle)) return;
 
-            VkDevice logicalDevice = m_Context->get_logical_device();
-            get_current_frame_deletion_queue().push([=]() {
-                vkDestroyDescriptorSetLayout(logicalDevice, layout.handle, nullptr);
-            });
-        }
-    }
-
-    // Note: Descriptor sets are often allocated from a pool for efficiency.
-    // This simple create function is a good starting point.
-    RAL::DescriptorSetHandle VulkanDevice::create_descriptor_set(const RAL::DescriptorSetDescription &desc) {
-        // Get the concrete Vulkan layout handle
+        const auto &vk_descriptor_set_layout = m_resources_db.get<VulkanDescriptorSetLayout>(handle);
         VkDevice logicalDevice = m_Context->get_logical_device();
 
-        auto layout = m_DsLayoutManager.get(desc.layout);
+        get_current_frame_deletion_queue().push([=]() {
+            vkDestroyDescriptorSetLayout(logicalDevice, vk_descriptor_set_layout.handle, nullptr);
+        });
+
+        m_resources_db.destroy(handle);
+    }
+
+    RAL::DescriptorSetHandle VulkanDevice::create_descriptor_set(const RAL::DescriptorSetDescription &desc) {
+        if (!m_resources_db.is_valid(desc.layout)) {
+            RDE_CORE_ERROR("Attempted to create descriptor set with an invalid layout handle!");
+            return RAL::DescriptorSetHandle::INVALID();
+        }
+        const auto &vk_layout = m_resources_db.get<VulkanDescriptorSetLayout>(desc.layout);
 
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocInfo.descriptorPool = m_DescriptorPool;
         allocInfo.descriptorSetCount = 1;
-        allocInfo.pSetLayouts = &layout.handle;
+        allocInfo.pSetLayouts = &vk_layout.handle;
 
+        VkDescriptorSet new_vk_set;
+        VkDevice logicalDevice = m_Context->get_logical_device();
+        VK_CHECK(vkAllocateDescriptorSets(logicalDevice, &allocInfo, &new_vk_set));
 
-        VkDescriptorSet newSet;
-
-        VK_CHECK(vkAllocateDescriptorSets(logicalDevice, &allocInfo, &newSet));
-
-        // --- Write the actual resource handles into the set ---
         std::vector<VkWriteDescriptorSet> descriptorWrites;
-
-        // These must live until vkUpdateDescriptorSets is called
+        // These must live until vkUpdateDescriptorSets is called, so they are declared outside the loop.
         std::vector<VkDescriptorBufferInfo> bufferInfos;
         std::vector<VkDescriptorImageInfo> imageInfos;
 
         for (const auto &ralWrite: desc.writes) {
             VkWriteDescriptorSet write{};
             write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            write.dstSet = newSet;
+            write.dstSet = new_vk_set;
             write.dstBinding = ralWrite.binding;
             write.dstArrayElement = 0;
             write.descriptorType = ToVulkanDescriptorType(ralWrite.type);
@@ -668,20 +676,22 @@ namespace RDE {
 
             switch (ralWrite.type) {
                 case RAL::DescriptorType::UniformBuffer: {
-                    // Get the concrete buffer and create the info struct
-                    VulkanBuffer &buffer = m_BufferManager.get(ralWrite.buffer);
-                    bufferInfos.push_back({buffer.handle, 0, VK_WHOLE_SIZE});
+                    // Get the concrete Vulkan buffer component from the database
+                    if (!m_resources_db.is_valid(ralWrite.buffer)) continue;
+                    const auto &vk_buffer = m_resources_db.get<VulkanBuffer>(ralWrite.buffer);
+                    bufferInfos.push_back({vk_buffer.handle, 0, VK_WHOLE_SIZE});
                     write.pBufferInfo = &bufferInfos.back();
                     break;
                 }
                 case RAL::DescriptorType::CombinedImageSampler: {
-                    // Get the concrete texture view and sampler
-                    VulkanTexture &texture = m_TextureManager.get(ralWrite.texture);
-                    VulkanSampler sampler = m_SamplerManager.get(ralWrite.sampler);
-                    imageInfos.push_back({
-                        sampler.handle, texture.image_view,
-                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-                    });
+                    // Get the concrete Vulkan texture and sampler components
+                    if (!m_resources_db.is_valid(ralWrite.texture) ||
+                        !m_resources_db.is_valid(ralWrite.sampler))
+                        continue;
+                    const auto &vk_texture = m_resources_db.get<VulkanTexture>(ralWrite.texture);
+                    const auto &vk_sampler = m_resources_db.get<VulkanSampler>(ralWrite.sampler);
+                    imageInfos.push_back(
+                            {vk_sampler.handle, vk_texture.image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL});
                     write.pImageInfo = &imageInfos.back();
                     break;
                 }
@@ -692,33 +702,44 @@ namespace RDE {
         vkUpdateDescriptorSets(logicalDevice, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(),
                                0, nullptr);
 
-        return m_DescriptorSetManager.create(std::move(newSet));
+        // --- 4. Create the handle and emplace the components into the database ---
+        auto handle = RAL::DescriptorSetHandle{m_resources_db.create()};
+        m_resources_db.emplace<VulkanDescriptorSet>(handle, new_vk_set);
+        m_resources_db.emplace<RAL::DescriptorSetDescription>(handle, desc); // Store the recipe
+
+        return handle;
     }
 
     void VulkanDevice::destroy_descriptor_set(RAL::DescriptorSetHandle handle) {
-        if (m_DescriptorSetManager.is_valid(handle)) {
-            auto set = m_DescriptorSetManager.get(handle);
-            // We FREE the set back to the pool, we don't destroy it.
-            m_DescriptorSetManager.destroy(handle); // Reclaim the handle slot
+        if (!m_resources_db.is_valid(handle)) return;
 
-            VkDevice logicalDevice = m_Context->get_logical_device();
-            VkDescriptorPool descriptorPool = m_DescriptorPool;
-            get_current_frame_deletion_queue().push([=]() {
-                vkFreeDescriptorSets(logicalDevice, descriptorPool, 1, &set);
-            });
-        }
+        // Get the Vulkan component so we have the native handle to free
+        const auto &vk_set_comp = m_resources_db.get<VulkanDescriptorSet>(handle);
+
+        VkDevice logicalDevice = m_Context->get_logical_device();
+        VkDescriptorPool descriptorPool = m_DescriptorPool; // The pool it came from
+
+        // Queue the "free" operation. This returns the set's memory to the pool.
+        get_current_frame_deletion_queue().push([=]() {
+            // Important: We capture vk_set_comp.handle, not the component itself,
+            // as the component will be destroyed by m_resources_db.destroy() before this lambda runs.
+            VkDescriptorSet set_to_free = vk_set_comp.handle;
+            vkFreeDescriptorSets(logicalDevice, descriptorPool, 1, &set_to_free);
+        });
+
+        // Destroy the entity in our database, freeing the RAL handle for reuse.
+        m_resources_db.destroy(handle);
     }
 
     RAL::SamplerHandle VulkanDevice::create_sampler(const RAL::SamplerDescription &desc) {
-        VkPhysicalDeviceProperties physicalDeviceProperties = m_Context->get_physical_device_properties();
-
         VkSamplerCreateInfo samplerInfo{};
         samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
         samplerInfo.magFilter = ToVulkanFilter(desc.magFilter);
         samplerInfo.minFilter = ToVulkanFilter(desc.minFilter);
         samplerInfo.addressModeU = ToVulkanAddressMode(desc.addressModeU);
         samplerInfo.addressModeV = ToVulkanAddressMode(desc.addressModeV);
-        samplerInfo.addressModeW = ToVulkanAddressMode(desc.addressModeW); {
+        samplerInfo.addressModeW = ToVulkanAddressMode(desc.addressModeW);
+        {
             const auto &properties = m_Context->get_physical_device_properties();
             VkPhysicalDeviceFeatures features;
             vkGetPhysicalDeviceFeatures(m_Context->get_physical_device(), &features);
@@ -745,19 +766,24 @@ namespace RDE {
         VkDevice logicalDevice = m_Context->get_logical_device();
         VK_CHECK(vkCreateSampler(logicalDevice, &samplerInfo, nullptr, &sampler.handle));
 
-        return m_SamplerManager.create(std::move(sampler));
+        auto handle = RAL::SamplerHandle{m_resources_db.create()};
+        m_resources_db.emplace<VulkanSampler>(handle, sampler);
+        m_resources_db.emplace<RAL::SamplerDescription>(handle, desc); // Store the recipe!
+
+        return handle;
     }
 
     void VulkanDevice::destroy_sampler(RAL::SamplerHandle handle) {
-        if (m_SamplerManager.is_valid(handle)) {
-            auto sampler = m_SamplerManager.get(handle);
-            m_SamplerManager.destroy(handle);
+        if (!m_resources_db.is_valid(handle)) return;
 
-            VkDevice logicalDevice = m_Context->get_logical_device();
-            get_current_frame_deletion_queue().push([=]() {
-                vkDestroySampler(logicalDevice, sampler.handle, nullptr);
-            });
-        }
+        const auto &vk_sampler = m_resources_db.get<VulkanSampler>(handle);
+        VkDevice logicalDevice = m_Context->get_logical_device();
+
+        get_current_frame_deletion_queue().push([=]() {
+            vkDestroySampler(logicalDevice, vk_sampler.handle, nullptr);
+        });
+
+        m_resources_db.destroy(handle);
     }
 
     RAL::BufferHandle VulkanDevice::create_buffer(const RAL::BufferDescription &desc) {
@@ -775,12 +801,12 @@ namespace RDE {
         VmaAllocator allocator = m_Context->get_vma_allocator();
         VulkanBuffer newBuffer;
         VK_CHECK(
-            vmaCreateBuffer(allocator,
-                &bufferInfo,
-                &allocInfo,
-                &newBuffer.handle,
-                &newBuffer.allocation,
-                nullptr)
+                vmaCreateBuffer(allocator,
+                                &bufferInfo,
+                                &allocInfo,
+                                &newBuffer.handle,
+                                &newBuffer.allocation,
+                                nullptr)
         );
 
         if (desc.initialData) {
@@ -803,12 +829,12 @@ namespace RDE {
                 stagingAllocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
                 VK_CHECK(
-                    vmaCreateBuffer(allocator,
-                        &stagingBufferInfo,
-                        &stagingAllocInfo,
-                        &stagingBuffer.handle,
-                        &stagingBuffer.allocation,
-                        nullptr)
+                        vmaCreateBuffer(allocator,
+                                        &stagingBufferInfo,
+                                        &stagingAllocInfo,
+                                        &stagingBuffer.handle,
+                                        &stagingBuffer.allocation,
+                                        nullptr)
                 );
 
                 void *mappedData;
@@ -822,19 +848,31 @@ namespace RDE {
             }
         }
 
-        return m_BufferManager.create(std::move(newBuffer));
+        auto handle = RAL::BufferHandle{this->m_resources_db.create()};
+
+        this->m_resources_db.emplace<RAL::BufferDescription>(handle, desc);
+        this->m_resources_db.emplace<VulkanBuffer>(handle, newBuffer);
+
+        return handle;
     }
 
     void VulkanDevice::destroy_buffer(RAL::BufferHandle handle) {
-        if (m_BufferManager.is_valid(handle)) {
-            auto buffer = m_BufferManager.get(handle);
-            m_BufferManager.destroy(handle);
-
-            VmaAllocator allocator = m_Context->get_vma_allocator();
-            get_current_frame_deletion_queue().push([=]() {
-                vmaDestroyBuffer(allocator, buffer.handle, buffer.allocation);
-            });
+        // 1. Check for validity using the database
+        if (!m_resources_db.is_valid(handle)) {
+            return;
         }
+
+        // 2. Get the Vulkan-specific component to destroy the GPU object
+        const auto &vk_buffer = m_resources_db.get<VulkanBuffer>(handle);
+        VmaAllocator allocator = m_Context->get_vma_allocator();
+
+        // 3. Queue the GPU destruction
+        get_current_frame_deletion_queue().push([=]() {
+            vmaDestroyBuffer(allocator, vk_buffer.handle, vk_buffer.allocation);
+        });
+
+        // 4. Destroy the entity in our database, freeing the handle for reuse
+        m_resources_db.destroy(handle);
     }
 
     RAL::TextureHandle VulkanDevice::create_texture(const RAL::TextureDescription &desc) {
@@ -866,7 +904,7 @@ namespace RDE {
 
         VmaAllocator allocator = m_Context->get_vma_allocator();
         VK_CHECK(vmaCreateImage(allocator, &imageInfo, &allocInfo, &newTexture.handle, &newTexture.allocation,
-            nullptr));
+                                nullptr));
 
         // 2. Handle Initial Data Upload (if provided)
         if (desc.initialData) {
@@ -882,7 +920,7 @@ namespace RDE {
             stagingAllocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
             VK_CHECK(vmaCreateBuffer(allocator, &stagingBufferInfo, &stagingAllocInfo, &stagingBuffer.handle,
-                &stagingBuffer.allocation, nullptr));
+                                     &stagingBuffer.allocation, nullptr));
 
             // Copy data from the application to the staging buffer
             void *mappedData;
@@ -966,23 +1004,26 @@ namespace RDE {
         VkDevice logicalDevice = m_Context->get_logical_device();
         VK_CHECK(vkCreateImageView(logicalDevice, &viewInfo, nullptr, &newTexture.image_view));
 
-        return m_TextureManager.create(std::move(newTexture));
+        auto handle = RAL::TextureHandle{m_resources_db.create()};
+        m_resources_db.emplace<VulkanTexture>(handle, newTexture);
+        m_resources_db.emplace<RAL::TextureDescription>(handle, desc); // Store the recipe!
+
+        return handle;
     }
 
     void VulkanDevice::destroy_texture(RAL::TextureHandle handle) {
-        if (m_TextureManager.is_valid(handle)) {
-            auto texture = m_TextureManager.get(handle);
+        if (!m_resources_db.is_valid(handle)) return;
 
-            m_TextureManager.destroy(handle);
+        const auto &vk_texture = m_resources_db.get<VulkanTexture>(handle);
+        VkDevice logicalDevice = m_Context->get_logical_device();
+        VmaAllocator allocator = m_Context->get_vma_allocator();
 
-            VkDevice logicalDevice = m_Context->get_logical_device();
-            VmaAllocator allocator = m_Context->get_vma_allocator();
+        get_current_frame_deletion_queue().push([=]() {
+            vkDestroyImageView(logicalDevice, vk_texture.image_view, nullptr);
+            vmaDestroyImage(allocator, vk_texture.handle, vk_texture.allocation);
+        });
 
-            get_current_frame_deletion_queue().push([=]() {
-                vkDestroyImageView(logicalDevice, texture.image_view, nullptr);
-                vmaDestroyImage(allocator, texture.handle, texture.allocation);
-            });
-        }
+        m_resources_db.destroy(handle);
     }
 
     void VulkanDevice::wait_idle() {
