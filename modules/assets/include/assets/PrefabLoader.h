@@ -5,30 +5,17 @@
 #include "assets/AssetDatabase.h"
 #include "assets/AssetManager.h"
 #include "core/Log.h"
-#include "core/Paths.h"
+#include "components/NameTagComponent.h"
+#include "components/TransformComponent.h"
+#include "components/MaterialComponent.h"
+#include "components/RenderableComponent.h"
+#include "components/HierarchyComponent.h"
+
 
 #include <yaml-cpp/yaml.h>
 
+
 namespace RDE {
-    struct PrefabComponentData {
-        std::string type; // e.g., "TransformComponent"
-        YAML::Node data;  // The YAML node containing the component's fields
-    };
-
-    // Represents one entity within the prefab definition.
-    struct PrefabEntityData {
-        uint32_t local_id = 0;
-        std::string name;
-        int parent_id = -1; // -1 indicates a root entity within the prefab
-        std::vector<PrefabComponentData> components;
-    };
-
-    // This is the primary component that gets stored in the AssetDatabase for a .prefab asset.
-    struct AssetPrefabData {
-        std::string name;
-        std::vector<PrefabEntityData> entities;
-    };
-
     class PrefabLoader final : public ILoader {
     public:
         PrefabLoader() = default;
@@ -70,37 +57,58 @@ namespace RDE {
             }
 
             // This is the C++ object we will populate.
-            AssetPrefabData prefab_data;
+            std::string prefab_name;
+            TransformLocal prefab_transform; // Default to identity transform
+            MaterialComponent prefab_material;
+            RenderableComponent prefab_geometry;
+            AssetHierarchy prefab_hierarchy;
 
             if (data["name"]) {
-                prefab_data.name = data["name"].as<std::string>();
+                prefab_name = data["name"].as<std::string>();
             } else {
                 // Use the filename as a fallback name
-                prefab_data.name = std::filesystem::path(uri).stem().string();
+                prefab_name = std::filesystem::path(uri).stem().string();
             }
+
+            struct LocalHierarchy {
+                uint32_t parent_id;
+                std::vector<uint32_t> children;
+            }local_hierarchy;
 
             // --- THE CORE PARSING LOGIC ---
             if (data["entities"] && data["entities"].IsSequence()) {
                 for (const auto &entity_node: data["entities"]) {
-                    PrefabEntityData entity_data;
+                    auto entity_id = db.get_registry().create();
 
                     // Parse the entity's direct properties
-                    entity_data.local_id = entity_node["id"].as<uint32_t>();
-                    entity_data.name = entity_node["name"].as<std::string>("Entity"); // Default to "Entity" if no name
-                    entity_data.parent_id = entity_node["parent"].as<int>(-1); // Default to -1 if no parent
+                    auto local_id = entity_node["id"].as<uint32_t>();
+                    auto name = entity_node["name"].as<std::string>("Entity"); // Default to "Entity" if no name
 
                     // Parse the components for this entity
                     if (entity_node["components"] && entity_node["components"].IsSequence()) {
                         for (const auto &comp_node: entity_node["components"]) {
-                            PrefabComponentData component_data;
-                            component_data.type = comp_node["type"].as<std::string>();
-                            component_data.data = comp_node; // Store the whole component node for later
-                            //TODO go a different route here, maybe use a map of component types to data?#
-                            //defenitly construct the asset as a prototype, which can then be referenced or partially copied (overwritten) to the scene.
-                            entity_data.components.push_back(std::move(component_data));
+                            auto type = comp_node["type"].as<std::string>();
+                            if (type == "TransformComponent") {
+                                prefab_transform.translation = comp_node["translation"].as<glm::vec3>();
+                            }
+                            if (type == "RenderableComponent") {
+                                auto material_uri = comp_node["material"].as<std::string>();
+                                prefab_material.material_asset_id = manager.get_loaded_asset(material_uri);
+                                auto geometry_uri = comp_node["geometry"].as<std::string>();
+                                prefab_geometry.geometry_id = manager.get_loaded_asset(geometry_uri);
+                            }
+                            if (type == "HierarchyComponent") {
+                                // Parse hierarchy information and resolve it after all entities are loaded as assets
+                                auto local_parent_id = comp_node["parent"].as<uint32_t>(0); // Default to 0 (no parent)
+                                local_hierarchy.parent_id = local_parent_id;
+                                if (comp_node["children"] && comp_node["children"].IsSequence()) {
+                                    for (const auto &child_id: comp_node["children"]) {
+                                        local_hierarchy.children.push_back(child_id.as<uint32_t>());
+                                    }
+                                }
+                            }
                         }
                     }
-                    prefab_data.entities.push_back(std::move(entity_data));
                 }
             }
 
@@ -113,7 +121,7 @@ namespace RDE {
             // Emplace metadata
             db.get_registry().emplace<AssetFilepath>(entity_id, uri);
             // We can also emplace the name for easy lookup if needed
-            db.get_registry().emplace<AssetName>(entity_id, data["name"].as<std::string>());
+            db.get_registry().emplace<AssetName>(entity_id, prefab_name);
 
             RDE_CORE_TRACE("PrefabLoader: Successfully loaded and parsed prefab '{}'", uri);
             return std::make_shared<AssetID_Data>(entity_id, uri);

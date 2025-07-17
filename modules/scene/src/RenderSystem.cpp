@@ -1,6 +1,6 @@
 #include "systems/RenderSystem.h"
 #include "scene/SystemDependencyBuilder.h"
-#include "components/TagComponent.h"
+#include "components/DirtyTagComponent.h"
 #include "components/TransformComponent.h"
 #include "components/CameraComponent.h"
 #include "commands/UpdateBufferCommand.h"

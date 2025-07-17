@@ -8,9 +8,12 @@ entities:
     name: "VenusMesh"
     components:
       - type: "TransformComponent"
-        position: [ 0.0, 0.0, 0.0 ]
+        translation: [ 0.0, 0.0, 0.0 ]
         rotation: [ 0.0, 0.0, 0.0 ]
         scale: [ 1.0, 1.0, 1.0 ]
       - type: "RenderableComponent"
-        mesh: "assets/meshes/venus.obj" # Dependency
+        geometry: "assets/meshes/venus.obj" # Dependency
         material: "assets/materials/default.mat" # Dependency
+      - type: "HierarchyComponent"
+        parent: -1 # No parent, this is a root entity
+        children: [] # No children

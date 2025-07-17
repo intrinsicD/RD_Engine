@@ -17,6 +17,16 @@ namespace RDE {
         std::string name;
     };
 
+    struct AssetOwner {
+        AssetID owner_id; // The ID of the owner asset
+    };
+
+    struct AssetThumbnail {
+        RAL::TextureHandle thumbnail;
+    };
+
+
+
     struct AssetCpuGeometry {
         PropertyContainer vertices;
         PropertyContainer halfedges; // Optional, used for halfedge-meshes and graphs
@@ -94,12 +104,12 @@ namespace RDE {
         std::vector<VertexAttributeDesc> vertex_layout;
     };
 
-    struct AssetMetadata {
-        AssetID default_material;
+    struct AssetPrefab {
+        std::vector<AssetID> template_entities; // Asset IDs of child assets
     };
 
-    struct AssetPrefab {
-        std::string name;
-        std::vector<AssetID> child_assets; // Asset IDs of child assets
+    struct AssetHierarchy {
+        AssetID parent; // Entity ID of this node
+        std::vector<AssetID> children;
     };
 }
