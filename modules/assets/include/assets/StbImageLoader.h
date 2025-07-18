@@ -43,12 +43,12 @@ namespace RDE {
             }
 
             // Create the CPU-side resource component.
-            AssetCpuTexture cpu_texture;
-            cpu_texture.width = width;
-            cpu_texture.height = height;
-            cpu_texture.channels = channels;
+            AssetGpuTexture texture;
+            texture.width = width;
+            texture.height = height;
+            texture.channels = channels;
             size_t image_size = width * height * channels;
-            cpu_texture.data.assign(data, data + image_size);
+            texture.data.assign(data, data + image_size);
 
             // Free the temporary buffer allocated by stb_image.
             stbi_image_free(data);
@@ -57,7 +57,7 @@ namespace RDE {
             auto& registry = db.get_registry();
             auto entity_id = registry.create();
             
-            registry.emplace<AssetCpuTexture>(entity_id, std::move(cpu_texture));
+            registry.emplace<AssetGpuTexture>(entity_id, std::move(texture));
             registry.emplace<AssetFilepath>(entity_id, uri);
             registry.emplace<AssetName>(entity_id, std::filesystem::path(uri).filename().string());
 

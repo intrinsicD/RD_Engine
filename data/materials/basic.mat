@@ -1,9 +1,15 @@
 # A basic opaque PBR material for standard meshes.
+version: 1.0
 name: Basic Opaque Material
 
 # Path to the shader file relative to the assets directory.
 # The loader will resolve this to find the GLSL source.
-shader: shaders/basic_lit.glsl
+dependencies:
+  shaders:
+    - "shaders/basic_lit.shaderdef" # Index 0
+  textures:
+    - "textures/Checkerboard.png" # Index 0
+    - "textures/default_normal.png" # Index 1
 
 # --- GPU Pipeline State ---
 # Defines how the mesh is rendered.
@@ -23,6 +29,6 @@ parameters:
 # --- Texture Maps ---
 # Maps a sampler name in the shader to a texture asset file.
 textures:
-  albedoMap: "textures/Checkerboard.png"
-  normalMap: "textures/default_normal.png" # Example for later
-  #roughnessMap: "textures/my_roughness_map.png" # Example for later
+  albedoMap: 0
+  normalMap: 1 # Example for later
+  #roughnessMap: 2 # Example for later

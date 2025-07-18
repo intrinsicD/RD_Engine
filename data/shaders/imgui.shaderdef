@@ -1,0 +1,18 @@
+# --- Shader Program Definition ---
+version: 1.0
+name: imgui
+
+dependencies:
+  sources:
+    - "sources/imgui.vert" # Index 0
+    - "sources/imgui.frag" # Index 1
+
+  spirv:
+    - "spirv/imgui.vert.spv" # Index 0
+    - "spirv/imgui.frag.spv" # Index 1
+
+# The shader program is a collection of shaders that work together.
+# This defines the vertex and fragment shaders used for rendering ImGui.
+program:
+  vertex: 0 # Use the vertex shader at index 0
+  fragment: 1 # Use the fragment shader at index 1

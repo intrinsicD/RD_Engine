@@ -5,8 +5,8 @@
 #include "assets/AssetComponentTypes.h"
 #include "core/Paths.h"
 #include "core/Log.h"
+#include "core/YamlHelper.h"
 
-#include <yaml-cpp/yaml.h>
 #include <filesystem>
 
 namespace RDE {
@@ -122,33 +122,6 @@ namespace RDE {
         // --- 3. Unchanged ---
         std::vector<std::string> get_supported_extensions() const override {
             return {".mat"};
-        }
-    };
-}
-
-// NOTE: You will likely need to implement a `YAML::convert` specialization for glm::vec4
-// so that `node.as<glm::vec4>()` works automatically.
-namespace YAML {
-    template<>
-    struct convert<glm::vec4> {
-        static Node encode(const glm::vec4 &rhs) {
-            Node node;
-            node.push_back(rhs.x);
-            node.push_back(rhs.y);
-            node.push_back(rhs.z);
-            node.push_back(rhs.w);
-            return node;
-        }
-
-        static bool decode(const Node &node, glm::vec4 &rhs) {
-            if (!node.IsSequence() || node.size() != 4) {
-                return false;
-            }
-            rhs.x = node[0].as<float>();
-            rhs.y = node[1].as<float>();
-            rhs.z = node[2].as<float>();
-            rhs.w = node[3].as<float>();
-            return true;
         }
     };
 }

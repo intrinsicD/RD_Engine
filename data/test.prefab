@@ -1,19 +1,25 @@
+#data/test.prefab
 # A unique name for the prefab asset itself.
+version: 1.0
 name: "VenusPrefab"
 
-# A list of entities that make up this prefab.
-# Each entity has a local ID (for parenting) and a name.
-entities:
-  - id: 0 # Local ID within this prefab
-    name: "VenusMesh"
-    components:
-      - type: "TransformComponent"
-        translation: [ 0.0, 0.0, 0.0 ]
-        rotation: [ 0.0, 0.0, 0.0 ]
-        scale: [ 1.0, 1.0, 1.0 ]
-      - type: "RenderableComponent"
-        geometry: "assets/meshes/venus.obj" # Dependency
-        material: "assets/materials/default.mat" # Dependency
-      - type: "HierarchyComponent"
-        parent: -1 # No parent, this is a root entity
-        children: [] # No children
+dependencies:
+  materials:
+    - "assets/materials/default.mat" # Index 0
+
+  meshes:
+    - "assets/meshes/venus.obj" # Index 0
+
+nodes:
+  - name: "Venus"
+    transform:
+      translation: [ 0, 0, 0 ]
+      orientation: [ 0, 0, 0, 1 ] # Identity quaternion
+      scale: [ 1, 1, 1 ]
+    mesh: 0       # Use mesh at index 0
+    material: 0   # Use material at index 0
+    hierarchy:
+      parent: -1 # No parent, this is the root node
+      children: [] # No children for now
+scene:
+  root: 0 # The root is the node at index 0 ("Venus")

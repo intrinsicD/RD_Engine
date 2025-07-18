@@ -1,3 +1,4 @@
+#data/materials/default.mat
 # ===================================================================
 # RDE Default Material
 #
@@ -7,12 +8,20 @@
 #
 # You can copy this file to create new materials.
 # ===================================================================
-
+# --- Shader Program Definition ---
+version: 1.0
 name: Default
 
-# The shader that implements the rendering logic for this material.
-# 'basic_lit.glsl' is assumed to be a PBR-compliant shader.
-shader: shaders/basic_lit.glsl
+dependencies:
+  # The shader definition file that contains the shader program.
+  shaders:
+    - "shaders/basic_lit.shaderdef"
+
+  # Textures used by this material.
+  textures:
+    - "textures/default_white.png"       # Albedo map (1x1 white texture)
+    - "textures/default_normal.png"      # Normal map (1x1 flat normal texture)
+    - "textures/default_metal_rough.png" # Metal/Roughness/AO map (1x1 default values)
 
 # -------------------------------------------------------------------
 # Pipeline State
@@ -67,12 +76,12 @@ textures:
   # The albedoMap multiplies with the baseColor parameter.
   # A 1x1 white texture means "don't change the baseColor".
   # This is a critical default for PBR.
-  albedoMap: "textures/default_white.png"
+  albedoMap: 0
 
   # The normalMap provides fine surface detail.
   # A 1x1 flat normal texture (RGB 128,128,255) means "the surface is perfectly flat".
-  normalMap: "textures/default_normal.png"
+  normalMap: 1
 
   # Metal/Roughness/AO map. Often packed into one texture (R=Metal, G=Roughness, B=AO).
   # A 1x1 texture with our default values is a good fallback.
-  metalRoughnessMap: "textures/default_metal_rough.png"
+  metalRoughnessMap: 2

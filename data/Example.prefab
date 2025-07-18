@@ -1,0 +1,58 @@
+version: 1.0
+name: "DiningSet"
+
+# --- Resource Pools ---
+# Lists of all unique assets used by this prefab.
+# The index in this array is the ID used below.
+dependencies:
+  materials:
+    - "assets/materials/dark_wood.mat"      # Index 0
+    - "assets/materials/fabric_cushion.mat" # Index 1
+
+  meshes:
+    - "assets/meshes/table_legs.obj"        # Index 0
+    - "assets/meshes/table_top.obj"         # Index 1
+    - "assets/meshes/chair_frame.obj"       # Index 2
+    - "assets/meshes/chair_cushion.obj"     # Index 3
+
+# --- Node/Entity Definitions ---
+# The core of the hierarchy.
+nodes:
+  - name: "Table"
+    transform:
+      translation: [0, 0, 0]
+    # This node is just a container, it doesn't render.
+    children: [1, 2, 3] # Indices of child nodes in this array
+
+  - name: "TableLegs"
+    # No transform, inherits from parent (Table)
+    mesh: 0       # Use mesh at index 0
+    material: 0   # Use material at index 0
+
+  - name: "TableTop"
+    transform:
+      translation: [0, 0.75, 0]
+    mesh: 1       # Use mesh at index 1
+    material: 0   # Use material at index 0 (reused)
+
+  - name: "Chair_1"
+    transform:
+      translation: [0, 0, -1.0]
+    children: [4, 5]
+
+  - name: "Chair_1_Frame"
+    mesh: 2       # Use mesh at index 2
+    material: 0   # Use material at index 0 (reused)
+
+  - name: "Chair_1_Cushion"
+    mesh: 3       # Use mesh at index 3
+    material: 1   # Use material at index 1
+
+  # You would define another chair, Chair_2, which would reuse
+  # mesh indices 2 and 3, and material indices 0 and 1.
+  # No need to repeat the file paths.
+
+# --- Scene Definition ---
+# Defines the root nodes of the prefab scene.
+scene:
+  root: 0 # The root is the node at index 0 ("Table")

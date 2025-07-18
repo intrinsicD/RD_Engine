@@ -32,46 +32,27 @@ namespace RDE {
                 return nullptr;
             }
 
-            AssetCpuShaderDefinition def;
+            if(data["version"] && !check_version(data["version"].as<int>())) {
+                RDE_CORE_ERROR("ShaderDefLoader: Unsupported shader definition version in '{}'. Expected 1, got {}",
+                               uri, data["version"].as<int>());
+                return nullptr;
+            }
 
-            def.name = data["name"].as<std::string>();
+            //read dependencies
+            //check if the compiled shader stages exist
+            //if not compile them and create them
+            //if yes, just load them and create the pipeline
 
-            // Parse the SPIR-V file paths
-            if (data["runtime"]) {
-                for(const auto& node : data["runtime"]) {
-                    auto stage_str = node.first.as<std::string>();
-                    // You'll need a helper to convert "vertex" -> RAL::ShaderStage::Vertex, etc.
-                    def.base_spirv_paths[string_to_shader_stage(stage_str)] = node.second.as<std::string>();
+            if(data["dependencies"]) {
+                const auto &dependencies = data["dependencies"];
+                if(dependencies["sources"]) {
+
                 }
+
             }
 
-            // Parse features
-            if (data["features"]) {
-                for (const auto& node : data["features"]) {
-                    def.features.push_back(node.as<std::string>());
-                }
-            }
 
-            // Parse fixed pipeline state
-            if (data["state"]) {
-                const auto& state_node = data["state"];
-                def.depth_test = state_node["depth_test"].as<bool>(true);
-                def.depth_write = state_node["depth_write"].as<bool>(true);
-                // ... etc. ...
-            }
 
-            // Parse vertex layout
-            if (data["vertex_layout"]) {
-                for (const auto& node : data["vertex_layout"]) {
-                    VertexAttributeDesc attr;
-                    attr.semantic_name = node["semantic"].as<std::string>();
-                    // Helper to convert "RGB32F" -> RAL::Format::RGB32_SFLOAT
-                    attr.format = string_to_ral_format(node["format"].as<std::string>());
-                    def.vertex_layout.push_back(attr);
-                }
-            }
-
-            // Populate the database
             auto& registry = db.get_registry();
             auto entity_id = registry.create();
             registry.emplace<AssetCpuShaderDefinition>(entity_id, std::move(def));

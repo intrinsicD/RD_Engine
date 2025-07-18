@@ -1,0 +1,18 @@
+#data/shaders/basic_lit.shaderdef
+# --- Shader Program Definition ---
+version: 1.0
+name: basic_lit
+
+dependencies:
+  sources:
+    - "sources/basic_lit.glsl" # Index 0
+
+  spirv:
+    - "spirv/basic_lit.vert.spv" # Index 0
+    - "spirv/basic_lit.frag.spv" # Index 1
+
+# The shader program is a collection of shaders that work together.
+# This defines the vertex and fragment shaders used for rendering ImGui.
+program:
+  vertex: 0 # Use the vertex shader at index 0
+  fragment: 1 # Use the fragment shader at index 1
