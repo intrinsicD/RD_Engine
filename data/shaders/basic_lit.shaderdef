@@ -1,18 +1,67 @@
-#data/shaders/basic_lit.shaderdef
-# --- Shader Program Definition ---
 version: 1.0
-name: basic_lit
+name: "PBR_Lit_Opaque" # A more descriptive name
 
+# Dependencies remain the same, this is perfect.
 dependencies:
   sources:
-    - "sources/basic_lit.glsl" # Index 0
-
+    - "sources/basic_lit.glsl"
   spirv:
-    - "spirv/basic_lit.vert.spv" # Index 0
-    - "spirv/basic_lit.frag.spv" # Index 1
+    - "spirv/basic_lit.vert.spv" # These should be the PERMUTATION 0 versions
+    - "spirv/basic_lit.frag.spv" # e.g., basic_lit.vert.0.spv
 
-# The shader program is a collection of shaders that work together.
-# This defines the vertex and fragment shaders used for rendering ImGui.
-program:
-  vertex: 0 # Use the vertex shader at index 0
-  fragment: 1 # Use the fragment shader at index 1
+# Features define the #ifdefs for shader permutations.
+# Let's add one for normal mapping to show how it works.
+features:
+  - HAS_NORMAL_MAP
+  - HAS_METALROUGHNESS_MAP
+  - HAS_ALBEDO_MAP
+
+# --- GPU PIPELINE INTERFACE ---
+# This is the contract between the CPU and the GPU program.
+
+interface:
+  # 1. Vertex Attributes (layout location = X)
+  # This MUST match the 'in' variables in your vertex shader.
+  vertex_attributes:
+    - { location: 0, format: "R32G32B32_SFLOAT", semantic: "POSITION" }
+    - { location: 1, format: "R32G32B32_SFLOAT", semantic: "NORMAL" }
+    - { location: 2, format: "R32G32_SFLOAT",    semantic: "TEXCOORD_0" }
+    # A smart system could add TANGENT here only if HAS_NORMAL_MAP is enabled.
+
+  # 2. Descriptor Sets (layout set = X)
+  # This describes the UBOs and textures your shader uses.
+  sets:
+    # Set 0: Per-Frame data, managed by the renderer's main loop.
+    - set: 0
+      bindings:
+        - { binding: 0, type: "UniformBuffer", name: "CameraData", stage: "Vertex,Fragment" }
+
+    # Set 1: Per-Material data, managed by the Material system.
+    - set: 1
+      bindings:
+        - { binding: 0, type: "UniformBuffer", name: "MaterialData", stage: "Fragment" }
+        - { binding: 1, type: "CombinedImageSampler", name: "albedoMap", stage: "Fragment" }
+        - { binding: 2, type: "CombinedImageSampler", name: "normalMap", stage: "Fragment" }
+        - { binding: 3, type: "CombinedImageSampler", name: "metalRoughnessMap", stage: "Fragment" }
+  
+  # 3. Push Constants
+  # This describes the small, fast data block.
+  push_constants:
+    - { size: 64, stage: "Vertex", name: "ObjectData" } # 64 bytes for a mat4
+
+# --- FIXED PIPELINE STATE ---
+# This describes the non-programmable GPU state.
+# This data does NOT go into a uniform buffer. It configures the hardware directly.
+state:
+  rasterization:
+    cullMode: "Back"
+    polygonMode: "Fill"
+    frontFace: "CounterClockwise"
+  depth_stencil:
+    depthTest: true
+    depthWrite: true
+    depthCompareOp: "LessOrEqual"
+  blending:
+    # A typical opaque material has blending disabled for the color attachment.
+    - enabled: false
+      # You could define blend states for multiple attachments here if needed.
