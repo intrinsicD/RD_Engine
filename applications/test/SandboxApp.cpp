@@ -14,11 +14,7 @@
 #include "systems/BoundingVolumeSystem.h"
 #include "systems/RenderPacketSystem.h"
 
-#include "assets/MeshLoader.h"
-#include "assets/MaterialLoader.h"
 #include "assets/StbImageLoader.h"
-#include "assets/ShaderDefLoader.h"
-#include "assets/PrefabLoader.h"
 #include "assets/GenerateDefaultTextures.h"
 
 #include <entt/entity/registry.hpp>
@@ -67,11 +63,7 @@ namespace RDE {
 
             m_file_watcher->start(path->string(), m_file_watcher_event_queue.get());
             //TODO: register loaders for different asset types
-            m_asset_manager->register_loader(std::make_shared<MeshLoader>());
             m_asset_manager->register_loader(std::make_shared<StbImageLoader>());
-            m_asset_manager->register_loader(std::make_shared<MaterialLoader>());
-            m_asset_manager->register_loader(std::make_shared<ShaderDefLoader>());
-            m_asset_manager->register_loader(std::make_shared<PrefabLoader>());
         }
         {
             m_system_scheduler->register_system<HierarchySystem>(*m_registry);

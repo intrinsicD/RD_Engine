@@ -35,8 +35,6 @@ namespace RDE {
             return *m_dispatcher;
         }
 
-        bool instantiate(entt::entity entity_id, AssetID asset_id);
-
     private:
         std::unique_ptr<entt::registry> m_registry; // Entity registry for managing entities and components
         std::unique_ptr<entt::dispatcher> m_dispatcher; // Event dispatcher for handling events
