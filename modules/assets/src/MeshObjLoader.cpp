@@ -1,15 +1,36 @@
 #include "assets/MeshObjLoader.h"
 #include "assets/AssetComponentTypes.h"
-#include "tiny_obj_loader.h"
 #include "core/Log.h"
 
+#define TINYOBJLOADER_IMPLEMENTATION
+#include <tiny_obj_loader.h>
 #include <glm/glm.hpp>
 #include <filesystem>
+#include <memory>
+#include <unordered_map>
+
+namespace tinyobj {
+    struct index_t_hash {
+        std::size_t operator()(const index_t &i) const {
+            std::size_t h1 = std::hash<int>()(i.vertex_index);
+            std::size_t h2 = std::hash<int>()(i.normal_index);
+            std::size_t h3 = std::hash<int>()(i.texcoord_index);
+            // A common way to combine hashes
+            return h1 ^ (h2 << 1) ^ (h3 << 2);
+        }
+    };
+
+    bool operator==(const index_t &a, const index_t &b) {
+        return a.vertex_index == b.vertex_index &&
+               a.normal_index == b.normal_index &&
+               a.texcoord_index == b.texcoord_index;
+    }
+}
 
 namespace RDE {
     std::vector<std::string> MeshObjLoader::get_dependencies(const std::string &uri) const {
-        // OBJ files typically reference materials in MTL files.
-        // This is a simplified example; you might want to parse the file to find actual dependencies.
+        // Find the MTL file associated with the OBJ file.
+
         return {uri + ".mtl"};
     }
 
@@ -17,65 +38,121 @@ namespace RDE {
     AssetID MeshObjLoader::load_asset(const std::string &uri, AssetDatabase &db, AssetManager &manager) const {
         tinyobj::ObjReader reader;
         tinyobj::ObjReaderConfig reader_config;
-
-        // Set the base path for relative paths in the OBJ file
         reader_config.mtl_search_path = std::filesystem::path(uri).parent_path().string();
+        reader_config.triangulate = true; // IMPORTANT: Ensure we always get triangles.
 
         if (!reader.ParseFromFile(uri, reader_config)) {
             if (!reader.Error().empty()) {
                 RDE_CORE_ERROR("Failed to load OBJ file '{}': {}", uri, reader.Error());
             }
-            return nullptr; // Return an invalid AssetID on failure
+            return nullptr;
         }
 
         const auto &attrib = reader.GetAttrib();
         const auto &shapes = reader.GetShapes();
         const auto &materials = reader.GetMaterials();
 
-        // Create a new entity in the AssetDatabase
-        auto &registry = db.get_registry();
-        auto entity_id = registry.create();
-
-        // Populate the geometry data into the AssetCpuGeometry component
+        // -- This is the object we will populate and eventually emplace into the asset entity --
         AssetCpuGeometry geometry;
-        if (!attrib.vertices.empty()) {
-            auto positions = geometry.vertices.get_or_add<glm::vec3>("positions");
-            geometry.vertices.resize(attrib.vertices.size() / 3);
-            // Add vertices
-            for (size_t i = 0; i < attrib.vertices.size(); i += 3) {
-                positions[i] = glm::vec3(attrib.vertices[i], attrib.vertices[i + 1], attrib.vertices[i + 2]);
-            }
-        }
+        // Get typed handles to the property arrays we will populate.
+        auto positions = geometry.vertices.add<glm::vec3>("v:point");
+        auto normals = geometry.vertices.add<glm::vec3>("v:normal");
+        auto texCoords = geometry.vertices.add<glm::vec2>("v:texcoord");
 
+        // This will temporarily hold ALL indices from all shapes before we form faces.
+        std::vector<uint32_t> masterIndexBuffer;
 
-        if (!attrib.texcoords.empty()) {
-            auto texcoords = geometry.edges.get_or_add<glm::vec2>("texcoords");
-            geometry.edges.resize(attrib.texcoords.size() / 2);
-            // Add texture coordinates
-            for (size_t i = 0; i < attrib.texcoords.size(); i += 2) {
-                texcoords[i] = glm::vec2(attrib.texcoords[i], attrib.texcoords[i + 1]);
-            }
-        }
+        std::unordered_map<tinyobj::index_t, uint32_t, tinyobj::index_t_hash> uniqueVertices{};
 
-
-        // Add faces and materials
         for (const auto &shape: shapes) {
-            for (const auto &index: shape.mesh.indices) {
-                geometry.faces.add<uint32_t>(index.vertex_index);
-                if (index.normal_index >= 0) {
-                    geometry.tets.add<uint32_t>(index.normal_index);
-                }
-                if (index.texcoord_index >= 0) {
-                    geometry.tets.add<uint32_t>(index.texcoord_index);
-                }
-            }
-            // Optionally handle materials here
-            if (shape.mesh.material_ids.size() > 0) {
+            AssetGeometrySubView subGeom{};
+            subGeom.index_offset = static_cast<uint32_t>(masterIndexBuffer.size());
+
+            if (!shape.mesh.material_ids.empty() && shape.mesh.material_ids[0] >= 0) {
+                subGeom.material_name = materials[shape.mesh.material_ids[0]].name;
+            } else {
+                subGeom.material_name = "DefaultMaterial";
             }
 
-            std::vector<std::string> MeshObjLoader::get_supported_extensions() const {
-                return {".obj"};
+            // Iterate over the faces of the shape, creating the unified index buffer
+            for (const auto &index: shape.mesh.indices) {
+                if (uniqueVertices.count(index) == 0) {
+                    // This unique vertex doesn't exist yet, so we add its data
+                    uniqueVertices[index] = static_cast<uint32_t>(positions.vector().size());
+
+                    positions.vector().emplace_back(
+                        attrib.vertices[3 * index.vertex_index + 0],
+                        attrib.vertices[3 * index.vertex_index + 1],
+                        attrib.vertices[3 * index.vertex_index + 2]
+                    );
+
+                    if (index.normal_index >= 0) {
+                        normals.vector().emplace_back(
+                            attrib.normals[3 * index.normal_index + 0],
+                            attrib.normals[3 * index.normal_index + 1],
+                            attrib.normals[3 * index.normal_index + 2]
+                        );
+                    }
+
+                    if (index.texcoord_index >= 0) {
+                        texCoords.vector().emplace_back(
+                            attrib.texcoords[2 * index.texcoord_index + 0],
+                            1.0f - attrib.texcoords[2 * index.texcoord_index + 1] // Flip V coordinate for Vulkan/OpenGL
+                        );
+                    }
+                }
+                // Add the unified index to our temporary master list
+                masterIndexBuffer.push_back(uniqueVertices[index]);
+            }
+
+            subGeom.index_count = static_cast<uint32_t>(masterIndexBuffer.size()) - subGeom.index_offset;
+            if (subGeom.index_count > 0) {
+                geometry.subviews.push_back(subGeom);
             }
         }
+
+        // -- Post-Process and Finalize --
+
+        // Pad missing attributes to ensure all vertex property arrays have the same size.
+        size_t vertexCount = positions.vector().size();
+        if (normals.vector().size() < vertexCount) {
+            normals.vector().resize(vertexCount, glm::vec3(0.0f, 1.0f, 0.0f));
+        }
+        if (texCoords.vector().size() < vertexCount) {
+            texCoords.vector().resize(vertexCount, glm::vec2(0.0f));
+        }
+
+        // Now, correctly convert the master index buffer into faces (triangles)
+        if (!masterIndexBuffer.empty()) {
+            auto faces = geometry.faces.add<glm::ivec3>("f:indices");
+            faces.vector().reserve(masterIndexBuffer.size() / 3);
+            for (size_t i = 0; i < masterIndexBuffer.size(); i += 3) {
+                faces.vector().emplace_back(
+                    masterIndexBuffer[i + 0],
+                    masterIndexBuffer[i + 1],
+                    masterIndexBuffer[i + 2]
+                );
+            }
+        }
+
+        if (geometry.getVertexCount() == 0 || geometry.faces.empty()) {
+            RDE_CORE_WARN("Loaded empty or invalid mesh from '{}'", uri);
+            return nullptr;
+        }
+
+        // -- Create the asset entity and emplace its data --
+        auto &asset_registry = db.get_registry();
+        entt::entity entity_id = asset_registry.create();
+
+        asset_registry.emplace<AssetFilepath>(entity_id, uri);
+        asset_registry.emplace<AssetName>(entity_id, std::filesystem::path(uri).filename().string());
+        asset_registry.emplace<AssetCpuGeometry>(entity_id, std::move(geometry));
+
+        RDE_CORE_INFO("MeshObjLoader: Successfully populated asset for '{}'", uri);
+        return std::make_shared<AssetID_Data>(entity_id, uri);
+    }
+
+    std::vector<std::string> MeshObjLoader::get_supported_extensions() const {
+        return {".obj"};
     }
 }

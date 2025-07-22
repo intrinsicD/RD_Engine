@@ -15,8 +15,10 @@ target_include_directories(AssetSystem
 
 target_sources(AssetSystem
         PRIVATE
-        src/AssetManager.cpp
         src/FileWatcher.cpp
+        src/MeshObjLoader.cpp
+        src/MeshMtlLoader.cpp
+        src/StbImage.cpp
 )
 
 target_link_libraries(AssetSystem
@@ -25,6 +27,7 @@ target_link_libraries(AssetSystem
         RDE::Renderer
         EnTT::EnTT
         efsw
+        tinyobjloader
 )
 
 add_subdirectory(config)

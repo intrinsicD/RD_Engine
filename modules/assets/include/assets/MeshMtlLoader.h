@@ -5,9 +5,9 @@
 #include "AssetManager.h"
 
 namespace RDE {
-    class MeshObjLoader : public ILoader {
+    class MeshMtlLoader : public ILoader {
     public:
-        MeshObjLoader() = default;
+        MeshMtlLoader() = default;
 
         std::vector<std::string> get_dependencies(const std::string &uri) const override;
 

@@ -49,16 +49,29 @@ namespace RDE {
         AssetID material_asset; // Reference to the material asset
     };
 
+    struct AssetGeometrySubView {
+        uint32_t index_offset{0}; // Offset in the geometry data
+        uint32_t index_count{0}; // Number of indices in this sub-view
+        int material_index{-1}; // Index of the material to use for this sub-view
+        std::string material_name; // Optional name for the sub-view-material
+    };
+
     struct AssetCpuGeometry {
         PropertyContainer vertices;
         PropertyContainer halfedges;
         PropertyContainer edges;
         PropertyContainer faces;
         PropertyContainer tets;
+
+        std::vector<AssetGeometrySubView> subviews;
+
+        size_t getVertexCount() const { return vertices.size(); }
     };
 
     struct AssetGpuGeometry {
         std::unordered_map<std::string, RAL::BufferHandle> buffers; //(e.g., position buffer, normal buffer, texcoord buffer, index buffer, ...)
+
+        std::vector<AssetGeometrySubView> subviews;
     };
 
     struct AssetGpuTexture {
