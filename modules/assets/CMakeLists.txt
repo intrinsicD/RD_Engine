@@ -18,6 +18,7 @@ target_sources(AssetSystem
         src/FileWatcher.cpp
         src/MeshObjLoader.cpp
         src/MeshMtlLoader.cpp
+        src/MaterialManifestLoader.cpp
         src/StbImage.cpp
 )
 
@@ -28,6 +29,7 @@ target_link_libraries(AssetSystem
         EnTT::EnTT
         efsw
         tinyobjloader
+        yaml-cpp::yaml-cpp
 )
 
 add_subdirectory(config)

@@ -6,6 +6,7 @@
 #include "ILoader.h"
 #include "core/DependencyGraph.h"
 #include "core/Log.h"
+#include "core/Paths.h"
 
 #include <future>
 #include <string>
@@ -13,6 +14,7 @@
 #include <unordered_set>
 #include <filesystem>
 #include <queue>
+#include <utility>
 
 namespace RDE {
     class AssetManager {
@@ -82,6 +84,12 @@ namespace RDE {
             return nullptr; // Asset not found
         }
 
+        void add_to_cache(const std::string& uri, AssetID id) {
+            if (!m_cache.count(uri)) {
+                m_cache[uri] = std::move(id);
+            }
+        }
+
         AssetDatabase &get_database() {
             return m_database;
         }
@@ -90,6 +98,8 @@ namespace RDE {
             // -- I. DISCOVERY PHASE --
             DependencyGraph<std::string, std::string> graph;
             build_dependency_graph(root_uri, graph);
+
+            const auto data_path = get_asset_path();
 
             // -- II. SCHEDULING PHASE --
             auto stages = graph.bake();
@@ -100,7 +110,8 @@ namespace RDE {
                 // For now, we'll do it serially to keep it simple.
                 // TODO: Replace with parallel_for or dispatch to a thread pool.
                 for (const std::string* uri_ptr : stage) {
-                    const std::string& current_uri = *uri_ptr;
+                    //make sure the path is the correct absolute path containing the parent path
+                    const std::string& current_uri = data_path.value() / *uri_ptr;
 
                     // Skip if it was loaded as a dependency of another parallel asset.
                     if (m_cache.count(current_uri)) continue;
@@ -113,13 +124,12 @@ namespace RDE {
                     }
 
                     // The loader does the actual work.
-                    AssetID new_id = it_loader->second->load_asset(current_uri, m_database, *this);
-                    if (!new_id) {
-                        throw std::runtime_error("Loader failed for URI: " + current_uri);
-                    }
+                    AssetID primary_id = it_loader->second->load_asset(current_uri, m_database, *this);
 
-                    // Cache the result immediately.
-                    m_cache[current_uri] = new_id;
+                    if(primary_id){
+                        // Cache the result immediately.
+                        m_cache[current_uri] = primary_id;
+                    }
                 }
             }
             return m_cache.at(root_uri);
@@ -136,7 +146,13 @@ namespace RDE {
                 std::string current_uri = to_process.front();
                 to_process.pop();
 
-                std::filesystem::path path(current_uri);
+                std::string file_uri = current_uri;
+                size_t fragment_pos = file_uri.find('#');
+                if (fragment_pos != std::string::npos) {
+                    file_uri = file_uri.substr(0, fragment_pos);
+                }
+
+                std::filesystem::path path(file_uri);
                 std::string ext = path.extension().string();
                 auto it_loader = m_loaders.find(ext);
                 if (it_loader == m_loaders.end()) {
@@ -145,11 +161,11 @@ namespace RDE {
                 }
 
                 // Use the new fast discovery method.
-                std::vector<std::string> dependencies = it_loader->second->get_dependencies(current_uri);
+                std::vector<std::string> dependencies = it_loader->second->get_dependencies(file_uri);
 
                 // An asset "reads" from its dependencies and "writes" to itself.
                 // The payload and resource handle are both the URI string.
-                graph.add_node(current_uri, dependencies, {current_uri});
+                graph.add_node(file_uri, dependencies, {file_uri});
 
                 for (const auto& dep_uri : dependencies) {
                     if (discovered.find(dep_uri) == discovered.end()) {

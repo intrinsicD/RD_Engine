@@ -27,9 +27,13 @@ namespace RDE{
         // Optionally, you can provide a method to get the supported file extensions.
         virtual std::vector<std::string> get_supported_extensions() const = 0;
 
-        virtual bool check_version(int version) const {
+        virtual bool check_version(std::string version) const {
             // Default implementation returns true for version 1
-            return version == 1;
+            return version == "1.0";
+        }
+
+        virtual std::string get_expected_version() const {
+            return "1.0"; // Default expected version
         }
     };
 }

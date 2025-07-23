@@ -3,6 +3,7 @@
 #include "core/Log.h"
 
 #define TINYOBJLOADER_IMPLEMENTATION
+
 #include <tiny_obj_loader.h>
 #include <glm/glm.hpp>
 #include <filesystem>
@@ -29,9 +30,32 @@ namespace tinyobj {
 
 namespace RDE {
     std::vector<std::string> MeshObjLoader::get_dependencies(const std::string &uri) const {
-        // Find the MTL file associated with the OBJ file.
+        std::vector<std::string> dependencies;
+        std::ifstream file(uri);
+        if (!file.is_open()) {
+            RDE_CORE_WARN("get_dependencies could not open file: {}", uri);
+            return dependencies;
+        }
 
-        return {uri + ".mtl"};
+        std::filesystem::path base_path = std::filesystem::path(uri).parent_path();
+        std::string line;
+        while (std::getline(file, line)) {
+            // Trim whitespace for robustness
+            line.erase(0, line.find_first_not_of(" \t\r\n"));
+            if (line.rfind("mtllib", 0) == 0) { // Check if the line starts with "mtllib"
+                std::stringstream ss(line);
+                std::string keyword, mtl_path_str;
+                ss >> keyword >> std::ws; // Read keyword, consume whitespace
+                std::getline(ss, mtl_path_str);
+
+                if (!mtl_path_str.empty()) {
+                    // Construct the full path relative to the OBJ file
+                    std::string full_path = (base_path / mtl_path_str).lexically_normal().string();
+                    dependencies.push_back(full_path);
+                }
+            }
+        }
+        return dependencies;
     }
 
 
@@ -56,13 +80,15 @@ namespace RDE {
         AssetCpuGeometry geometry;
         // Get typed handles to the property arrays we will populate.
         auto positions = geometry.vertices.add<glm::vec3>("v:point");
-        auto normals = geometry.vertices.add<glm::vec3>("v:normal");
+        auto normals = geometry.vertices.add<glm::vec3>("v:normal", glm::vec3(0.0f, 1.0f, 0.0f)); // Default normal
         auto texCoords = geometry.vertices.add<glm::vec2>("v:texcoord");
 
         // This will temporarily hold ALL indices from all shapes before we form faces.
         std::vector<uint32_t> masterIndexBuffer;
 
         std::unordered_map<tinyobj::index_t, uint32_t, tinyobj::index_t_hash> uniqueVertices{};
+
+        //can we just copy all values directly? and then only set the subview offsets and indices?
 
         for (const auto &shape: shapes) {
             AssetGeometrySubView subGeom{};
@@ -79,25 +105,27 @@ namespace RDE {
                 if (uniqueVertices.count(index) == 0) {
                     // This unique vertex doesn't exist yet, so we add its data
                     uniqueVertices[index] = static_cast<uint32_t>(positions.vector().size());
+                    geometry.vertices.push_back();
 
-                    positions.vector().emplace_back(
-                        attrib.vertices[3 * index.vertex_index + 0],
-                        attrib.vertices[3 * index.vertex_index + 1],
-                        attrib.vertices[3 * index.vertex_index + 2]
+                    positions.vector().back() = glm::vec3(
+                            attrib.vertices[3 * index.vertex_index + 0],
+                            attrib.vertices[3 * index.vertex_index + 1],
+                            attrib.vertices[3 * index.vertex_index + 2]
                     );
 
                     if (index.normal_index >= 0) {
-                        normals.vector().emplace_back(
-                            attrib.normals[3 * index.normal_index + 0],
-                            attrib.normals[3 * index.normal_index + 1],
-                            attrib.normals[3 * index.normal_index + 2]
+                        normals.vector().back() = glm::vec3(
+                                attrib.normals[3 * index.normal_index + 0],
+                                attrib.normals[3 * index.normal_index + 1],
+                                attrib.normals[3 * index.normal_index + 2]
                         );
                     }
 
                     if (index.texcoord_index >= 0) {
-                        texCoords.vector().emplace_back(
-                            attrib.texcoords[2 * index.texcoord_index + 0],
-                            1.0f - attrib.texcoords[2 * index.texcoord_index + 1] // Flip V coordinate for Vulkan/OpenGL
+                        texCoords.vector().back() = glm::vec2(
+                                attrib.texcoords[2 * index.texcoord_index + 0],
+                                1.0f -
+                                attrib.texcoords[2 * index.texcoord_index + 1] // Flip V coordinate for Vulkan/OpenGL
                         );
                     }
                 }
@@ -125,12 +153,12 @@ namespace RDE {
         // Now, correctly convert the master index buffer into faces (triangles)
         if (!masterIndexBuffer.empty()) {
             auto faces = geometry.faces.add<glm::ivec3>("f:indices");
-            faces.vector().reserve(masterIndexBuffer.size() / 3);
-            for (size_t i = 0; i < masterIndexBuffer.size(); i += 3) {
-                faces.vector().emplace_back(
-                    masterIndexBuffer[i + 0],
-                    masterIndexBuffer[i + 1],
-                    masterIndexBuffer[i + 2]
+            geometry.faces.resize(masterIndexBuffer.size() / 3);
+            for (size_t i = 0; i < geometry.faces.size(); ++i) {
+                faces[i] = glm::ivec3(
+                        masterIndexBuffer[3 * i + 0],
+                        masterIndexBuffer[3 * i + 1],
+                        masterIndexBuffer[3 * i + 2]
                 );
             }
         }

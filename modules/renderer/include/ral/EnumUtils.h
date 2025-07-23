@@ -37,4 +37,11 @@ namespace RDE {
         if (s == "Back") return RAL::CullMode::Back;
         return RAL::CullMode::Back; // Default
     }
+
+    inline RAL::PolygonMode string_to_polygon_mode(const std::string &s) {
+        if (s == "Fill") return RAL::PolygonMode::Fill;
+        if (s == "Line") return RAL::PolygonMode::Line;
+        if (s == "Point") return RAL::PolygonMode::Point;
+        throw std::runtime_error("Unknown polygon mode: " + s);
+    }
 } // namespace RDE

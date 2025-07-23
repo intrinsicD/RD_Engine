@@ -15,6 +15,9 @@
 #include "systems/RenderPacketSystem.h"
 
 #include "assets/StbImageLoader.h"
+#include "assets/MeshMtlLoader.h"
+#include "assets/MeshObjLoader.h"
+#include "assets/MaterialManifestLoader.h"
 #include "assets/GenerateDefaultTextures.h"
 
 #include <entt/entity/registry.hpp>
@@ -64,6 +67,9 @@ namespace RDE {
             m_file_watcher->start(path->string(), m_file_watcher_event_queue.get());
             //TODO: register loaders for different asset types
             m_asset_manager->register_loader(std::make_shared<StbImageLoader>());
+            m_asset_manager->register_loader(std::make_shared<MeshObjLoader>());
+            m_asset_manager->register_loader(std::make_shared<MeshMtlLoader>());
+            m_asset_manager->register_loader(std::make_shared<MaterialManifestLoader>());
         }
         {
             m_system_scheduler->register_system<HierarchySystem>(*m_registry);

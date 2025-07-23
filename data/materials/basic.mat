@@ -22,13 +22,20 @@ pipeline:
 # --- Material Parameters ---
 # These values will be uploaded to a Uniform Buffer Object (UBO).
 parameters:
-  baseColor: [1.0, 0.7, 0.2, 1.0] # RGBA
-  metalness: 0.1
-  roughness: 0.8
+  - name: baseColor
+    type: vec4
+    value: [1.0, 0.7, 0.2, 1.0] # RGBA color for the material
+  - name: metalness
+    type: float
+    value: 0.1 # Metalness factor (0 = non-metal, 1 = metal)
+  - name: roughness
+    type: float
+    value: 0.8 # Roughness factor (0 = smooth, 1 = rough)
 
 # --- Texture Maps ---
 # Maps a sampler name in the shader to a texture asset file.
 textures:
-  albedoMap: 0
-  normalMap: 1 # Example for later
-  #roughnessMap: 2 # Example for later
+  - name: albedoMap
+    index: 0 # This is the albedo texture
+  - name: normalMap
+    index: 1 # This is the normal map

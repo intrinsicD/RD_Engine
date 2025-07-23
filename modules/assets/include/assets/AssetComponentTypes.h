@@ -31,7 +31,16 @@ namespace RDE {
         std::vector<AssetID> shaders; // List of shaders that make up this program
     };
 
+    struct AssetPipelineDescription {
+        RAL::CullMode cullMode = RAL::CullMode::Back;
+        RAL::PolygonMode polygonMode = RAL::PolygonMode::Fill;
+        bool depthTest = true;
+        bool depthWrite = true;
+    };
+
     struct AssetMaterial {
+        std::string name; // Name of the material
+
         AssetID pipeline_asset; // Pipeline state for rendering
 
         PropertyContainer parameters; // Material parameters (e.g., color, metallic, roughness)
