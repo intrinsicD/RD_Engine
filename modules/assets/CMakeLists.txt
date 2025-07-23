@@ -20,6 +20,7 @@ target_sources(AssetSystem
         src/MeshMtlLoader.cpp
         src/MaterialManifestLoader.cpp
         src/StbImage.cpp
+        src/ShaderDefLoader.cpp
 )
 
 target_link_libraries(AssetSystem

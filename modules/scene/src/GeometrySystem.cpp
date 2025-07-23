@@ -1,7 +1,7 @@
-#include "GeometrySystem.h"
-#include "AssetComponentTypes.h"
-#include "components/TagComponent.h"
-#include "core/SystemDependencyBuilder.h"
+#include "systems/GeometrySystem.h"
+#include "assets/AssetComponentTypes.h"
+#include "components/DirtyTagComponent.h"
+#include "scene/SystemDependencyBuilder.h"
 
 #include <entt/entity/registry.hpp>
 

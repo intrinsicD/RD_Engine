@@ -93,21 +93,19 @@ namespace RDE {
         std::vector<char> data; // Pointer to the raw texture data, if needed
     };
 
-    struct AssetCpuShaderDefinition {
-        std::string name; // Name of the shader definition
-        std::unordered_map<RAL::ShaderStage, std::string> base_spirv_paths; // Base paths for SPIR-V files for each stage
+    struct AssetShaderDef {
+        std::string name;
 
-        // Dependencies are now just URIs, no need for separate source/spirv lists.
-        std::vector<std::string> dependencies; // URIs of dependencies (e.g., other shaders, textures)
+        // Dependencies on the source code files
+        std::unordered_map<std::string, std::vector<std::string>> dependencies;
 
-        RAL::CullMode cull_mode;
-        bool depth_test{true}; // Enable depth testing
-        bool depth_write{true}; // Enable depth writing
-        //TODO add more pipeline state options as needed
+        // List of features for shader permutations
+        std::vector<std::string> features;
 
-        //vertex layout
-        std::vector<RAL::VertexInputAttribute> vertex_layout; // Vertex attributes (location, format, offset)
-        PropertyContainer state;
+        // The GPU pipeline interface contract
+        std::vector<RAL::VertexInputAttribute> vertexAttributes;
+        std::vector<RAL::DescriptorSetLayoutDescription> descriptorSetLayouts;
+        std::vector<RAL::PushConstantRange> pushConstantRanges;
     };
 
     struct Prefab {

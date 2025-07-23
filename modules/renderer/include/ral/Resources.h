@@ -91,7 +91,11 @@ namespace RAL {
 
     enum class DescriptorType {
         UniformBuffer,
-        CombinedImageSampler // Texture + Sampler together
+        StorageBuffer,
+        SampledImage, // Texture + Sampler
+        StorageImage, // Texture without sampler
+        Sampler, // Standalone sampler
+        CombinedImageSampler, // Texture + Sampler in one binding
         // Other types like StorageBuffer, StorageImage can be added later
     };
 
@@ -154,6 +158,7 @@ namespace RAL {
         uint32_t binding;
         Format format;
         uint32_t offset;
+        std::string semantic; // Optional semantic name for debugging
     };
 
     struct VertexInputBinding {
@@ -166,6 +171,7 @@ namespace RAL {
         ShaderStage stages; // Which shader stages can access it
         uint32_t offset;
         uint32_t size;
+        std::string name; // Optional name for debugging
     };
 
     struct RasterizationState {
@@ -225,10 +231,12 @@ namespace RAL {
         uint32_t binding;
         DescriptorType type;
         ShaderStage stages; // Bitmask of stages that can access this binding
+        std::string name;
     };
 
     // Describes the "shape" of a descriptor set. Pipelines are created with this.
     struct DescriptorSetLayoutDescription {
+        uint32_t set;
         std::vector<DescriptorSetLayoutBinding> bindings;
     };
 

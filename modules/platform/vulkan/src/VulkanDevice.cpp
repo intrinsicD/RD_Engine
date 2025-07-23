@@ -683,6 +683,40 @@ namespace RDE {
                     write.pBufferInfo = &bufferInfos.back();
                     break;
                 }
+                case RAL::DescriptorType::StorageBuffer: {
+                    // Get the concrete Vulkan buffer component from the database
+                    if (!m_resources_db.is_valid(ralWrite.buffer)) continue;
+                    const auto &vk_buffer = m_resources_db.get<VulkanBuffer>(ralWrite.buffer);
+                    bufferInfos.push_back({vk_buffer.handle, 0, VK_WHOLE_SIZE});
+                    write.pBufferInfo = &bufferInfos.back();
+                    break;
+                }
+                case RAL::DescriptorType::SampledImage: {
+                    // Get the concrete Vulkan texture component
+                    if (!m_resources_db.is_valid(ralWrite.texture)) continue;
+                    const auto &vk_texture = m_resources_db.get<VulkanTexture>(ralWrite.texture);
+                    imageInfos.push_back(
+                            {VK_NULL_HANDLE, vk_texture.image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL});
+                    write.pImageInfo = &imageInfos.back();
+                    break;
+                }
+                case RAL::DescriptorType::StorageImage: {
+                    // Get the concrete Vulkan texture component
+                    if (!m_resources_db.is_valid(ralWrite.texture)) continue;
+                    const auto &vk_texture = m_resources_db.get<VulkanTexture>(ralWrite.texture);
+                    imageInfos.push_back(
+                            {VK_NULL_HANDLE, vk_texture.image_view, VK_IMAGE_LAYOUT_GENERAL});
+                    write.pImageInfo = &imageInfos.back();
+                    break;
+                }
+                case RAL::DescriptorType::Sampler : {
+                    // Get the concrete Vulkan sampler component
+                    if (!m_resources_db.is_valid(ralWrite.sampler)) continue;
+                    const auto &vk_sampler = m_resources_db.get<VulkanSampler>(ralWrite.sampler);
+                    imageInfos.push_back({vk_sampler.handle, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_UNDEFINED});
+                    write.pImageInfo = &imageInfos.back();
+                    break;
+                }
                 case RAL::DescriptorType::CombinedImageSampler: {
                     // Get the concrete Vulkan texture and sampler components
                     if (!m_resources_db.is_valid(ralWrite.texture) ||

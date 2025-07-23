@@ -48,20 +48,3 @@ interface:
   # This describes the small, fast data block.
   push_constants:
     - { size: 64, stage: "Vertex", name: "ObjectData" } # 64 bytes for a mat4
-
-# --- FIXED PIPELINE STATE ---
-# This describes the non-programmable GPU state.
-# This data does NOT go into a uniform buffer. It configures the hardware directly.
-state:
-  rasterization:
-    cullMode: "Back"
-    polygonMode: "Fill"
-    frontFace: "CounterClockwise"
-  depth_stencil:
-    depthTest: true
-    depthWrite: true
-    depthCompareOp: "LessOrEqual"
-  blending:
-    # A typical opaque material has blending disabled for the color attachment.
-    - enabled: false
-      # You could define blend states for multiple attachments here if needed.

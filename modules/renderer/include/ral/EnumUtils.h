@@ -44,4 +44,14 @@ namespace RDE {
         if (s == "Point") return RAL::PolygonMode::Point;
         throw std::runtime_error("Unknown polygon mode: " + s);
     }
+
+    inline RAL::DescriptorType string_to_descriptor_type(const std::string &s) {
+        if (s == "UniformBuffer") return RAL::DescriptorType::UniformBuffer;
+        if (s == "StorageBuffer") return RAL::DescriptorType::StorageBuffer;
+        if (s == "SampledImage") return RAL::DescriptorType::SampledImage;
+        if (s == "StorageImage") return RAL::DescriptorType::StorageImage;
+        if (s == "Sampler") return RAL::DescriptorType::Sampler;
+        // Add other descriptor types as needed...
+        throw std::runtime_error("Unknown descriptor type: " + s);
+    }
 } // namespace RDE

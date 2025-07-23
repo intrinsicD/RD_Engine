@@ -18,6 +18,7 @@
 #include "assets/MeshMtlLoader.h"
 #include "assets/MeshObjLoader.h"
 #include "assets/MaterialManifestLoader.h"
+#include "assets/ShaderDefLoader.h"
 #include "assets/GenerateDefaultTextures.h"
 
 #include <entt/entity/registry.hpp>
@@ -70,6 +71,7 @@ namespace RDE {
             m_asset_manager->register_loader(std::make_shared<MeshObjLoader>());
             m_asset_manager->register_loader(std::make_shared<MeshMtlLoader>());
             m_asset_manager->register_loader(std::make_shared<MaterialManifestLoader>());
+            m_asset_manager->register_loader(std::make_shared<ShaderDefLoader>());
         }
         {
             m_system_scheduler->register_system<HierarchySystem>(*m_registry);
@@ -247,7 +249,13 @@ namespace RDE {
             dispatcher.dispatch<WindowFileDropEvent>([this](WindowFileDropEvent &e) {
                 // Handle file drop event
                 for (const auto &file_path: e.get_files()) {
-                    m_asset_manager->force_load(file_path);
+                    auto f_asset = m_asset_manager->load_async(file_path);
+
+                    f_asset.wait();
+                    auto asset_id = f_asset.get();
+                    if(asset_id && asset_id->is_valid()){
+                        //TODO instanciate the asset in the scene with default parameters where missing
+                    }
                 }
                 return false; // Allow layers to handle the event
             });
