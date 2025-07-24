@@ -29,13 +29,20 @@ namespace RAL {
 
         virtual void bind_pipeline(PipelineHandle pipeline) = 0;
 
+        virtual void pipeline_barrier(const ResourceBarrier& barrier) = 0;
+
         virtual void bind_vertex_buffer(BufferHandle buffer, uint32_t binding) = 0;
 
         virtual void bind_index_buffer(BufferHandle buffer, IndexType indexType) = 0;
 
         virtual void bind_descriptor_set(PipelineHandle pipeline, DescriptorSetHandle set, uint32_t setIndex) = 0;
 
+        virtual void copy_buffer(BufferHandle src, BufferHandle dst, uint64_t size, uint64_t srcOffset = 0, uint64_t dstOffset = 0) = 0;
+
+        virtual void copy_buffer_to_texture(BufferHandle src, TextureHandle dst, uint32_t width, uint32_t height) = 0;
+
         virtual void push_constants(PipelineHandle pipeline, ShaderStage stages, uint32_t offset, uint32_t size, const void* data) = 0;
+
 
         virtual void draw(uint32_t vertex_count,
                           uint32_t instance_count = 1,
@@ -48,6 +55,8 @@ namespace RAL {
                                   int32_t vertex_offset = 0,
                                   uint32_t first_instance = 0) = 0;
 
+        // Dispatches a compute shader.
+        virtual void dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) = 0;
 
     };
 

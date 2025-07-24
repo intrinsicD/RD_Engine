@@ -19,20 +19,28 @@ namespace RAL {
     struct DescriptorSetLayoutDescription;
     struct DescriptorSetDescription;
 
+    struct FrameContext {
+        // The handle to the swapchain texture you should render to for this frame.
+        TextureHandle swapchainTexture;
+        uint32_t frameIndex; // Index of the current frame in flight
+        // Internal sync primitives would be here (e.g., semaphores) but are hidden from the user.
+    };
+
     class Device {
     public:
         virtual ~Device() = default;
 
-        virtual CommandBuffer *begin_frame() = 0;
+        virtual FrameContext begin_frame() = 0;
 
-        virtual void end_frame(const std::vector<RAL::CommandBuffer *> &command_buffers) = 0;
+        virtual void end_frame(const FrameContext &context, const std::vector<RAL::CommandBuffer *> &command_buffers) = 0;
+
+        virtual CommandBuffer* get_command_buffer() = 0;
 
         virtual void wait_idle() = 0;
 
         virtual void recreate_swapchain() = 0;
 
         virtual BufferHandle create_buffer(const BufferDescription &desc) = 0;
-
 
         virtual void destroy_buffer(BufferHandle handle) = 0;
 

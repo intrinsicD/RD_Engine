@@ -6,6 +6,72 @@
 #include <string> // For handles
 
 namespace RAL {
+    // --- ADDED: Image Layouts for Barriers ---
+    enum class ImageLayout {
+        Undefined,              // Initial state, no data
+        General,                // Can be used for anything (slow)
+        ColorAttachment,        // For rendering to as a color buffer
+        DepthStencilAttachment, // For rendering to as a depth/stencil buffer
+        ShaderReadOnly,         // For sampling in a shader (texture())
+        TransferSrc,            // Source of a copy operation
+        TransferDst,            // Destination of a copy operation
+        PresentSrc              // Ready to be presented to the screen
+    };
+
+    // --- ADDED: Access Flags for Barriers ---
+    enum class AccessFlags : uint64_t {
+        None = 0,
+        ShaderRead = 1 << 0,
+        ShaderWrite = 1 << 1,
+        ColorAttachmentRead = 1 << 2,
+        ColorAttachmentWrite = 1 << 3,
+        DepthStencilAttachmentRead = 1 << 4,
+        DepthStencilAttachmentWrite = 1 << 5,
+        TransferRead = 1 << 6,
+        TransferWrite = 1 << 7,
+        HostRead = 1 << 8,
+        HostWrite = 1 << 9,
+    };
+    ENABLE_ENUM_FLAG_OPERATORS(AccessFlags)
+
+    // --- ADDED: Pipeline Stage Flags for Barriers ---
+    enum class PipelineStageFlags : uint64_t {
+        None = 0,
+        TopOfPipe = 1 << 0,
+        DrawIndirect = 1 << 1,
+        VertexInput = 1 << 2,
+        VertexShader = 1 << 3,
+        FragmentShader = 1 << 4,
+        EarlyFragmentTests = 1 << 5, // For depth/stencil before fragment shader
+        LateFragmentTests = 1 << 6,  // For depth/stencil after fragment shader
+        ColorAttachmentOutput = 1 << 7,
+        ComputeShader = 1 << 8,
+        Transfer = 1 << 9,
+        BottomOfPipe = 1 << 10,
+    };
+    ENABLE_ENUM_FLAG_OPERATORS(PipelineStageFlags)
+
+    // --- ADDED: The Barrier Description ---
+    struct ResourceBarrier {
+        // Defines which operations must complete...
+        PipelineStageFlags srcStage;
+        AccessFlags srcAccess;
+
+        // ...before these operations can begin.
+        PipelineStageFlags dstStage;
+        AccessFlags dstAccess;
+
+        // Use one of the following for resource-specific transitions
+        struct TextureTransition {
+            TextureHandle texture;
+            ImageLayout oldLayout;
+            ImageLayout newLayout;
+        } textureTransition;
+
+        // You could add BufferTransition here as well if needed, but for now
+        // memory barriers (using just stages/access flags) cover most buffer cases.
+    };
+
     // --- Resource Usage Flags ---
     enum class BufferUsage : uint32_t {
         None = 0,
@@ -33,10 +99,7 @@ namespace RAL {
 
     enum class MemoryUsage {
         DeviceLocal, // GPU only, fastest access
-        HostVisible, // CPU visible, for frequent updates (e.g. UBOs)
-        // No need for separate Coherent/Cached here, the backend can decide
-        // the best flags based on this high-level intent.
-        CPU_To_GPU, // For buffers that will be written by CPU and read by GPU
+        HostVisibleCoherent, // CPU visible, for frequent updates (e.g. UBOs)
     };
 
     enum class ShaderStage {
@@ -135,7 +198,6 @@ namespace RAL {
         uint64_t size = 0;
         BufferUsage usage;
         MemoryUsage memoryUsage;
-        const void *initialData = nullptr; // Add this for easier creation
     };
 
     struct TextureDescription {
@@ -143,8 +205,6 @@ namespace RAL {
         uint32_t mipLevels = 1;
         Format format; // Use the single, unified Format enum
         TextureUsage usage;
-        const void *initialData = nullptr;
-        uint64_t initialDataSize = 0; // Size of initial data, if provided
     };
 
     struct ShaderDescription {
