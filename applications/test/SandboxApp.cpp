@@ -173,12 +173,24 @@ namespace RDE {
 
         if (RAL::CommandBuffer *cmd = m_renderer->begin_frame()) {
 
+            const auto& frameCtx = m_renderer->get_current_frame_context();
+
+            cmd->begin();
+            RAL::ResourceBarrier barrier_to_render_target{};
+            barrier_to_render_target.srcStage = RAL::PipelineStageFlags::TopOfPipe;
+            barrier_to_render_target.srcAccess = RAL::AccessFlags::None;
+            barrier_to_render_target.dstStage = RAL::PipelineStageFlags::ColorAttachmentOutput;
+            barrier_to_render_target.dstAccess = RAL::AccessFlags::ColorAttachmentWrite;
+            barrier_to_render_target.textureTransition = { frameCtx.swapchainTexture, RAL::ImageLayout::Undefined, RAL::ImageLayout::ColorAttachment };
+            cmd->pipeline_barrier(barrier_to_render_target);
+
+
             // --- 1. Main Scene Render Pass ---
             // For now, we are just clearing the screen. In the future, you would
             // render your 3D scene here inside a render pass.
             RAL::RenderPassDescription scenePass{};
             scenePass.colorAttachments.resize(1);
-            scenePass.colorAttachments[0].texture = RAL::TextureHandle::INVALID();
+            scenePass.colorAttachments[0].texture = frameCtx.swapchainTexture;
             scenePass.colorAttachments[0].loadOp = RAL::LoadOp::Clear; // CLEAR the screen
             scenePass.colorAttachments[0].storeOp = RAL::StoreOp::Store;
             scenePass.colorAttachments[0].clearColor[0] = 0.1f;
@@ -205,7 +217,7 @@ namespace RDE {
             }
             RAL::RenderPassDescription uiPass{};
             uiPass.colorAttachments.resize(1);
-            uiPass.colorAttachments[0].texture = RAL::TextureHandle::INVALID();
+            uiPass.colorAttachments[0].texture = frameCtx.swapchainTexture; // Use the same texture as the scene pass
             uiPass.colorAttachments[0].loadOp = RAL::LoadOp::Load; // LOAD the previous result
             uiPass.colorAttachments[0].storeOp = RAL::StoreOp::Store;
             cmd->begin_render_pass(uiPass); // Begin the UI pass
@@ -213,10 +225,18 @@ namespace RDE {
             m_imgui_layer->end(cmd); // Finishes ImGui frame and records draw commands to your command buffer
 
             cmd->end_render_pass();
+
+            RAL::ResourceBarrier barrier_to_present{};
+            barrier_to_present.srcStage = RAL::PipelineStageFlags::ColorAttachmentOutput;
+            barrier_to_present.srcAccess = RAL::AccessFlags::ColorAttachmentWrite;
+            barrier_to_present.dstStage = RAL::PipelineStageFlags::BottomOfPipe;
+            barrier_to_present.dstAccess = RAL::AccessFlags::None;
+            barrier_to_present.textureTransition = { frameCtx.swapchainTexture, RAL::ImageLayout::ColorAttachment, RAL::ImageLayout::PresentSrc };
+            cmd->pipeline_barrier(barrier_to_present);
+
+            cmd->end();
             // 4. End the frame
             m_renderer->end_frame({cmd});
-        } else {
-            m_window_resized = true;
         }
         m_input_manager->on_frame_end();
     }

@@ -1,3 +1,4 @@
+#shaders/basic_lit.shaderdef
 version: 1.0
 name: "PBR_Lit_Opaque" # A more descriptive name
 

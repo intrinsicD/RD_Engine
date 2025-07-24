@@ -8,6 +8,17 @@
 
 namespace RDE {
 
+    namespace { // Anonymous namespace for local helpers
+        RAL::ShaderStage path_to_shader_stage(const std::string& path) {
+            std::string ext = std::filesystem::path(path).extension().string();
+            if (ext == ".vert") return RAL::ShaderStage::Vertex;
+            if (ext == ".frag") return RAL::ShaderStage::Fragment;
+            if (ext == ".comp") return RAL::ShaderStage::Compute;
+            // Add more as needed
+            return RAL::ShaderStage::None;
+        }
+    }
+
     // Constructor and Destructor remain largely the same.
     PipelineCache::PipelineCache(AssetManager &asset_manager, RAL::Device &device)
             : m_asset_manager(asset_manager), m_device(device) {}
@@ -112,7 +123,7 @@ namespace RDE {
                 current_offset += get_size_of_format(attr.format); // You need this helper
             }
             if (current_offset > 0) {
-                psoDesc.vertexBindings.push_back({0, current_offset, RAL::VertexInputRate::Vertex});
+                psoDesc.vertexBindings.push_back({0, current_offset});
             }
         } else {
             // --- COMPUTE PIPELINE SETUP ---

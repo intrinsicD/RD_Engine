@@ -10,6 +10,58 @@
 #include <vk_mem_alloc.h>
 
 namespace RDE {
+    inline VkImageLayout ToVulkanImageLayout(RAL::ImageLayout layout) {
+        switch (layout) {
+            case RAL::ImageLayout::Undefined: return VK_IMAGE_LAYOUT_UNDEFINED;
+            case RAL::ImageLayout::General: return VK_IMAGE_LAYOUT_GENERAL;
+            case RAL::ImageLayout::ColorAttachment: return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            case RAL::ImageLayout::DepthStencilAttachment: return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            case RAL::ImageLayout::ShaderReadOnly: return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            case RAL::ImageLayout::TransferSrc: return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+            case RAL::ImageLayout::TransferDst: return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            case RAL::ImageLayout::PresentSrc: return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+            default: return VK_IMAGE_LAYOUT_UNDEFINED;
+        }
+    }
+
+    inline VkAccessFlags ToVulkanAccessFlags(RAL::AccessFlags flags) {
+        VkAccessFlags result = 0;
+        if (has_flag(flags, RAL::AccessFlags::ShaderRead)) result |= VK_ACCESS_SHADER_READ_BIT;
+        if (has_flag(flags, RAL::AccessFlags::ShaderWrite)) result |= VK_ACCESS_SHADER_WRITE_BIT;
+        if (has_flag(flags, RAL::AccessFlags::ColorAttachmentRead)) result |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+        if (has_flag(flags, RAL::AccessFlags::ColorAttachmentWrite)) result |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        if (has_flag(flags, RAL::AccessFlags::DepthStencilAttachmentRead))
+            result |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+        if (has_flag(flags, RAL::AccessFlags::DepthStencilAttachmentWrite))
+            result |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        if (has_flag(flags, RAL::AccessFlags::TransferRead)) result |= VK_ACCESS_TRANSFER_READ_BIT;
+        if (has_flag(flags, RAL::AccessFlags::TransferWrite)) result |= VK_ACCESS_TRANSFER_WRITE_BIT;
+        if (has_flag(flags, RAL::AccessFlags::HostRead)) result |= VK_ACCESS_HOST_READ_BIT;
+        if (has_flag(flags, RAL::AccessFlags::HostWrite)) result |= VK_ACCESS_HOST_WRITE_BIT;
+        return result;
+    }
+
+    inline VkPipelineStageFlags ToVulkanPipelineStageFlags(RAL::PipelineStageFlags flags) {
+        VkPipelineStageFlags result = 0;
+        if (has_flag(flags, RAL::PipelineStageFlags::TopOfPipe)) result |= VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        if (has_flag(flags, RAL::PipelineStageFlags::DrawIndirect)) result |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+        if (has_flag(flags, RAL::PipelineStageFlags::VertexInput)) result |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+        if (has_flag(flags, RAL::PipelineStageFlags::VertexShader)) result |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+        if (has_flag(flags, RAL::PipelineStageFlags::FragmentShader)) result |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        if (has_flag(flags, RAL::PipelineStageFlags::EarlyFragmentTests))
+            result |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        if (has_flag(flags, RAL::PipelineStageFlags::LateFragmentTests))
+            result |= VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        if (has_flag(flags, RAL::PipelineStageFlags::ColorAttachmentOutput))
+            result |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        if (has_flag(flags, RAL::PipelineStageFlags::ComputeShader)) result |= VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+        if (has_flag(flags, RAL::PipelineStageFlags::Transfer)) result |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+        if (has_flag(flags, RAL::PipelineStageFlags::BottomOfPipe)) result |= VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+        // Add other stages if needed
+        if (result == 0) return VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT; // Sensible default
+        return result;
+    }
+
     inline VkFormat ToVulkanFormat(RAL::Format format) {
         // This would be a large switch statement.
         // Let's add a few examples.
@@ -31,14 +83,14 @@ namespace RDE {
                 return VK_FORMAT_R8G8B8A8_SRGB;
             case RAL::Format::B8G8R8A8_SRGB:
                 return VK_FORMAT_B8G8R8A8_SRGB;
-                // 16-bit
+            // 16-bit
             case RAL::Format::R16_SFLOAT:
                 return VK_FORMAT_R16_SFLOAT;
             case RAL::Format::R16G16_SFLOAT:
                 return VK_FORMAT_R16G16_SFLOAT;
             case RAL::Format::R16G16B16A16_SFLOAT:
                 return VK_FORMAT_R16G16B16A16_SFLOAT;
-                // 32-bit
+            // 32-bit
             case RAL::Format::R32_SFLOAT:
                 return VK_FORMAT_R32_SFLOAT;
             case RAL::Format::R32G32_SFLOAT:
@@ -55,14 +107,14 @@ namespace RDE {
                 return VK_FORMAT_R32G32B32_UINT;
             case RAL::Format::R32G32B32A32_UINT:
                 return VK_FORMAT_R32G32B32A32_UINT;
-                // Depth
+            // Depth
             case RAL::Format::D32_SFLOAT:
                 return VK_FORMAT_D32_SFLOAT;
             case RAL::Format::D24_UNORM_S8_UINT:
                 return VK_FORMAT_D24_UNORM_S8_UINT;
             case RAL::Format::D32_SFLOAT_S8_UINT:
                 return VK_FORMAT_D32_SFLOAT_S8_UINT;
-                // Block Compression
+            // Block Compression
             case RAL::Format::BC1_RGB_UNORM:
                 return VK_FORMAT_BC1_RGB_UNORM_BLOCK;
             case RAL::Format::BC3_UNORM:
@@ -126,8 +178,8 @@ namespace RDE {
             flags |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
         if (has_flag(stages, RAL::ShaderStage::RayTracing))
             flags |= VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR |
-                     VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR |
-                     VK_SHADER_STAGE_INTERSECTION_BIT_KHR | VK_SHADER_STAGE_CALLABLE_BIT_KHR;
+                    VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR |
+                    VK_SHADER_STAGE_INTERSECTION_BIT_KHR | VK_SHADER_STAGE_CALLABLE_BIT_KHR;
         if (has_flag(stages, RAL::ShaderStage::Task)) flags |= VK_SHADER_STAGE_TASK_BIT_EXT;
         if (has_flag(stages, RAL::ShaderStage::Mesh)) flags |= VK_SHADER_STAGE_MESH_BIT_EXT;
 
@@ -139,10 +191,8 @@ namespace RDE {
         switch (usage) {
             case RAL::MemoryUsage::DeviceLocal:
                 return VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-            case RAL::MemoryUsage::HostVisible:
+            case RAL::MemoryUsage::HostVisibleCoherent:
                 return VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
-            case RAL::MemoryUsage::CPU_To_GPU:
-                return VMA_MEMORY_USAGE_CPU_TO_GPU;
         }
         return VMA_MEMORY_USAGE_AUTO;
     }
@@ -167,6 +217,23 @@ namespace RDE {
         if (has_flag(usage, RAL::TextureUsage::TransferSrc)) flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         if (has_flag(usage, RAL::TextureUsage::TransferDst)) flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         return flags;
+    }
+
+    inline VkAttachmentLoadOp ToVulkanLoadOp(RAL::LoadOp op) {
+        switch (op) {
+            case RAL::LoadOp::Load: return VK_ATTACHMENT_LOAD_OP_LOAD;
+            case RAL::LoadOp::Clear: return VK_ATTACHMENT_LOAD_OP_CLEAR;
+            case RAL::LoadOp::DontCare: return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        }
+        return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    }
+
+    inline VkAttachmentStoreOp ToVulkanStoreOp(RAL::StoreOp op) {
+        switch (op) {
+            case RAL::StoreOp::Store: return VK_ATTACHMENT_STORE_OP_STORE;
+            case RAL::StoreOp::DontCare: return VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        }
+        return VK_ATTACHMENT_STORE_OP_DONT_CARE;
     }
 
     inline VkBlendFactor ToVulkanBlendFactor(RAL::BlendFactor factor) {
@@ -352,6 +419,52 @@ namespace RDE {
                 return "VK_RESULT_MAX_ENUM";
             default:
                 return "Unknown VkResult value!";
+        }
+    }
+
+    // ToRalMappers
+
+    inline RAL::Format ToRALFormat(VkFormat format) {
+        // This would be a large switch statement.
+        // Let's add a few examples.
+        switch (format) {
+            // 8-bit
+            case VK_FORMAT_R8_UNORM: return  RAL::Format::R8_UNORM;
+            case VK_FORMAT_R8G8_UNORM: return  RAL::Format::R8G8_UNORM;
+            case VK_FORMAT_R8G8B8A8_UNORM: return  RAL::Format::R8G8B8A8_UNORM;
+            case VK_FORMAT_B8G8R8A8_UNORM: return  RAL::Format::B8G8R8A8_UNORM;
+            case VK_FORMAT_R8_SRGB: return  RAL::Format::R8_SRGB;
+            case VK_FORMAT_R8G8_SRGB: return  RAL::Format::R8G8_SRGB;
+            case VK_FORMAT_R8G8B8A8_SRGB: return  RAL::Format::R8G8B8A8_SRGB;
+            case VK_FORMAT_B8G8R8A8_SRGB: return  RAL::Format::B8G8R8A8_SRGB;
+            // 16-bit
+            case VK_FORMAT_R16_SFLOAT: return  RAL::Format::R16_SFLOAT;
+            case VK_FORMAT_R16G16_SFLOAT: return  RAL::Format::R16G16_SFLOAT;
+            case VK_FORMAT_R16G16B16A16_SFLOAT: return  RAL::Format::R16G16B16A16_SFLOAT;
+            // 32-bit
+            case VK_FORMAT_R32_SFLOAT: return  RAL::Format::R32_SFLOAT;
+            case VK_FORMAT_R32G32_SFLOAT: return  RAL::Format::R32G32_SFLOAT;
+            case VK_FORMAT_R32G32B32_SFLOAT: return  RAL::Format::R32G32B32_SFLOAT;
+            case VK_FORMAT_R32G32B32A32_SFLOAT: return  RAL::Format::R32G32B32A32_SFLOAT;
+            case VK_FORMAT_R32_UINT: return  RAL::Format::R32_UINT;
+            case VK_FORMAT_R32G32_UINT: return  RAL::Format::R32G32_UINT;
+            case VK_FORMAT_R32G32B32_UINT: return  RAL::Format::R32G32B32_UINT;
+            case VK_FORMAT_R32G32B32A32_UINT: return  RAL::Format::R32G32B32A32_UINT;
+            // Depth
+            case VK_FORMAT_D32_SFLOAT: return  RAL::Format::D32_SFLOAT;
+            case VK_FORMAT_D24_UNORM_S8_UINT: return  RAL::Format::D24_UNORM_S8_UINT;
+            case VK_FORMAT_D32_SFLOAT_S8_UINT: return  RAL::Format::D32_SFLOAT_S8_UINT;
+            // Block Compression
+            case VK_FORMAT_BC1_RGB_UNORM_BLOCK: return  RAL::Format::BC1_RGB_UNORM;
+            case VK_FORMAT_BC3_UNORM_BLOCK: return  RAL::Format::BC3_UNORM;
+            case VK_FORMAT_BC7_UNORM_BLOCK: return  RAL::Format::BC7_UNORM;
+
+            case VK_FORMAT_UNDEFINED:
+            default:
+                // You should have a logging system here
+                // For now, we'll assert or throw
+                throw std::runtime_error("Unsupported or unknown RAL::Format!");
+                return RAL::Format::UNKNOWN;
         }
     }
 }

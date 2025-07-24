@@ -82,7 +82,7 @@ namespace RDE {
             RAL::BufferDescription desc{};
             desc.size = vb_size * 1.5;
             desc.usage = RAL::BufferUsage::VertexBuffer;
-            desc.memoryUsage = RAL::MemoryUsage::CPU_To_GPU; // IMPORTANT
+            desc.memoryUsage = RAL::MemoryUsage::HostVisibleCoherent; // IMPORTANT
             m_VertexBuffer = m_device->create_buffer(desc);
             m_VertexBufferSize = desc.size;
         }
@@ -93,7 +93,7 @@ namespace RDE {
             RAL::BufferDescription desc{};
             desc.size = ib_size * 1.5;
             desc.usage = RAL::BufferUsage::IndexBuffer;
-            desc.memoryUsage = RAL::MemoryUsage::CPU_To_GPU;
+            desc.memoryUsage = RAL::MemoryUsage::HostVisibleCoherent;
             m_IndexBuffer = m_device->create_buffer(desc);
             m_IndexBufferSize = desc.size;
         }
@@ -181,14 +181,56 @@ namespace RDE {
         io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
         size_t upload_size = width * height * 4 * sizeof(char);
 
+// 1a. Create the FINAL destination texture on the GPU. It starts empty.
         RAL::TextureDescription fontDesc{};
         fontDesc.width = width;
         fontDesc.height = height;
         fontDesc.format = RAL::Format::R8G8B8A8_UNORM;
+        // IMPORTANT: It needs to be a Sampled texture AND a Transfer Destination.
         fontDesc.usage = RAL::TextureUsage::Sampled | RAL::TextureUsage::TransferDst;
-        fontDesc.initialData = pixels; // Use the initial data directly
-        fontDesc.initialDataSize = upload_size;
-        m_FontTexture = m_device->create_texture(fontDesc); // Use the version that takes initial data
+        m_FontTexture = m_device->create_texture(fontDesc);
+
+        // 1b. Create a temporary, CPU-visible staging buffer for the upload.
+        RAL::BufferDescription stagingDesc{};
+        stagingDesc.size = upload_size;
+        stagingDesc.usage = RAL::BufferUsage::TransferSrc;
+        stagingDesc.memoryUsage = RAL::MemoryUsage::HostVisibleCoherent;
+        RAL::BufferHandle stagingBuffer = m_device->create_buffer(stagingDesc);
+
+        // 1c. Map the staging buffer and copy the font pixel data into it.
+        void* mappedData = m_device->map_buffer(stagingBuffer);
+        memcpy(mappedData, pixels, upload_size);
+        m_device->unmap_buffer(stagingBuffer);
+
+        // 1d. Use an immediate command buffer to perform the GPU-side copy.
+        // This is a blocking operation, which is fine for one-time setup.
+
+        m_device->immediate_submit([&](RAL::CommandBuffer* cmd){
+            // Transition the destination texture to be ready for the copy
+            RAL::ResourceBarrier barrier_to_transfer_dst = {};
+            barrier_to_transfer_dst.srcStage = RAL::PipelineStageFlags::TopOfPipe;
+            barrier_to_transfer_dst.srcAccess = RAL::AccessFlags::None;
+            barrier_to_transfer_dst.dstStage = RAL::PipelineStageFlags::Transfer;
+            barrier_to_transfer_dst.dstAccess = RAL::AccessFlags::TransferWrite;
+            barrier_to_transfer_dst.textureTransition = { m_FontTexture, RAL::ImageLayout::Undefined, RAL::ImageLayout::TransferDst };
+            cmd->pipeline_barrier(barrier_to_transfer_dst);
+
+            // Record the copy command
+            cmd->copy_buffer_to_texture(stagingBuffer, m_FontTexture, width, height);
+
+            // Transition the texture to be ready for shader sampling
+            RAL::ResourceBarrier barrier_to_shader_read = {};
+            barrier_to_shader_read.srcStage = RAL::PipelineStageFlags::Transfer;
+            barrier_to_shader_read.srcAccess = RAL::AccessFlags::TransferWrite;
+            barrier_to_shader_read.dstStage = RAL::PipelineStageFlags::FragmentShader;
+            barrier_to_shader_read.dstAccess = RAL::AccessFlags::ShaderRead;
+            barrier_to_shader_read.textureTransition = { m_FontTexture, RAL::ImageLayout::TransferDst, RAL::ImageLayout::ShaderReadOnly };
+            cmd->pipeline_barrier(barrier_to_shader_read);
+        });
+
+
+        // 1e. Clean up the temporary staging buffer. Its job is done.
+        m_device->destroy_buffer(stagingBuffer);
 
         io.Fonts->SetTexID((ImTextureID) (intptr_t) m_FontTexture.index); // Use the handle index as an ID
 

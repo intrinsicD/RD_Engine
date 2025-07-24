@@ -1,4 +1,4 @@
-# A basic opaque PBR material for standard meshes.
+#materials/basic.mat
 version: 1.0
 name: Basic Opaque Material
 

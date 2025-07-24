@@ -19,10 +19,10 @@
 namespace RDE {
     // A debug callback function for the validation layers
     static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
-            VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-            VkDebugUtilsMessageTypeFlagsEXT messageType,
-            const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-            void *pUserData) {
+        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+        VkDebugUtilsMessageTypeFlagsEXT messageType,
+        const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+        void *pUserData) {
         // Only print warnings and errors
         if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
             RDE_CORE_ERROR("Validation Layer: {}", pCallbackData->pMessage);
@@ -31,7 +31,7 @@ namespace RDE {
     }
 
     VulkanDevice::VulkanDevice(std::shared_ptr<VulkanContext> context, std::shared_ptr<VulkanSwapchain> swapchain)
-            : m_Context(std::move(context)), m_Swapchain(std::move(swapchain)) {
+        : m_Context(std::move(context)), m_Swapchain(std::move(swapchain)) {
         auto logicalDevice = m_Context->get_logical_device();
 
         // === 1. Create Command Pool ===
@@ -64,9 +64,9 @@ namespace RDE {
         // === 3. Create Global Descriptor Pool ===
         {
             std::vector<VkDescriptorPoolSize> poolSizes = {
-                    {VK_DESCRIPTOR_TYPE_SAMPLER,                1000},
-                    {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},
-                    {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         1000}
+                {VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
+                {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},
+                {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000}
             };
             VkDescriptorPoolCreateInfo poolInfo{};
             poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -103,11 +103,13 @@ namespace RDE {
                 m_FrameCommandBuffers[i] = std::make_unique<VulkanCommandBuffer>(vk_cmd, this);
             }
         }
+        create_swapchain_texture_handles();
         RDE_CORE_INFO("Vulkan Device Initialized successfully.");
     }
 
     VulkanDevice::~VulkanDevice() {
         wait_idle();
+        destroy_swapchain_texture_handles();
         auto logicalDevice = m_Context->get_logical_device();
 
         // Destroy only what WE own. Context and Swapchain manage their own lifetimes.
@@ -125,41 +127,73 @@ namespace RDE {
         vkDestroyCommandPool(logicalDevice, m_UploadCommandPool, nullptr);
     }
 
-    RAL::CommandBuffer *VulkanDevice::begin_frame() {
-        auto logicalDevice = m_Context->get_logical_device();
+    void VulkanDevice::create_swapchain_texture_handles() {
+        const auto &swapchainImages = m_Swapchain->get_images();
+        const auto &swapchainImageViews = m_Swapchain->get_image_views();
+        m_SwapchainTextureHandles.resize(swapchainImages.size());
 
+        for (size_t i = 0; i < swapchainImages.size(); ++i) {
+            auto handle = RAL::TextureHandle{m_resources_db.create()};
+
+            VulkanTexture vkTexture;
+            vkTexture.handle = swapchainImages[i];
+            vkTexture.image_view = swapchainImageViews[i];
+            vkTexture.allocation = nullptr; // Not managed by VMA
+
+            RAL::TextureDescription desc;
+            desc.width = m_Swapchain->get_extent().width;
+            desc.height = m_Swapchain->get_extent().height;
+            desc.format = ToRALFormat(m_Swapchain->get_image_format()); // You'll need a ToRALFormat mapper
+            desc.usage = RAL::TextureUsage::ColorAttachment;
+
+            m_resources_db.emplace<VulkanTexture>(handle, vkTexture);
+            m_resources_db.emplace<RAL::TextureDescription>(handle, desc);
+            m_SwapchainTextureHandles[i] = handle;
+        }
+    }
+
+    void VulkanDevice::destroy_swapchain_texture_handles() {
+        for (auto &handle: m_SwapchainTextureHandles) {
+            if (m_resources_db.is_valid(handle)) {
+                // Don't destroy the underlying image/view, just the entity
+                m_resources_db.destroy(handle);
+            }
+        }
+        m_SwapchainTextureHandles.clear();
+    }
+
+    RAL::FrameContext VulkanDevice::begin_frame() {
+        auto logicalDevice = m_Context->get_logical_device();
         VK_CHECK(vkWaitForFences(logicalDevice, 1, &m_InFlightFences[m_CurrentFrameIndex], VK_TRUE, UINT64_MAX));
 
-        VkResult result = m_Swapchain->acquire_next_image(m_ImageAvailableSemaphores[m_CurrentFrameIndex]);
+        uint32_t imageIndex;
+        VkResult result = m_Swapchain->acquire_next_image(m_ImageAvailableSemaphores[m_CurrentFrameIndex], &imageIndex);
+
         if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-            m_Swapchain->recreate();
-            return nullptr; // Indicate to the caller that the frame should be skipped
+            recreate_swapchain();
+            return {RAL::TextureHandle::INVALID(), 0, 0}; // Indicate frame should be skipped
         } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
             throw std::runtime_error("Failed to acquire swapchain image!");
         }
 
-        // We can now safely reset the fence as we are about to use its frame resources
+        // Now we can safely reset the fence as we are about to use its frame resources
         VK_CHECK(vkResetFences(logicalDevice, 1, &m_InFlightFences[m_CurrentFrameIndex]));
+        get_current_frame_deletion_queue().flush();
 
-        m_FrameDeletionQueues[m_CurrentFrameIndex].flush();
-
+        // Reset the command buffer for this frame so it can be recorded into
         VulkanCommandBuffer *cmd = m_FrameCommandBuffers[m_CurrentFrameIndex].get();
         VK_CHECK(vkResetCommandBuffer(cmd->get_handle(), 0));
-        cmd->begin();
 
-        cmd->transition_image_layout(m_Swapchain->get_current_image(), VK_IMAGE_LAYOUT_UNDEFINED,
-                                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
-        return cmd;
+        return {m_SwapchainTextureHandles[imageIndex], m_CurrentFrameIndex, imageIndex};
     }
 
-    void VulkanDevice::end_frame(const std::vector<RAL::CommandBuffer *> &command_buffers) {
-        VulkanCommandBuffer *main_cmd = dynamic_cast<VulkanCommandBuffer *>(command_buffers[0]);
-        // Assuming first is main
-
-        main_cmd->transition_image_layout(m_Swapchain->get_current_image(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                          VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-        main_cmd->end();
+    void VulkanDevice::end_frame(const RAL::FrameContext &context,
+                                 const std::vector<RAL::CommandBuffer *> &command_buffers) {
+        if (!context.swapchainTexture.is_valid()) {
+            // Frame was skipped (e.g., minimized window), so just advance the frame index
+            m_CurrentFrameIndex = (m_CurrentFrameIndex + 1) % FRAMES_IN_FLIGHT;
+            return;
+        }
 
         std::vector<VkCommandBuffer> vkCommandBuffers;
         vkCommandBuffers.reserve(command_buffers.size());
@@ -169,15 +203,24 @@ namespace RDE {
 
         submit_internal(vkCommandBuffers);
 
-        VkResult result = m_Swapchain->present(m_RenderFinishedSemaphores[m_CurrentFrameIndex],
-                                               m_Context->get_present_queue());
+        /*VkResult result = m_Swapchain->present(m_RenderFinishedSemaphores[m_CurrentFrameIndex],
+                                               m_Context->get_present_queue());*/
+        VkResult result = m_Swapchain->present(
+            m_RenderFinishedSemaphores[m_CurrentFrameIndex],
+            m_Context->get_present_queue(),
+            context.swapchainImageIndex // Use the index from the context!
+        );
         if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-            m_Swapchain->recreate();
+            recreate_swapchain();
         } else if (result != VK_SUCCESS) {
             throw std::runtime_error("Failed to present swapchain image!");
         }
 
         m_CurrentFrameIndex = (m_CurrentFrameIndex + 1) % FRAMES_IN_FLIGHT;
+    }
+
+    RAL::CommandBuffer *VulkanDevice::get_command_buffer() {
+        return m_FrameCommandBuffers[m_CurrentFrameIndex].get();
     }
 
     void VulkanDevice::submit_internal(const std::vector<VkCommandBuffer> &vkCommandBuffers) {
@@ -231,119 +274,76 @@ namespace RDE {
     void
     VulkanDevice::update_buffer_data(RAL::BufferHandle target_handle, const void *data, size_t size, size_t offset) {
         if (!m_resources_db.is_valid(target_handle)) {
-            RDE_CORE_ERROR("Attempted to update an invalid buffer handle: {}", entt::to_integral(target_handle.index));
+            RDE_CORE_ERROR("Attempted to update an invalid buffer handle.");
             return;
         }
 
-        auto &target_buffer_info = m_resources_db.get<VulkanBuffer>(target_handle);
-        // --- INTELLIGENT PATH SELECTION ---
-        // Check how the buffer was created to decide on the update strategy.
+        const auto &target_desc = m_resources_db.get<RAL::BufferDescription>(target_handle);
+        const auto &target_vk_buffer = m_resources_db.get<VulkanBuffer>(target_handle);
 
-        if (target_buffer_info.memoryUsage == RAL::MemoryUsage::HostVisible /*||
-            target_buffer_info.memoryUsage == RAL::MemoryUsage::HostVisibleCoherent*/) {
-
-            // --- PATH 1: SIMPLE MAP/MEMCPY (Using your existing functions) ---
-            // This is for CPU-visible buffers. It's simple and direct.
-            RDE_CORE_TRACE("Updating HostVisible buffer via map/memcpy.");
-
-            void *mapped_data = this->map_buffer(target_handle);
-            if (mapped_data) {
-                // memcpy to the pointer at the correct offset
-                memcpy(static_cast<uint8_t *>(mapped_data) + offset, data, size);
-                this->unmap_buffer(target_handle);
+        // --- PATH 1: The buffer is directly mappable by the CPU ---
+        if (target_desc.memoryUsage == RAL::MemoryUsage::HostVisibleCoherent) {
+            // VMA can create persistently mapped buffers. If we have a pointer, use it.
+            // This is the fastest path for frequent updates.
+            if (target_vk_buffer.mapped_data) {
+                memcpy(static_cast<uint8_t *>(target_vk_buffer.mapped_data) + offset, data, size);
             } else {
-                RDE_CORE_ERROR("Failed to map buffer {} for update.", entt::to_integral(target_handle.index));
+                // Fallback for non-persistently mapped buffers
+                void *mapped_data = this->map_buffer(target_handle);
+                if (mapped_data) {
+                    memcpy(static_cast<uint8_t *>(mapped_data) + offset, data, size);
+                    this->unmap_buffer(target_handle);
+                }
             }
+        }
+        // --- PATH 2: The buffer is on the GPU, requiring a staging transfer ---
+        else {
+            // Create a temporary staging buffer using our own RAL interface.
+            RAL::BufferDescription staging_desc = {};
+            staging_desc.size = size;
+            staging_desc.usage = RAL::BufferUsage::TransferSrc;
+            staging_desc.memoryUsage = RAL::MemoryUsage::HostVisibleCoherent;
+            RAL::BufferHandle staging_handle = this->create_buffer(staging_desc);
 
-        } else { // Assumes RAL::MemoryUsage::DeviceLocal
-
-            // --- PATH 2: OPTIMAL STAGING BUFFER TRANSFER ---
-            // This is for GPU-only memory. It's more complex but higher performance.
-            RDE_CORE_TRACE("Updating DeviceLocal buffer via staging transfer.");
-
-            auto vma_allocator = m_Context->get_vma_allocator();
-
-            // Create and fill a temporary staging buffer
-            VulkanBuffer staging_buffer;
-
-            VkBufferCreateInfo staging_buffer_ci{};
-            staging_buffer_ci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-            staging_buffer_ci.size = size;
-            staging_buffer_ci.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-
-            VmaAllocationCreateInfo staging_alloc_ci{};
-            staging_alloc_ci.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
-            staging_alloc_ci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
-            VK_CHECK(vmaCreateBuffer(vma_allocator, &staging_buffer_ci, &staging_alloc_ci, &staging_buffer.handle,
-                                     &staging_buffer.allocation, nullptr));
-
-            void *mapped_data;
-            vmaMapMemory(vma_allocator, staging_buffer.allocation, &mapped_data);
+            // Map the staging buffer and copy the user's data into it.
+            void *mapped_data = this->map_buffer(staging_handle);
+            assert(mapped_data != nullptr && "Failed to map staging buffer");
             memcpy(mapped_data, data, size);
-            vmaUnmapMemory(vma_allocator, staging_buffer.allocation);
+            this->unmap_buffer(staging_handle);
 
-            // Issue the copy command
-            immediate_submit([&](VkCommandBuffer cmd) {
-                VkBufferCopy copy_region{};
-                copy_region.srcOffset = 0;
-                copy_region.dstOffset = offset;
-                copy_region.size = size;
-
-                vkCmdCopyBuffer(cmd, staging_buffer.handle, target_buffer_info.handle, 1, &copy_region);
+            // Use the clean, public immediate_submit to perform the GPU-side copy.
+            this->immediate_submit([&](RAL::CommandBuffer *cmd) {
+                // Record a copy from the staging buffer to the final destination buffer.
+                // We are using the clean RAL command here, with RAL handles.
+                cmd->copy_buffer(staging_handle, target_handle, size, 0, offset);
             });
 
-            // Clean up
-            vmaDestroyBuffer(vma_allocator, staging_buffer.handle, staging_buffer.allocation);
+            // Clean up the temporary staging buffer.
+            this->destroy_buffer(staging_handle);
         }
     }
 
-    void VulkanDevice::copy_buffer(RAL::BufferHandle source_handle, RAL::BufferHandle target_handle, size_t size,
-                                   size_t source_offset, size_t target_offset) {
-        if (!m_resources_db.is_valid(source_handle) || !m_resources_db.is_valid(target_handle)) {
-            RDE_CORE_ERROR("Attempted to copy with an invalid buffer handle.");
-            return;
-        }
-
-        const auto &source_buffer = m_resources_db.get<VulkanBuffer>(source_handle);
-        const auto &destination_buffer = m_resources_db.get<VulkanBuffer>(target_handle);
-
-        // If size is -1, copy the entire source buffer (respecting offsets).
-        size_t copy_size = size;
-        if (copy_size == (size_t) -1) {
-            copy_size = source_buffer.size - source_offset;
-        }
-
-        // Safety check
-        if (copy_size > (destination_buffer.size - target_offset)) {
-            RDE_CORE_ERROR("GPU buffer copy would overflow destination buffer.");
-            return;
-        }
-
-        immediate_submit([&](VkCommandBuffer cmd) {
-            VkBufferCopy copy_region{};
-            copy_region.srcOffset = source_offset;
-            copy_region.dstOffset = target_offset;
-            copy_region.size = copy_size;
-            vkCmdCopyBuffer(cmd, source_buffer.handle, destination_buffer.handle, 1, &copy_region);
-        });
-    }
-
-    void VulkanDevice::immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function) {
-        // Get handles from the context
+    void VulkanDevice::immediate_submit(std::function<void(RAL::CommandBuffer *cmd)> &&function) {
         VkDevice logicalDevice = m_Context->get_logical_device();
         VkQueue graphicsQueue = m_Context->get_graphics_queue();
 
-        // The rest of the logic is the same, just using the local variables above
+        // The key change: Create a temporary RAL-compliant command buffer wrapper
+        // for the user's lambda.
+        VulkanCommandBuffer upload_cmd_wrapper(m_UploadCommandBuffer, this);
+
+        // Begin the native command buffer
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         VK_CHECK(vkBeginCommandBuffer(m_UploadCommandBuffer, &beginInfo));
 
-        function(m_UploadCommandBuffer);
+        // Call the user's function, passing them our clean RAL interface wrapper
+        function(&upload_cmd_wrapper);
 
+        // End the native command buffer
         VK_CHECK(vkEndCommandBuffer(m_UploadCommandBuffer));
 
+        // --- The submission logic remains the same ---
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.commandBufferCount = 1;
@@ -356,13 +356,6 @@ namespace RDE {
         VK_CHECK(vkResetCommandPool(logicalDevice, m_UploadCommandPool, 0));
     }
 
-    void VulkanDevice::copy_buffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
-        immediate_submit([&](VkCommandBuffer cmd) {
-            VkBufferCopy copyRegion{};
-            copyRegion.size = size;
-            vkCmdCopyBuffer(cmd, srcBuffer, dstBuffer, 1, &copyRegion);
-        });
-    }
 
     VkShaderModule VulkanDevice::create_shader_module(const std::vector<char> &code) {
         VkShaderModuleCreateInfo createInfo{};
@@ -448,10 +441,10 @@ namespace RDE {
         std::vector<VkVertexInputAttributeDescription> attributes;
         for (const auto &a: desc.vertexAttributes) {
             attributes.push_back({
-                                         .location = a.location, .binding = a.binding, .format = ToVulkanFormat(
-                            a.format),
-                                         .offset = a.offset
-                                 });
+                .location = a.location, .binding = a.binding, .format = ToVulkanFormat(
+                    a.format),
+                .offset = a.offset
+            });
         }
 
         VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
@@ -475,8 +468,8 @@ namespace RDE {
 
         // Dynamic states allow us to change viewport and scissor without rebuilding the pipeline
         std::vector<VkDynamicState> dynamicStates = {
-                VK_DYNAMIC_STATE_VIEWPORT,
-                VK_DYNAMIC_STATE_SCISSOR
+            VK_DYNAMIC_STATE_VIEWPORT,
+            VK_DYNAMIC_STATE_SCISSOR
         };
         VkPipelineDynamicStateCreateInfo dynamicState{};
         dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
@@ -488,12 +481,12 @@ namespace RDE {
         rasterizer.depthClampEnable = VK_FALSE;
         rasterizer.rasterizerDiscardEnable = VK_FALSE;
         rasterizer.polygonMode = ToVulkanPolygonMode(
-                desc.rasterizationState.polygonMode); // Map from desc.rasterizationState later
+            desc.rasterizationState.polygonMode); // Map from desc.rasterizationState later
         rasterizer.lineWidth = 1.0f;
         rasterizer.cullMode = ToVulkanCullMode(
-                desc.rasterizationState.cullMode); // Map from desc.rasterizationState later
+            desc.rasterizationState.cullMode); // Map from desc.rasterizationState later
         rasterizer.frontFace = ToVulkanFrontFace(
-                desc.rasterizationState.frontFace); // Map from desc.rasterizationState later
+            desc.rasterizationState.frontFace); // Map from desc.rasterizationState later
         rasterizer.depthBiasEnable = VK_FALSE;
 
         VkPipelineMultisampleStateCreateInfo multisampling{};
@@ -569,12 +562,12 @@ namespace RDE {
         pipelineInfo.subpass = 0;
 
         VK_CHECK(
-                vkCreateGraphicsPipelines(logicalDevice,
-                                          VK_NULL_HANDLE,
-                                          1,
-                                          &pipelineInfo,
-                                          nullptr,
-                                          &newPipeline.handle)
+            vkCreateGraphicsPipelines(logicalDevice,
+                VK_NULL_HANDLE,
+                1,
+                &pipelineInfo,
+                nullptr,
+                &newPipeline.handle)
         );
 
         auto handle = RAL::PipelineHandle{m_resources_db.create()};
@@ -599,7 +592,7 @@ namespace RDE {
     }
 
     RAL::DescriptorSetLayoutHandle VulkanDevice::create_descriptor_set_layout(
-            const RAL::DescriptorSetLayoutDescription &desc) {
+        const RAL::DescriptorSetLayoutDescription &desc) {
         std::vector<VkDescriptorSetLayoutBinding> bindings;
         bindings.reserve(desc.bindings.size());
 
@@ -630,7 +623,6 @@ namespace RDE {
     }
 
     void VulkanDevice::destroy_descriptor_set_layout(RAL::DescriptorSetLayoutHandle handle) {
-
         if (!m_resources_db.is_valid(handle)) return;
 
         const auto &vk_descriptor_set_layout = m_resources_db.get<VulkanDescriptorSetLayout>(handle);
@@ -696,7 +688,7 @@ namespace RDE {
                     if (!m_resources_db.is_valid(ralWrite.texture)) continue;
                     const auto &vk_texture = m_resources_db.get<VulkanTexture>(ralWrite.texture);
                     imageInfos.push_back(
-                            {VK_NULL_HANDLE, vk_texture.image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL});
+                        {VK_NULL_HANDLE, vk_texture.image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL});
                     write.pImageInfo = &imageInfos.back();
                     break;
                 }
@@ -705,11 +697,11 @@ namespace RDE {
                     if (!m_resources_db.is_valid(ralWrite.texture)) continue;
                     const auto &vk_texture = m_resources_db.get<VulkanTexture>(ralWrite.texture);
                     imageInfos.push_back(
-                            {VK_NULL_HANDLE, vk_texture.image_view, VK_IMAGE_LAYOUT_GENERAL});
+                        {VK_NULL_HANDLE, vk_texture.image_view, VK_IMAGE_LAYOUT_GENERAL});
                     write.pImageInfo = &imageInfos.back();
                     break;
                 }
-                case RAL::DescriptorType::Sampler : {
+                case RAL::DescriptorType::Sampler: {
                     // Get the concrete Vulkan sampler component
                     if (!m_resources_db.is_valid(ralWrite.sampler)) continue;
                     const auto &vk_sampler = m_resources_db.get<VulkanSampler>(ralWrite.sampler);
@@ -725,7 +717,7 @@ namespace RDE {
                     const auto &vk_texture = m_resources_db.get<VulkanTexture>(ralWrite.texture);
                     const auto &vk_sampler = m_resources_db.get<VulkanSampler>(ralWrite.sampler);
                     imageInfos.push_back(
-                            {vk_sampler.handle, vk_texture.image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL});
+                        {vk_sampler.handle, vk_texture.image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL});
                     write.pImageInfo = &imageInfos.back();
                     break;
                 }
@@ -772,8 +764,7 @@ namespace RDE {
         samplerInfo.minFilter = ToVulkanFilter(desc.minFilter);
         samplerInfo.addressModeU = ToVulkanAddressMode(desc.addressModeU);
         samplerInfo.addressModeV = ToVulkanAddressMode(desc.addressModeV);
-        samplerInfo.addressModeW = ToVulkanAddressMode(desc.addressModeW);
-        {
+        samplerInfo.addressModeW = ToVulkanAddressMode(desc.addressModeW); {
             const auto &properties = m_Context->get_physical_device_properties();
             VkPhysicalDeviceFeatures features;
             vkGetPhysicalDeviceFeatures(m_Context->get_physical_device(), &features);
@@ -828,65 +819,23 @@ namespace RDE {
 
         VmaAllocationCreateInfo allocInfo = {};
         allocInfo.usage = ToVmaMemoryUsage(desc.memoryUsage);
-
-        if (desc.initialData && desc.memoryUsage == RAL::MemoryUsage::DeviceLocal) {
-            bufferInfo.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        if (desc.memoryUsage == RAL::MemoryUsage::HostVisibleCoherent) {
+            // Automatically map persistent host-visible buffers. Big performance win.
+            allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
         }
+
         VmaAllocator allocator = m_Context->get_vma_allocator();
         VulkanBuffer newBuffer;
+        VmaAllocationInfo vmaAllocInfo;
         VK_CHECK(
-                vmaCreateBuffer(allocator,
-                                &bufferInfo,
-                                &allocInfo,
-                                &newBuffer.handle,
-                                &newBuffer.allocation,
-                                nullptr)
+            vmaCreateBuffer(allocator, &bufferInfo, &allocInfo, &newBuffer.handle, &newBuffer.allocation, &vmaAllocInfo)
         );
-
-        if (desc.initialData) {
-            if (desc.memoryUsage == RAL::MemoryUsage::HostVisible) {
-                void *mappedData;
-                vmaMapMemory(allocator, newBuffer.allocation, &mappedData);
-                memcpy(mappedData, desc.initialData, desc.size);
-                vmaUnmapMemory(allocator, newBuffer.allocation);
-            } else {
-                // Use a staging buffer for device-local memory
-                VulkanBuffer stagingBuffer;
-
-                VkBufferCreateInfo stagingBufferInfo{};
-                stagingBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-                stagingBufferInfo.size = desc.size;
-                stagingBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-
-                VmaAllocationCreateInfo stagingAllocInfo = {};
-                stagingAllocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST; // Staging buffer is on the CPU side
-                stagingAllocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
-                VK_CHECK(
-                        vmaCreateBuffer(allocator,
-                                        &stagingBufferInfo,
-                                        &stagingAllocInfo,
-                                        &stagingBuffer.handle,
-                                        &stagingBuffer.allocation,
-                                        nullptr)
-                );
-
-                void *mappedData;
-                vmaMapMemory(allocator, stagingBuffer.allocation, &mappedData);
-                memcpy(mappedData, desc.initialData, desc.size);
-                vmaUnmapMemory(allocator, stagingBuffer.allocation);
-
-                copy_buffer(stagingBuffer.handle, newBuffer.handle, desc.size);
-
-                vmaDestroyBuffer(allocator, stagingBuffer.handle, stagingBuffer.allocation);
-            }
-        }
+        // Store the persistently mapped pointer if we got one.
+        newBuffer.mapped_data = vmaAllocInfo.pMappedData;
 
         auto handle = RAL::BufferHandle{this->m_resources_db.create()};
-
-        this->m_resources_db.emplace<RAL::BufferDescription>(handle, desc);
-        this->m_resources_db.emplace<VulkanBuffer>(handle, newBuffer);
-
+        m_resources_db.emplace<RAL::BufferDescription>(handle, desc);
+        m_resources_db.emplace<VulkanBuffer>(handle, newBuffer);
         return handle;
     }
 
@@ -911,127 +860,36 @@ namespace RDE {
 
     RAL::TextureHandle VulkanDevice::create_texture(const RAL::TextureDescription &desc) {
         VulkanTexture newTexture;
-
-        // 1. Create the VkImage
         VkImageCreateInfo imageInfo{};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        imageInfo.imageType = VK_IMAGE_TYPE_2D; // Expand later for 1D/3D/Cube
-        imageInfo.extent.width = desc.width;
-        imageInfo.extent.height = desc.height;
-        imageInfo.extent.depth = 1;
+        imageInfo.imageType = VK_IMAGE_TYPE_2D;
+        imageInfo.extent = {desc.width, desc.height, 1};
         imageInfo.mipLevels = desc.mipLevels;
         imageInfo.arrayLayers = 1;
         imageInfo.format = ToVulkanFormat(desc.format);
-        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL; // Always use optimal for performance
+        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         imageInfo.usage = ToVulkanImageUsage(desc.usage);
         imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-        // Add transfer destination usage if we need to upload data
-        if (desc.initialData) {
-            imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-        }
-
         VmaAllocationCreateInfo allocInfo = {};
         allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 
         VmaAllocator allocator = m_Context->get_vma_allocator();
-        VK_CHECK(vmaCreateImage(allocator, &imageInfo, &allocInfo, &newTexture.handle, &newTexture.allocation,
-                                nullptr));
+        VK_CHECK(vmaCreateImage(allocator, &imageInfo, &allocInfo, &newTexture.handle, &newTexture.allocation, nullptr))
+        ;
 
-        // 2. Handle Initial Data Upload (if provided)
-        if (desc.initialData) {
-            // Create the CPU-visible staging buffer
-            VulkanBuffer stagingBuffer;
-            VkBufferCreateInfo stagingBufferInfo{};
-            stagingBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-            stagingBufferInfo.size = desc.initialDataSize; // Using the size from the description
-            stagingBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-
-            VmaAllocationCreateInfo stagingAllocInfo = {};
-            stagingAllocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
-            stagingAllocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
-            VK_CHECK(vmaCreateBuffer(allocator, &stagingBufferInfo, &stagingAllocInfo, &stagingBuffer.handle,
-                                     &stagingBuffer.allocation, nullptr));
-
-            // Copy data from the application to the staging buffer
-            void *mappedData;
-            vmaMapMemory(allocator, stagingBuffer.allocation, &mappedData);
-            memcpy(mappedData, desc.initialData, static_cast<size_t>(desc.initialDataSize));
-            vmaUnmapMemory(allocator, stagingBuffer.allocation);
-
-            // --- USE immediate_submit TO PERFORM THE GPU-SIDE COPY AND LAYOUT TRANSITIONS ---
-            immediate_submit([&](VkCommandBuffer cmd) {
-                // 1. Transition image layout to be ready for copying
-                VkImageMemoryBarrier barrier_to_transfer{};
-                barrier_to_transfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-                barrier_to_transfer.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-                barrier_to_transfer.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-                barrier_to_transfer.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-                barrier_to_transfer.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-                barrier_to_transfer.image = newTexture.handle;
-                barrier_to_transfer.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-                barrier_to_transfer.subresourceRange.baseMipLevel = 0;
-                barrier_to_transfer.subresourceRange.levelCount = 1;
-                barrier_to_transfer.subresourceRange.baseArrayLayer = 0;
-                barrier_to_transfer.subresourceRange.layerCount = 1;
-                barrier_to_transfer.srcAccessMask = 0;
-                barrier_to_transfer.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-                vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0,
-                                     nullptr, 0, nullptr, 1, &barrier_to_transfer);
-
-                // 2. Copy the data from the staging buffer to the GPU-local image
-                VkBufferImageCopy region{};
-                region.bufferOffset = 0;
-                region.bufferRowLength = 0;
-                region.bufferImageHeight = 0;
-                region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-                region.imageSubresource.mipLevel = 0;
-                region.imageSubresource.baseArrayLayer = 0;
-                region.imageSubresource.layerCount = 1;
-                region.imageOffset = {0, 0, 0};
-                region.imageExtent = {desc.width, desc.height, 1};
-                vkCmdCopyBufferToImage(cmd, stagingBuffer.handle, newTexture.handle,
-                                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
-                // 3. Transition image layout to be ready for shader reading
-                VkImageMemoryBarrier barrier_to_shader_read{};
-                barrier_to_shader_read.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-                barrier_to_shader_read.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-                barrier_to_shader_read.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                barrier_to_shader_read.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-                barrier_to_shader_read.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-                barrier_to_shader_read.image = newTexture.handle;
-                barrier_to_shader_read.subresourceRange = barrier_to_transfer.subresourceRange;
-                // Subresource range is the same
-                barrier_to_shader_read.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-                barrier_to_shader_read.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-                vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0,
-                                     nullptr, 0, nullptr, 1, &barrier_to_shader_read);
-            });
-
-            // Clean up the temporary staging buffer now that the data is on the GPU
-            vmaDestroyBuffer(allocator, stagingBuffer.handle, stagingBuffer.allocation);
-        }
-
-        // 3. Create the VkImageView
         VkImageViewCreateInfo viewInfo{};
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         viewInfo.image = newTexture.handle;
         viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
         viewInfo.format = ToVulkanFormat(desc.format);
-        // Note: Use an appropriate aspect mask for depth/stencil images
-        if (imageInfo.usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
-            viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-        } else {
-            viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        }
+        viewInfo.subresourceRange.aspectMask = (has_flag(desc.usage, RAL::TextureUsage::DepthStencilAttachment))
+                                                   ? VK_IMAGE_ASPECT_DEPTH_BIT
+                                                   : VK_IMAGE_ASPECT_COLOR_BIT;
         viewInfo.subresourceRange.baseMipLevel = 0;
-        viewInfo.subresourceRange.levelCount = 1;
+        viewInfo.subresourceRange.levelCount = desc.mipLevels;
         viewInfo.subresourceRange.baseArrayLayer = 0;
         viewInfo.subresourceRange.layerCount = 1;
 
@@ -1040,8 +898,7 @@ namespace RDE {
 
         auto handle = RAL::TextureHandle{m_resources_db.create()};
         m_resources_db.emplace<VulkanTexture>(handle, newTexture);
-        m_resources_db.emplace<RAL::TextureDescription>(handle, desc); // Store the recipe!
-
+        m_resources_db.emplace<RAL::TextureDescription>(handle, desc);
         return handle;
     }
 
@@ -1067,7 +924,9 @@ namespace RDE {
     void VulkanDevice::recreate_swapchain() {
         if (m_Swapchain) {
             // If it exists, recreate it
+            destroy_swapchain_texture_handles();
             m_Swapchain->recreate();
+            create_swapchain_texture_handles();
         }
     }
 }

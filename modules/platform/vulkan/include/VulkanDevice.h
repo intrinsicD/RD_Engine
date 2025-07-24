@@ -28,9 +28,12 @@ namespace RDE {
         ~VulkanDevice() override;
 
         // --- Frame Lifecycle ---
-        RAL::CommandBuffer *begin_frame() override;
+        RAL::FrameContext begin_frame() override;
 
-        void end_frame(const std::vector<RAL::CommandBuffer *> &command_buffers) override;
+        void end_frame(const RAL::FrameContext &context,
+                       const std::vector<RAL::CommandBuffer *> &command_buffers) override;
+
+        RAL::CommandBuffer *get_command_buffer() override;
 
         void wait_idle() override;
 
@@ -76,18 +79,23 @@ namespace RDE {
         void destroy_descriptor_set(RAL::DescriptorSetHandle handle) override;
 
         // --- Immediate Operations ---
-        void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function);
+        void immediate_submit(std::function<void(RAL::CommandBuffer *cmd)> &&function) override;
 
         void *map_buffer(RAL::BufferHandle handle) override;
 
         void unmap_buffer(RAL::BufferHandle handle) override;
 
-        void update_buffer_data(RAL::BufferHandle targetBuffer, const void *data, size_t size, size_t offset = 0) override;
-
-        void copy_buffer(RAL::BufferHandle source, RAL::BufferHandle target, size_t size, size_t source_offset, size_t target_offset) override;
+        void update_buffer_data(RAL::BufferHandle targetBuffer, const void *data, size_t size,
+                                size_t offset = 0) override;
 
     private:
         void submit_internal(const std::vector<VkCommandBuffer> &vkCommandBuffers);
+
+        std::vector<RAL::TextureHandle> m_SwapchainTextureHandles;
+
+        void create_swapchain_texture_handles();
+
+        void destroy_swapchain_texture_handles();
 
         //--------------------------------------------------------------------------------------------------------------
         // --- Core Dependencies (not owned) ---
@@ -106,7 +114,7 @@ namespace RDE {
         // --- Frame Sync & Management ---
         static constexpr int FRAMES_IN_FLIGHT = 2;
         uint32_t m_CurrentFrameIndex = 0;
-        std::vector<std::unique_ptr<VulkanCommandBuffer>> m_FrameCommandBuffers;
+        std::vector<std::unique_ptr<VulkanCommandBuffer> > m_FrameCommandBuffers;
         std::vector<VkSemaphore> m_ImageAvailableSemaphores;
         std::vector<VkSemaphore> m_RenderFinishedSemaphores;
         std::vector<VkFence> m_InFlightFences;
@@ -115,8 +123,6 @@ namespace RDE {
         std::vector<DeletionQueue> m_FrameDeletionQueues;
 
         DeletionQueue &get_current_frame_deletion_queue();
-
-        void copy_buffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
 
         VkShaderModule create_shader_module(const std::vector<char> &code);
     };

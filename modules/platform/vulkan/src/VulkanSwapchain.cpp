@@ -65,8 +65,8 @@ namespace RDE {
                 glfwGetFramebufferSize(window, &width, &height);
 
                 VkExtent2D actualExtent = {
-                        static_cast<uint32_t>(width),
-                        static_cast<uint32_t>(height)
+                    static_cast<uint32_t>(width),
+                    static_cast<uint32_t>(height)
                 };
 
                 actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width,
@@ -81,7 +81,7 @@ namespace RDE {
 
 
     VulkanSwapchain::VulkanSwapchain(VulkanContext *context, void *window, bool vsync)
-            : m_Context(context), m_Window(static_cast<GLFWwindow *>(window)), m_VsyncEnabled(vsync) {
+        : m_Context(context), m_Window(static_cast<GLFWwindow *>(window)), m_VsyncEnabled(vsync) {
         create();
     }
 
@@ -190,26 +190,18 @@ namespace RDE {
         create(); // `create` handles passing the old swapchain handle for seamless transition
     }
 
-    VkResult VulkanSwapchain::acquire_next_image(VkSemaphore imageAvailableSemaphore) {
-        // MOVED FROM: VulkanDevice::acquire_next_swapchain_image
+    VkResult VulkanSwapchain::acquire_next_image(VkSemaphore imageAvailableSemaphore, uint32_t *pImageIndex) {
         auto logicalDevice = m_Context->get_logical_device();
-
-        // If the swapchain doesn't even exist (e.g. minimized window), we can't acquire.
         if (m_SwapchainHandle == VK_NULL_HANDLE) {
             return VK_ERROR_OUT_OF_DATE_KHR;
         }
 
-        return vkAcquireNextImageKHR(
-                logicalDevice,
-                m_SwapchainHandle,
-                UINT64_MAX,
-                imageAvailableSemaphore,
-                VK_NULL_HANDLE,
-                &m_CurrentImageIndex
-        );
+        // Use the output parameter
+        return vkAcquireNextImageKHR(logicalDevice, m_SwapchainHandle, UINT64_MAX, imageAvailableSemaphore,
+                                     VK_NULL_HANDLE, pImageIndex);
     }
 
-    VkResult VulkanSwapchain::present(VkSemaphore renderFinishedSemaphore, VkQueue presentQueue) {
+    VkResult VulkanSwapchain::present(VkSemaphore renderFinishedSemaphore, VkQueue presentQueue, uint32_t imageIndex){
         // MOVED FROM: VulkanDevice::present
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -219,22 +211,8 @@ namespace RDE {
 
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = &m_SwapchainHandle;
-        presentInfo.pImageIndices = &m_CurrentImageIndex;
+        presentInfo.pImageIndices = &imageIndex;
 
         return vkQueuePresentKHR(presentQueue, &presentInfo);
-    }
-
-    VkImageView VulkanSwapchain::get_current_image_view() const {
-        if (m_CurrentImageIndex >= m_ImageViews.size()) {
-            return VK_NULL_HANDLE; // Or assert/throw
-        }
-        return m_ImageViews[m_CurrentImageIndex];
-    }
-
-    VkImage VulkanSwapchain::get_current_image() const {
-        if (m_CurrentImageIndex >= m_Images.size()) {
-            return VK_NULL_HANDLE; // Or assert/throw
-        }
-        return m_Images[m_CurrentImageIndex];
     }
 }

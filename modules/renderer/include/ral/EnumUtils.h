@@ -7,17 +7,51 @@
 #include <stdexcept>
 
 namespace RDE {
+    inline std::string trim_string(const std::string& s) {
+        size_t first = s.find_first_not_of(" \t\n\r");
+        if (std::string::npos == first) {
+            return s;
+        }
+        size_t last = s.find_last_not_of(" \t\n\r");
+        return s.substr(first, (last - first + 1));
+    }
+
     inline RAL::ShaderStage string_to_shader_stage(const std::string &s) {
-        if (s == "vertex") return RAL::ShaderStage::Vertex;
-        if (s == "fragment") return RAL::ShaderStage::Fragment;
-        if (s == "compute") return RAL::ShaderStage::Compute;
-        if (s == "geometry") return RAL::ShaderStage::Geometry;
-        if (s == "tess_control") return RAL::ShaderStage::TessellationControl;
-        if (s == "tess_evaluation") return RAL::ShaderStage::TessellationEvaluation;
-        if (s == "task") return RAL::ShaderStage::Task;
-        if (s == "mesh") return RAL::ShaderStage::Mesh;
+        std::string lower_s = s;
+        std::transform(lower_s.begin(), lower_s.end(), lower_s.begin(), ::tolower);
+
+        if (lower_s == "vertex") return RAL::ShaderStage::Vertex;
+        if (lower_s == "fragment") return RAL::ShaderStage::Fragment;
+        if (lower_s == "compute") return RAL::ShaderStage::Compute;
+        if (lower_s == "geometry") return RAL::ShaderStage::Geometry;
+        if (lower_s == "tess_control") return RAL::ShaderStage::TessellationControl;
+        if (lower_s == "tess_evaluation") return RAL::ShaderStage::TessellationEvaluation;
+        if (lower_s == "task") return RAL::ShaderStage::Task;
+        if (lower_s == "mesh") return RAL::ShaderStage::Mesh;
         // Add other stages as needed...
         throw std::runtime_error("Unknown shader stage: " + s);
+    }
+
+    inline RAL::ShaderStage string_to_shader_stages_mask(const std::string& stages_str) {
+        RAL::ShaderStage mask = RAL::ShaderStage::None;
+        std::stringstream ss(stages_str);
+        std::string stage_token;
+
+        while (std::getline(ss, stage_token, ',')) {
+            try {
+                std::string trimmed_token = trim_string(stage_token);
+                mask |= string_to_shader_stage(trimmed_token);
+            } catch (const std::runtime_error& e) {
+                // Re-throw with more context
+                throw std::runtime_error("Failed to parse stage token '" + stage_token + "' from full string '" + stages_str + "'. Reason: " + e.what());
+            }
+        }
+
+        if (mask == RAL::ShaderStage::None) {
+            throw std::runtime_error("Parsed shader stages string '" + stages_str + "' but resulted in an empty mask.");
+        }
+
+        return mask;
     }
 
     inline RAL::Format string_to_ral_format(const std::string &s) {
@@ -50,6 +84,7 @@ namespace RDE {
         if (s == "StorageBuffer") return RAL::DescriptorType::StorageBuffer;
         if (s == "SampledImage") return RAL::DescriptorType::SampledImage;
         if (s == "StorageImage") return RAL::DescriptorType::StorageImage;
+        if (s == "CombinedImageSampler") return RAL::DescriptorType::CombinedImageSampler;
         if (s == "Sampler") return RAL::DescriptorType::Sampler;
         // Add other descriptor types as needed...
         throw std::runtime_error("Unknown descriptor type: " + s);

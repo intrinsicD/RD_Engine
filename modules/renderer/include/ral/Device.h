@@ -24,6 +24,7 @@ namespace RAL {
         TextureHandle swapchainTexture;
         uint32_t frameIndex; // Index of the current frame in flight
         // Internal sync primitives would be here (e.g., semaphores) but are hidden from the user.
+        uint32_t swapchainImageIndex;
     };
 
     class Device {
@@ -32,7 +33,7 @@ namespace RAL {
 
         virtual FrameContext begin_frame() = 0;
 
-        virtual void end_frame(const FrameContext &context, const std::vector<RAL::CommandBuffer *> &command_buffers) = 0;
+        virtual void end_frame(const FrameContext &context, const std::vector<CommandBuffer *> &command_buffers) = 0;
 
         virtual CommandBuffer* get_command_buffer() = 0;
 
@@ -45,7 +46,6 @@ namespace RAL {
         virtual void destroy_buffer(BufferHandle handle) = 0;
 
         virtual TextureHandle create_texture(const TextureDescription &desc) = 0;
-
 
         virtual void destroy_texture(TextureHandle handle) = 0;
 
@@ -75,9 +75,9 @@ namespace RAL {
 
         virtual void unmap_buffer(BufferHandle handle) = 0;
 
-        virtual void update_buffer_data(RAL::BufferHandle targetBuffer, const void *data, size_t size, size_t offset) = 0;
+        virtual void update_buffer_data(BufferHandle targetBuffer, const void *data, size_t size, size_t offset) = 0;
 
-        virtual void copy_buffer(RAL::BufferHandle source, RAL::BufferHandle target, size_t size, size_t source_offset, size_t target_offset) = 0;
+        virtual void immediate_submit(std::function<void(CommandBuffer* cmd)>&& function) = 0;
 
         ResourcesDatabase &get_resources_database() {
             return m_resources_db;

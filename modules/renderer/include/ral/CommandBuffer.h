@@ -57,7 +57,5 @@ namespace RAL {
 
         // Dispatches a compute shader.
         virtual void dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) = 0;
-
     };
-
 } // namespace RAL

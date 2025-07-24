@@ -62,7 +62,7 @@ namespace RDE {
                     setLayoutDesc.set = setNode["set"].as<uint32_t>();
                     for (const auto &bindingNode: setNode["bindings"]) {
                         RAL::DescriptorSetLayoutBinding binding;
-                        binding.stages = string_to_shader_stage(bindingNode["stage"].as<std::string>());
+                        binding.stages = string_to_shader_stages_mask(bindingNode["stage"].as<std::string>());
                         binding.binding = bindingNode["binding"].as<uint32_t>();
                         binding.type = string_to_descriptor_type(bindingNode["type"].as<std::string>());
                         binding.name = bindingNode["name"].as<std::string>();

@@ -31,13 +31,18 @@ namespace RDE {
     }
 
     RAL::CommandBuffer *Renderer::begin_frame() {
-        m_CurrentFrameCommandBuffer = m_device->begin_frame();
+        m_CurrentFrameContext = m_device->begin_frame();
+        if (!m_CurrentFrameContext.swapchainTexture.is_valid()) {
+            m_CurrentFrameCommandBuffer = nullptr;
+            return nullptr; // Frame should be skipped
+        }
+        m_CurrentFrameCommandBuffer = m_device->get_command_buffer();
         return m_CurrentFrameCommandBuffer;
     }
 
     void Renderer::end_frame(const std::vector<RAL::CommandBuffer *> &command_buffers) {
         if (m_CurrentFrameCommandBuffer) {
-            m_device->end_frame(command_buffers);
+            m_device->end_frame(m_CurrentFrameContext, command_buffers);
         }
         m_CurrentFrameCommandBuffer = nullptr;
     }

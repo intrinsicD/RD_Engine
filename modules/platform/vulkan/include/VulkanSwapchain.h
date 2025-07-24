@@ -17,9 +17,9 @@ namespace RDE {
         void recreate();
 
         // Returns false if swapchain is out of date
-        VkResult acquire_next_image(VkSemaphore imageAvailableSemaphore);
+        VkResult acquire_next_image(VkSemaphore imageAvailableSemaphore, uint32_t *pImageIndex);
 
-        VkResult present(VkSemaphore renderFinishedSemaphore, VkQueue presentQueue);
+        VkResult present(VkSemaphore renderFinishedSemaphore, VkQueue presentQueue, uint32_t imageIndex);
 
         VkSwapchainKHR get_handle() const { return m_SwapchainHandle; }
 
@@ -27,9 +27,9 @@ namespace RDE {
 
         VkExtent2D get_extent() const { return m_Extent; }
 
-        VkImageView get_current_image_view() const;
+        const std::vector<VkImage> &get_images() const { return m_Images; }
 
-        VkImage get_current_image() const;
+        const std::vector<VkImageView> &get_image_views() const { return m_ImageViews; }
 
     private:
         void create();
@@ -37,7 +37,7 @@ namespace RDE {
         void destroy();
 
         VulkanContext *m_Context; // Non-owning pointer
-        GLFWwindow *m_Window;     // Non-owning pointer
+        GLFWwindow *m_Window; // Non-owning pointer
 
         bool m_VsyncEnabled = true;
         VkSwapchainKHR m_SwapchainHandle = VK_NULL_HANDLE;
@@ -46,7 +46,5 @@ namespace RDE {
 
         std::vector<VkImage> m_Images;
         std::vector<VkImageView> m_ImageViews;
-
-        uint32_t m_CurrentImageIndex = 0;
     };
 }
