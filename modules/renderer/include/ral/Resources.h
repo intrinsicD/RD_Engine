@@ -218,7 +218,7 @@ namespace RAL {
         uint32_t binding;
         Format format;
         uint32_t offset;
-        std::string semantic; // Optional semantic name for debugging
+        std::string name; // Optional semantic name for debugging
     };
 
     struct VertexInputBinding {

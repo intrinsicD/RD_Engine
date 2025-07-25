@@ -51,7 +51,7 @@ namespace RDE {
                     RAL::VertexInputAttribute attr;
                     attr.location = attrNode["location"].as<uint32_t>();
                     attr.format = string_to_ral_format(attrNode["format"].as<std::string>());
-                    attr.semantic = attrNode["semantic"].as<std::string>();
+                    attr.name = attrNode["semantic"].as<std::string>();
                     shaderDefComponent.vertexAttributes.emplace_back(attr);
                 }
             }

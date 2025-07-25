@@ -356,6 +356,38 @@ namespace RDE {
         VK_CHECK(vkResetCommandPool(logicalDevice, m_UploadCommandPool, 0));
     }
 
+    void VulkanDevice::submit_and_wait(const std::vector<RAL::CommandBuffer*>& command_buffers){
+        if (command_buffers.empty()) {
+            return;
+        }
+
+        VkDevice logicalDevice = m_Context->get_logical_device();
+        VkQueue graphicsQueue = m_Context->get_graphics_queue();
+
+        // Convert our RAL command buffers to native Vulkan handles
+        std::vector<VkCommandBuffer> vkCommandBuffers;
+        vkCommandBuffers.reserve(command_buffers.size());
+        for (const auto& cmd : command_buffers) {
+            // We know our implementation is VulkanCommandBuffer, so a static_cast is safe and fast.
+            vkCommandBuffers.push_back(static_cast<VulkanCommandBuffer*>(cmd)->get_handle());
+        }
+
+        // Submit the work using our dedicated upload fence
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = static_cast<uint32_t>(vkCommandBuffers.size());
+        submitInfo.pCommandBuffers = vkCommandBuffers.data();
+        VK_CHECK(vkQueueSubmit(graphicsQueue, 1, &submitInfo, m_UploadFence));
+
+        // Wait for the GPU to finish all the work
+        VK_CHECK(vkWaitForFences(logicalDevice, 1, &m_UploadFence, VK_TRUE, UINT64_MAX));
+        VK_CHECK(vkResetFences(logicalDevice, 1, &m_UploadFence));
+
+        // NOTE: We don't reset the command pool here because the command buffers
+        // were allocated from the main pool, not the upload pool. The caller
+        // is responsible for managing their lifetime (e.g., getting them from `get_command_buffer`).
+    }
+
 
     VkShaderModule VulkanDevice::create_shader_module(const std::vector<char> &code) {
         VkShaderModuleCreateInfo createInfo{};

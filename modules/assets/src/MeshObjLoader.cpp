@@ -152,7 +152,7 @@ namespace RDE {
 
         // Now, correctly convert the master index buffer into faces (triangles)
         if (!masterIndexBuffer.empty()) {
-            auto faces = geometry.faces.add<glm::ivec3>("f:indices");
+            auto faces = geometry.faces.add<glm::ivec3>("f:tris");
             geometry.faces.resize(masterIndexBuffer.size() / 3);
             for (size_t i = 0; i < geometry.faces.size(); ++i) {
                 faces[i] = glm::ivec3(

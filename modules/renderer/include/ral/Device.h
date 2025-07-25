@@ -79,6 +79,8 @@ namespace RAL {
 
         virtual void immediate_submit(std::function<void(CommandBuffer* cmd)>&& function) = 0;
 
+        virtual void submit_and_wait(const std::vector<RAL::CommandBuffer*>& command_buffers) = 0;
+
         ResourcesDatabase &get_resources_database() {
             return m_resources_db;
         }

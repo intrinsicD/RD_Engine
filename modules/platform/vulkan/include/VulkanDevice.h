@@ -81,6 +81,8 @@ namespace RDE {
         // --- Immediate Operations ---
         void immediate_submit(std::function<void(RAL::CommandBuffer *cmd)> &&function) override;
 
+        void submit_and_wait(const std::vector<RAL::CommandBuffer*>& command_buffers) override;
+
         void *map_buffer(RAL::BufferHandle handle) override;
 
         void unmap_buffer(RAL::BufferHandle handle) override;
