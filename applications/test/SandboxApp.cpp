@@ -172,6 +172,7 @@ namespace RDE {
         }
 
         if (RAL::CommandBuffer *cmd = m_renderer->begin_frame()) {
+            //TODO evolve this to use a render graph
 
             const auto& frameCtx = m_renderer->get_current_frame_context();
 
@@ -264,8 +265,6 @@ namespace RDE {
                 m_window_resized = true;
                 return false; // Allow layers to handle the event
             });
-            m_input_manager->on_event(e);
-
             dispatcher.dispatch<WindowFileDropEvent>([this](WindowFileDropEvent &e) {
                 // Handle file drop event
                 for (const auto &file_path: e.get_files()) {
@@ -279,6 +278,8 @@ namespace RDE {
                 }
                 return false; // Allow layers to handle the event
             });
+
+            m_input_manager->on_event(e);
 
             for (auto it = m_layer_stack.rbegin(); it != m_layer_stack.rend(); ++it) {
                 if (e.handled) {

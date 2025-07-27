@@ -1,3 +1,4 @@
+//renderer/RendererComponentTypes.h
 #pragma once
 
 #include "ral/Common.h"

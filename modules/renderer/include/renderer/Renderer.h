@@ -29,6 +29,7 @@ namespace RDE {
 
         const RAL::FrameContext& get_current_frame_context() const { return m_CurrentFrameContext; }
 
+
     private:
         IWindow *m_window = nullptr; // Pointer to the window, not owned by Renderer
         std::unique_ptr<RAL::Device> m_device;

@@ -169,10 +169,10 @@ namespace RDE {
         uint32_t imageIndex;
         VkResult result = m_Swapchain->acquire_next_image(m_ImageAvailableSemaphores[m_CurrentFrameIndex], &imageIndex);
 
-        if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
             recreate_swapchain();
             return {RAL::TextureHandle::INVALID(), 0, 0}; // Indicate frame should be skipped
-        } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+        } else if (result != VK_SUCCESS) {
             throw std::runtime_error("Failed to acquire swapchain image!");
         }
 
