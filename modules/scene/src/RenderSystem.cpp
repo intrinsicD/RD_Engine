@@ -30,6 +30,8 @@ namespace RDE {
         // This could include rendering entities, updating shaders, etc.
 
 
+        //TODO remove this here because this should be handled by the GpuGeometryUpdateSystem
+
         // Process UpdateBufferCommand entities on the asset registry side
         {
             // This is now the ONLY view we need for this task. It's beautifully simple.

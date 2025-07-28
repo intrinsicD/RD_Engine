@@ -137,6 +137,7 @@ namespace RDE {
                     }
                 }
             }
+            m_buffer_upload_manager->flush();
             // After processing, clear the dirty properties
             m_registry.remove<Dirty<AssetCpuGeometry>>(entity); // Clear dirty flags
         }
