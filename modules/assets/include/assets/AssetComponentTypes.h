@@ -4,6 +4,7 @@
 #include "core/Properties.h"
 #include "AssetHandle.h"
 #include "ral/Resources.h"
+#include "components/DirtyTagComponent.h"
 
 #include <string>
 #include <vector>
@@ -75,6 +76,15 @@ namespace RDE {
         std::vector<AssetGeometrySubView> subviews;
 
         size_t getVertexCount() const { return vertices.size(); }
+    };
+
+    template<>
+    struct Dirty<AssetCpuGeometry> {
+        std::vector<std::string> dirty_vertex_properties; // List of properties that are dirty
+        std::vector<std::string> dirty_halfedge_properties; // List of properties that are dirty
+        std::vector<std::string> dirty_edge_properties; // List of properties that are dirty
+        std::vector<std::string> dirty_face_properties; // List of properties that are dirty
+        std::vector<std::string> dirty_tets_properties; // List of properties that are dirty
     };
 
     struct AssetGpuGeometry {

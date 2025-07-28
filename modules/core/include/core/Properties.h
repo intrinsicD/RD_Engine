@@ -37,6 +37,10 @@ namespace RDE {
         [[nodiscard]] virtual size_t size() const = 0;
 
         [[nodiscard]] virtual size_t dims() const = 0;
+
+        [[nodiscard]] virtual const void *data() const = 0;
+
+        [[nodiscard]] virtual size_t total_size_bytes() = 0;
     };
 
     struct StringTraits {
@@ -134,8 +138,6 @@ namespace RDE {
             return p;
         }
 
-        [[nodiscard]] const T *data() const { return (m_data.empty() ? nullptr : &m_data[0]); }
-
         VectorType &vector() { return m_data; }
 
         const VectorType &vector() const { return m_data; }
@@ -168,6 +170,14 @@ namespace RDE {
             return DimTraits::GetDims(m_value);
         }
 
+        [[nodiscard]] const void *data() const override {
+            return m_data.empty() ? nullptr : static_cast<const void *>(m_data.data());
+        }
+
+        [[nodiscard]] size_t total_size_bytes() override {
+            return m_data.size() * sizeof(ValueType);
+        }
+
     private:
         std::string m_name;
         VectorType m_data;
@@ -175,7 +185,7 @@ namespace RDE {
     };
 
     template<>
-    inline const bool *PropertyArray<bool>::data() const {
+    inline const void *PropertyArray<bool>::data() const {
         assert(false);
         return nullptr;
     }
@@ -331,6 +341,14 @@ namespace RDE {
                 }
             }
             return Property<T>();
+        }
+
+        BasePropertyArray *get(const std::string &name) const {
+            auto it = m_property_map.find(name);
+            if (it != m_property_map.end()) {
+                return m_parrays[it->second].get();
+            }
+            return nullptr;
         }
 
         [[nodiscard]] BasePropertyArray *get_base(const std::string &name) const {

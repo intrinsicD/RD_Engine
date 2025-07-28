@@ -13,6 +13,7 @@
 #include "systems/HierarchySystem.h"
 #include "systems/BoundingVolumeSystem.h"
 #include "systems/RenderPacketSystem.h"
+#include "systems/GpuGeometryUploadSystem.h"
 
 #include "assets/StbImageLoader.h"
 #include "assets/MeshMtlLoader.h"
@@ -78,6 +79,7 @@ namespace RDE {
             m_system_scheduler->register_system<TransformSystem>(*m_registry);
             m_system_scheduler->register_system<BoundingVolumeSystem>(*m_registry);
             m_system_scheduler->register_system<CameraSystem>(*m_registry);
+            //m_system_scheduler->register_system<GpuGeometryUploadSystem>(*m_registry, m_renderer->get_device());
             m_system_scheduler->register_system<RenderPacketSystem>(*m_registry, *m_asset_database, m_main_view);
             RDE_INFO("Registered systems: HierarchySystem, TransformSystem, BoundingVolumeSystem, CameraSystem");
         }

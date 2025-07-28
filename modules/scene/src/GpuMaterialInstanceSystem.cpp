@@ -1,4 +1,5 @@
-#include "systems/GeometrySystem.h"
+//systems/GpuMaterialInstanceSystem.cpp
+#include "systems/GpuMaterialInstanceSystem.h"
 #include "assets/AssetComponentTypes.h"
 #include "components/DirtyTagComponent.h"
 #include "scene/SystemDependencyBuilder.h"
@@ -6,15 +7,15 @@
 #include <entt/entity/registry.hpp>
 
 namespace RDE{
-    GeometrySystem::GeometrySystem(entt::registry &registry)
-        : m_registry(registry) {
+    GpuMaterialInstanceSystem::GpuMaterialInstanceSystem(entt::registry &registry)
+            : m_registry(registry) {
     }
 
-    void GeometrySystem::init() {
+    void GpuMaterialInstanceSystem::init() {
         // Initialization logic for the geometry system
     }
 
-    void GeometrySystem::update(float delta_time) {
+    void GpuMaterialInstanceSystem::update(float delta_time) {
         // Create GpuGeometry components from CpuGeometry components
         auto view = m_registry.view<AssetCpuGeometry, Dirty<AssetGpuGeometry>>();
         for (auto entity : view) {
@@ -27,11 +28,11 @@ namespace RDE{
         }
     }
 
-    void GeometrySystem::shutdown() {
+    void GpuMaterialInstanceSystem::shutdown() {
         // Cleanup logic for the geometry system
     }
 
-    void GeometrySystem::declare_dependencies(SystemDependencyBuilder &builder) {
+    void GpuMaterialInstanceSystem::declare_dependencies(SystemDependencyBuilder &builder) {
         // Declare dependencies for this system
         builder.reads<HierarchySystem>();
     }

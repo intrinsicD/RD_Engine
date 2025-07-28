@@ -1,3 +1,4 @@
+//systems/GpuMaterialInstanceSystem.h
 #pragma once
 
 #include "core/ISystem.h"
@@ -5,11 +6,11 @@
 #include <entt/fwd.hpp>
 
 namespace RDE{
-    class GeometrySystem : public ISystem {
+    class GpuMaterialInstanceSystem : public ISystem {
     public:
-        GeometrySystem(entt::registry &registry);
+        GpuMaterialInstanceSystem(entt::registry &registry);
 
-        ~GeometrySystem() override = default;
+        ~GpuMaterialInstanceSystem() override = default;
 
         void init() override;
 
