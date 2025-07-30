@@ -33,6 +33,10 @@ namespace RDE {
 
         [[nodiscard]] bool is_vsync() const override { return m_data.vsync; }
 
+        void get_framebuffer_size(int &width, int &height) const override;
+
+        void terminate() override;
+
     private:
         void shutdown();
 

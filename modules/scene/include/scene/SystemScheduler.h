@@ -13,8 +13,7 @@
 namespace RDE {
     class SystemScheduler {
     public:
-        explicit SystemScheduler(entt::registry &registry) : m_registry(registry) {
-        }
+        SystemScheduler() = default;
 
         template<typename T, typename... Args>
         void register_system(Args &&... args) {
@@ -84,7 +83,6 @@ namespace RDE {
             m_is_dirty = false;
         }
 
-        entt::registry &m_registry;
         bool m_is_dirty = true;
 
         DependencyGraph<size_t, std::type_index> m_graph;

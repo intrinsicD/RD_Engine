@@ -259,6 +259,10 @@ namespace RDE{
         m_data.vsync = enabled;
     }
 
+    void GlfwVulkanWindow::get_framebuffer_size(int &width, int &height) const {
+        glfwGetFramebufferSize(m_window, &width, &height);
+    }
+
     bool GlfwVulkanWindow::should_close() {
         return glfwWindowShouldClose(m_window);
     }
@@ -268,6 +272,11 @@ namespace RDE{
             glfwDestroyWindow(m_window);
             m_window = nullptr;
         }
+    }
+
+    void GlfwVulkanWindow::terminate() {
+        shutdown();
+        glfwTerminate();
     }
 
     void GlfwVulkanWindow::swap_buffers() {

@@ -4,6 +4,7 @@
 #include "core/IWindow.h"
 #include "core/InputManager.h"
 #include "renderer/Renderer.h"
+#include "scene/Scene.h"
 
 namespace RDE {
     class ImGuiLayer;
@@ -33,12 +34,10 @@ namespace RDE {
         std::unique_ptr<RDE::AssetManager> m_asset_manager;
         std::unique_ptr<RDE::FileWatcher> m_file_watcher;
         std::unique_ptr<RDE::ThreadSafeQueue<std::string>> m_file_watcher_event_queue;
-        std::unique_ptr<RDE::SystemScheduler> m_system_scheduler;
 
         // --- Data Ownership ---
         std::shared_ptr<RDE::AssetDatabase> m_asset_database;
-        std::shared_ptr<entt::registry> m_registry;
-        std::shared_ptr<entt::dispatcher> m_dispatcher;
+        std::unique_ptr<RDE::Scene> m_scene;
         RDE::LayerStack m_layer_stack;
         ImGuiLayer *m_imgui_layer = nullptr; // Pointer to ImGui layer for UI rendering
 

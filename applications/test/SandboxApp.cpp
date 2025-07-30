@@ -22,10 +22,6 @@
 #include "assets/ShaderDefLoader.h"
 #include "assets/GenerateDefaultTextures.h"
 
-#include <entt/entity/registry.hpp>
-#include <entt/signal/dispatcher.hpp>
-
-#include <GLFW/glfw3.h>
 #include <imgui.h>
 
 namespace RDE {
@@ -36,9 +32,7 @@ namespace RDE {
         m_renderer = std::make_unique<Renderer>(m_window.get());
         m_input_manager = std::make_unique<InputManager>();
 
-        m_registry = std::make_shared<entt::registry>();
-        m_dispatcher = std::make_shared<entt::dispatcher>();
-        m_system_scheduler = std::make_unique<SystemScheduler>(*m_registry);
+        m_scene = std::make_unique<Scene>(m_asset_database.get());
         GenerateDefaultTextures();
     }
 
@@ -55,7 +49,7 @@ namespace RDE {
         m_is_running = true;
         m_is_minimized = false;
 
-        m_primary_camera_entity = m_registry->create();
+        m_primary_camera_entity = m_scene->get_registry().create();
         m_last_selected_entity = entt::null; // No entity selected initially
         m_selected_entities.clear();
 
@@ -75,12 +69,14 @@ namespace RDE {
             m_asset_manager->register_loader(std::make_shared<ShaderDefLoader>());
         }
         {
-            m_system_scheduler->register_system<HierarchySystem>(*m_registry);
-            m_system_scheduler->register_system<TransformSystem>(*m_registry);
-            m_system_scheduler->register_system<BoundingVolumeSystem>(*m_registry);
-            m_system_scheduler->register_system<CameraSystem>(*m_registry);
-            //m_system_scheduler->register_system<GpuGeometryUploadSystem>(*m_registry, m_renderer->get_device());
-            m_system_scheduler->register_system<RenderPacketSystem>(*m_registry, *m_asset_database, m_main_view);
+            auto &scene_registry = m_scene->get_registry();
+            auto &system_scheduler = m_scene->get_system_scheduler();
+            system_scheduler.register_system<HierarchySystem>(scene_registry);
+            system_scheduler.register_system<TransformSystem>(scene_registry);
+            system_scheduler.register_system<BoundingVolumeSystem>(scene_registry);
+            system_scheduler.register_system<CameraSystem>(scene_registry);
+            //system_scheduler.register_system<GpuGeometryUploadSystem>(scene_registry, m_renderer->get_device());
+            system_scheduler.register_system<RenderPacketSystem>(scene_registry, *m_asset_database, m_main_view);
             RDE_INFO("Registered systems: HierarchySystem, TransformSystem, BoundingVolumeSystem, CameraSystem");
         }
 
@@ -91,7 +87,7 @@ namespace RDE {
         m_imgui_layer = imgui_layer.get();
         m_layer_stack.push_overlay(imgui_layer); // Assuming you have a push_layer method
 
-        auto test_scene_layer = std::make_shared<TestSceneLayer>(m_asset_manager.get(), *m_registry);
+        auto test_scene_layer = std::make_shared<TestSceneLayer>(m_asset_manager.get(), m_scene->get_registry());
         m_layer_stack.push_layer(test_scene_layer);
         return true;
     }
@@ -106,13 +102,13 @@ namespace RDE {
             m_asset_database.reset();
         }
         {
-            m_system_scheduler->shutdown();
-            m_system_scheduler.reset();
+            m_scene->shutdown();
+            m_scene.reset();
         }
         if (m_window) {
+            m_window->terminate();
             m_window.reset();
         }
-        glfwTerminate();
     }
 
     void SandboxApp::run(int width, int height, const char *title) {
@@ -121,14 +117,12 @@ namespace RDE {
         }
 
         Ticker timer;
-        auto *glfw_window = static_cast<GLFWwindow *>(m_window->get_native_handle());
         while (!m_window->should_close() && m_is_running) {
             // Poll events
             m_window->poll_events();
 
             // Check if the window is minimized
-            int width, height;
-            glfwGetFramebufferSize(glfw_window, &width, &height);
+            m_window->get_framebuffer_size(width, height);
             if (width == 0 || height == 0) {
                 m_is_minimized = true;
                 continue; // Skip rendering if minimized
@@ -163,7 +157,8 @@ namespace RDE {
             layer->on_update(delta_time);
         }
 
-        m_system_scheduler->execute(delta_time);
+        auto &system_scheduler = m_scene->get_system_scheduler();
+        system_scheduler.execute(delta_time);
     }
 
     void SandboxApp::on_render() {
