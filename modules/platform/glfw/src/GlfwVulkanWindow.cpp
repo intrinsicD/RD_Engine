@@ -10,7 +10,8 @@
 #include "core/Mouse.h"
 
 
-namespace RDE::Detail { // Use a detail namespace to hide helpers
+namespace RDE::Detail {
+    // Use a detail namespace to hide helpers
 
     // The lookup table. It's large but that's okay, it's static and initialized once.
     // GLFW_KEY_LAST is ~348, so this array is small.
@@ -22,12 +23,12 @@ namespace RDE::Detail { // Use a detail namespace to hide helpers
         s_glfw_to_rde_key_map.fill(KeyCode::KEY_UNKNOWN);
 
         // Map all the special keys explicitly
-        s_glfw_to_rde_key_map[GLFW_KEY_SPACE]         = KeyCode::KEY_SPACE;
-        s_glfw_to_rde_key_map[GLFW_KEY_APOSTROPHE]    = KeyCode::KEY_APOSTROPHE;
-        s_glfw_to_rde_key_map[GLFW_KEY_COMMA]         = KeyCode::KEY_COMMA;
-        s_glfw_to_rde_key_map[GLFW_KEY_MINUS]         = KeyCode::KEY_MINUS;
-        s_glfw_to_rde_key_map[GLFW_KEY_PERIOD]        = KeyCode::KEY_PERIOD;
-        s_glfw_to_rde_key_map[GLFW_KEY_SLASH]         = KeyCode::KEY_SLASH;
+        s_glfw_to_rde_key_map[GLFW_KEY_SPACE] = KeyCode::KEY_SPACE;
+        s_glfw_to_rde_key_map[GLFW_KEY_APOSTROPHE] = KeyCode::KEY_APOSTROPHE;
+        s_glfw_to_rde_key_map[GLFW_KEY_COMMA] = KeyCode::KEY_COMMA;
+        s_glfw_to_rde_key_map[GLFW_KEY_MINUS] = KeyCode::KEY_MINUS;
+        s_glfw_to_rde_key_map[GLFW_KEY_PERIOD] = KeyCode::KEY_PERIOD;
+        s_glfw_to_rde_key_map[GLFW_KEY_SLASH] = KeyCode::KEY_SLASH;
         // ... other punctuation ...
 
         // Use loops for character and number ranges to save typing
@@ -39,19 +40,19 @@ namespace RDE::Detail { // Use a detail namespace to hide helpers
         }
 
         // Map function keys
-        s_glfw_to_rde_key_map[GLFW_KEY_ESCAPE]        = KeyCode::KEY_ESCAPE;
-        s_glfw_to_rde_key_map[GLFW_KEY_ENTER]         = KeyCode::KEY_ENTER;
-        s_glfw_to_rde_key_map[GLFW_KEY_TAB]           = KeyCode::KEY_TAB;
-        s_glfw_to_rde_key_map[GLFW_KEY_BACKSPACE]     = KeyCode::KEY_BACKSPACE;
-        s_glfw_to_rde_key_map[GLFW_KEY_LEFT_SHIFT]    = KeyCode::KEY_LEFT_SHIFT;
-        s_glfw_to_rde_key_map[GLFW_KEY_LEFT_CONTROL]  = KeyCode::KEY_LEFT_CONTROL;
-        s_glfw_to_rde_key_map[GLFW_KEY_LEFT_ALT]      = KeyCode::KEY_LEFT_ALT;
-        s_glfw_to_rde_key_map[GLFW_KEY_LEFT_SUPER]    = KeyCode::KEY_LEFT_SUPER;
-        s_glfw_to_rde_key_map[GLFW_KEY_RIGHT_SHIFT]   = KeyCode::KEY_RIGHT_SHIFT;
+        s_glfw_to_rde_key_map[GLFW_KEY_ESCAPE] = KeyCode::KEY_ESCAPE;
+        s_glfw_to_rde_key_map[GLFW_KEY_ENTER] = KeyCode::KEY_ENTER;
+        s_glfw_to_rde_key_map[GLFW_KEY_TAB] = KeyCode::KEY_TAB;
+        s_glfw_to_rde_key_map[GLFW_KEY_BACKSPACE] = KeyCode::KEY_BACKSPACE;
+        s_glfw_to_rde_key_map[GLFW_KEY_LEFT_SHIFT] = KeyCode::KEY_LEFT_SHIFT;
+        s_glfw_to_rde_key_map[GLFW_KEY_LEFT_CONTROL] = KeyCode::KEY_LEFT_CONTROL;
+        s_glfw_to_rde_key_map[GLFW_KEY_LEFT_ALT] = KeyCode::KEY_LEFT_ALT;
+        s_glfw_to_rde_key_map[GLFW_KEY_LEFT_SUPER] = KeyCode::KEY_LEFT_SUPER;
+        s_glfw_to_rde_key_map[GLFW_KEY_RIGHT_SHIFT] = KeyCode::KEY_RIGHT_SHIFT;
         s_glfw_to_rde_key_map[GLFW_KEY_RIGHT_CONTROL] = KeyCode::KEY_RIGHT_CONTROL;
-        s_glfw_to_rde_key_map[GLFW_KEY_RIGHT_ALT]     = KeyCode::KEY_RIGHT_ALT;
-        s_glfw_to_rde_key_map[GLFW_KEY_RIGHT_SUPER]   = KeyCode::KEY_RIGHT_SUPER;
-        s_glfw_to_rde_key_map[GLFW_KEY_MENU]          = KeyCode::KEY_MENU;
+        s_glfw_to_rde_key_map[GLFW_KEY_RIGHT_ALT] = KeyCode::KEY_RIGHT_ALT;
+        s_glfw_to_rde_key_map[GLFW_KEY_RIGHT_SUPER] = KeyCode::KEY_RIGHT_SUPER;
+        s_glfw_to_rde_key_map[GLFW_KEY_MENU] = KeyCode::KEY_MENU;
 
         // ... map ALL other keys you care about (arrows, F-keys, etc.) ...
         for (int i = 0; i <= GLFW_KEY_F25 - GLFW_KEY_F1; ++i) {
@@ -59,25 +60,24 @@ namespace RDE::Detail { // Use a detail namespace to hide helpers
         }
 
         // Keypad keys
-        s_glfw_to_rde_key_map[GLFW_KEY_KP_0]          = KeyCode::KEY_KP_0;
-        s_glfw_to_rde_key_map[GLFW_KEY_KP_1]          = KeyCode::KEY_KP_1;
-        s_glfw_to_rde_key_map[GLFW_KEY_KP_2]          = KeyCode::KEY_KP_2;
-        s_glfw_to_rde_key_map[GLFW_KEY_KP_3]          = KeyCode::KEY_KP_3;
-        s_glfw_to_rde_key_map[GLFW_KEY_KP_4]          = KeyCode::KEY_KP_4;
-        s_glfw_to_rde_key_map[GLFW_KEY_KP_5]          = KeyCode::KEY_KP_5;
-        s_glfw_to_rde_key_map[GLFW_KEY_KP_6]          = KeyCode::KEY_KP_6;
-        s_glfw_to_rde_key_map[GLFW_KEY_KP_7]          = KeyCode::KEY_KP_7;
-        s_glfw_to_rde_key_map[GLFW_KEY_KP_8]          = KeyCode::KEY_KP_8;
-        s_glfw_to_rde_key_map[GLFW_KEY_KP_9]          = KeyCode::KEY_KP_9;
-        s_glfw_to_rde_key_map[GLFW_KEY_KP_DECIMAL]    = KeyCode::KEY_KP_DECIMAL;
-        s_glfw_to_rde_key_map[GLFW_KEY_KP_DIVIDE]     = KeyCode::KEY_KP_DIVIDE;
-        s_glfw_to_rde_key_map[GLFW_KEY_KP_MULTIPLY]   = KeyCode::KEY_KP_MULTIPLY;
-        s_glfw_to_rde_key_map[GLFW_KEY_KP_SUBTRACT]   = KeyCode::KEY_KP_SUBTRACT;
-        s_glfw_to_rde_key_map[GLFW_KEY_KP_ADD]        = KeyCode::KEY_KP_ADD;
-        s_glfw_to_rde_key_map[GLFW_KEY_KP_ENTER]      = KeyCode::KEY_KP_ENTER;
-        s_glfw_to_rde_key_map[GLFW_KEY_KP_EQUAL]      = KeyCode::KEY_KP_EQUAL;
+        s_glfw_to_rde_key_map[GLFW_KEY_KP_0] = KeyCode::KEY_KP_0;
+        s_glfw_to_rde_key_map[GLFW_KEY_KP_1] = KeyCode::KEY_KP_1;
+        s_glfw_to_rde_key_map[GLFW_KEY_KP_2] = KeyCode::KEY_KP_2;
+        s_glfw_to_rde_key_map[GLFW_KEY_KP_3] = KeyCode::KEY_KP_3;
+        s_glfw_to_rde_key_map[GLFW_KEY_KP_4] = KeyCode::KEY_KP_4;
+        s_glfw_to_rde_key_map[GLFW_KEY_KP_5] = KeyCode::KEY_KP_5;
+        s_glfw_to_rde_key_map[GLFW_KEY_KP_6] = KeyCode::KEY_KP_6;
+        s_glfw_to_rde_key_map[GLFW_KEY_KP_7] = KeyCode::KEY_KP_7;
+        s_glfw_to_rde_key_map[GLFW_KEY_KP_8] = KeyCode::KEY_KP_8;
+        s_glfw_to_rde_key_map[GLFW_KEY_KP_9] = KeyCode::KEY_KP_9;
+        s_glfw_to_rde_key_map[GLFW_KEY_KP_DECIMAL] = KeyCode::KEY_KP_DECIMAL;
+        s_glfw_to_rde_key_map[GLFW_KEY_KP_DIVIDE] = KeyCode::KEY_KP_DIVIDE;
+        s_glfw_to_rde_key_map[GLFW_KEY_KP_MULTIPLY] = KeyCode::KEY_KP_MULTIPLY;
+        s_glfw_to_rde_key_map[GLFW_KEY_KP_SUBTRACT] = KeyCode::KEY_KP_SUBTRACT;
+        s_glfw_to_rde_key_map[GLFW_KEY_KP_ADD] = KeyCode::KEY_KP_ADD;
+        s_glfw_to_rde_key_map[GLFW_KEY_KP_ENTER] = KeyCode::KEY_KP_ENTER;
+        s_glfw_to_rde_key_map[GLFW_KEY_KP_EQUAL] = KeyCode::KEY_KP_EQUAL;
         // ... and so on for all other keys you care about ...
-
     }
 
     // The public-facing (within this file) mapping function
@@ -103,10 +103,8 @@ namespace RDE::Detail { // Use a detail namespace to hide helpers
         }
         return MouseButton::BUTTON_UNKNOWN;
     }
-
 } // namespace RDE::Detail```
-namespace RDE{
-
+namespace RDE {
     // Some static helper for initializing GLFW once
     static void InitializeGLFW() {
         static bool is_initialized = false;
@@ -163,7 +161,8 @@ namespace RDE{
             }
         });
 
-        glfwSetKeyCallback(m_window, [](GLFWwindow *window, int key, int scancode, int action, int mods) {
+        glfwSetKeyCallback(m_window, [](GLFWwindow *window, int key, [[maybe_unused]] int scancode, int action,
+                                        [[maybe_unused]] int mods) {
             WindowData &data = *(WindowData *) glfwGetWindowUserPointer(window);
             switch (action) {
                 case GLFW_PRESS: {
@@ -190,7 +189,7 @@ namespace RDE{
             }
         });
 
-        glfwSetMouseButtonCallback(m_window, [](GLFWwindow *window, int button, int action, int mods) {
+        glfwSetMouseButtonCallback(m_window, [](GLFWwindow *window, int button, int action, [[maybe_unused]] int mods) {
             WindowData &data = *(WindowData *) glfwGetWindowUserPointer(window);
 
             switch (action) {

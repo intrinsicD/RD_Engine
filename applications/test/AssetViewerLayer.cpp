@@ -53,7 +53,8 @@ namespace RDE {
                     auto &material = asset_registry.get<MaterialDescription>(asset);
                     ImGui::Text("Material Name: %s", material.name.c_str());
                     if(material.pipeline){
-                        ImGui::Text("Pipeline Asset: %u", entt::to_integral(material.pipeline->entity_id));
+                        ImGui::Text("Pipeline Asset: %u, uri: %s", entt::to_integral(material.pipeline->entity_id),
+                                    material.pipeline->uri.c_str());
                     }
                     ImGui::Text("Parameters: ");
                     for (const auto &param: material.parameters.properties()) {
@@ -62,8 +63,8 @@ namespace RDE {
                     ImGui::Text("Texture Bindings: ");
                     for (const auto &texture_binding: material.textures) {
                         auto asset_id = texture_binding.second ? texture_binding.second->entity_id : entt::null;
-                        ImGui::Text(" - %s: %u", texture_binding.first.c_str(),
-                                    entt::to_integral(asset_id));
+                        ImGui::Text(" - %s: %u, uri: %s", texture_binding.first.c_str(),
+                                    entt::to_integral(asset_id), texture_binding.second->uri.c_str());
                     }
                 }
                 if (asset_registry.all_of<AssetGpuGeometry>(asset)) {
@@ -88,6 +89,13 @@ namespace RDE {
                 if (asset_registry.all_of<AssetShaderDef>(asset)) {
                     auto &shader_def = asset_registry.get<AssetShaderDef>(asset);
                     ImGui::Text("Shader Definition: %s", shader_def.name.c_str());
+                    ImGui::Text("Dependencies:");
+                    for (const auto &dep: shader_def.dependencies) {
+                        ImGui::Text(" - %s:", dep.first.c_str());
+                        for (const auto &dep_child: dep.second) {
+                            ImGui::Text("   - %s", dep_child.c_str());
+                        }
+                    }
                     ImGui::Text("Features: ");
                     for (const auto &feature: shader_def.features) {
                         ImGui::Text(" - %s", feature.c_str());

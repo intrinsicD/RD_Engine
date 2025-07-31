@@ -17,7 +17,7 @@ namespace RDE::TransformUtils{
     TransformParameters DecomposeModelMatrix(const glm::mat4 &model_matrix) {
         TransformParameters parameters;
         // Extract translation
-        glm::vec3 scale, skew;
+        glm::vec3 skew;
         glm::vec4 perspective;
         if(!glm::decompose(model_matrix, parameters.scale, parameters.orientation, parameters.translation, skew, perspective)){
             // Handle decomposition failure

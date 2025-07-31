@@ -178,6 +178,15 @@ namespace RAL {
         TriangleStrip
     };
 
+    enum class ImageAspect : uint32_t {
+        None    = 0,
+        Color   = 1 << 0, // Bit 0
+        Depth   = 1 << 1, // Bit 1
+        Stencil = 1 << 2  // Bit 2
+    };
+
+    ENABLE_ENUM_FLAG_OPERATORS(ImageAspect)
+
     struct StencilOpState {
         // We can fill these in later when we need stencil testing.
         // For now, defaults are fine.
@@ -324,5 +333,24 @@ namespace RAL {
         SamplerAddressMode addressModeV = SamplerAddressMode::Repeat;
         SamplerAddressMode addressModeW = SamplerAddressMode::Repeat;
         // ... other options like anisotropy, mipmapping etc. can be added later
+    };
+
+    struct ImageSubresourceLayers {
+        ImageAspect aspectMask = ImageAspect::Color; // e.g., RAL::ImageAspect::Color
+        uint32_t mipLevel = 0; // Mip level to access
+        uint32_t baseArrayLayer = 0; // First layer in the array
+        uint32_t layerCount = 1; // Number of layers to access
+    };
+
+    struct BufferTextureCopy {
+        // --- Source Buffer Layout ---
+        uint64_t bufferOffset = 0;      // Byte offset into the source buffer where the data begins.
+        uint32_t bufferRowLength = 0;   // How many pixels wide a row is in the buffer memory. 0 means tightly packed.
+        uint32_t bufferImageHeight = 0; // How many rows high an image slice is in buffer memory. 0 means tightly packed.
+
+        // --- Destination Texture Layout ---
+        ImageSubresourceLayers imageSubresource; // Specifies aspect (color/depth), mip level, and array layer.
+        Offset3D imageOffset = {0, 0, 0};      // The {x, y, z} offset in the destination texture.
+        Extent3D imageExtent;                    // The {width, height, depth} of the region to copy.
     };
 }

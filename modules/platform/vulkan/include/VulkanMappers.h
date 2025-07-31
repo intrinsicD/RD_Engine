@@ -315,6 +315,22 @@ namespace RDE {
         return VK_FRONT_FACE_COUNTER_CLOCKWISE; // Default fallback
     }
 
+    inline VkImageAspectFlags translate_aspect_mask(RAL::ImageAspect ralMask) {
+        VkImageAspectFlags vkFlags = 0;
+
+        if (has_flag(ralMask, RAL::ImageAspect::Color)) {
+            vkFlags |= VK_IMAGE_ASPECT_COLOR_BIT;
+        }
+        if (has_flag(ralMask, RAL::ImageAspect::Depth)) {
+            vkFlags |= VK_IMAGE_ASPECT_DEPTH_BIT;
+        }
+        if (has_flag(ralMask , RAL::ImageAspect::Stencil)) {
+            vkFlags |= VK_IMAGE_ASPECT_STENCIL_BIT;
+        }
+
+        return vkFlags;
+    }
+
     inline std::string ToString(VkResult result) {
         switch (result) {
             case VK_SUCCESS:

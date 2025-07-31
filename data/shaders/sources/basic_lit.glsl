@@ -16,6 +16,9 @@
 layout (location = 0) in vec3 inPosition;
 layout (location = 1) in vec3 inNormal;
 layout (location = 2) in vec2 inTexCoords;
+#ifdef HAS_NORMAL_MAP
+layout (location = 3) in vec4 inTangent;// The tangent from the mesh
+#endif
 
 // -- UBO: Per-Frame Data --
 // Contains data that is constant for an entire frame, like camera matrices.
@@ -35,6 +38,9 @@ layout (push_constant) uniform PushConstants {
 layout (location = 0) out vec3 outWorldPos;
 layout (location = 1) out vec3 outWorldNormal;
 layout (location = 2) out vec2 outTexCoords;
+#ifdef HAS_NORMAL_MAP
+layout (location = 3) out mat3 outTBN;// We will pass the full TBN matrix
+#endif
 
 void main() {
     // Calculate position in world space and pass to fragment shader
@@ -47,6 +53,26 @@ void main() {
     // Transform normal into world space. Use inverse transpose for non-uniform scaling.
     // This is the mathematically correct way to transform normals.
     outWorldNormal = normalize(transpose(inverse(mat3(pc.model))) * inNormal);
+
+    #ifdef HAS_NORMAL_MAP
+    // Transform the tangent to world space
+    vec3 T = normalize(mat3(pc.model) * inTangent.xyz);
+
+    // The normal N is already in world space (outWorldNormal)
+    vec3 N = outWorldNormal;
+
+    // Re-orthogonalize T with respect to N to prevent floating point inaccuracies
+    // This ensures the tangent is perfectly perpendicular to the normal.
+    T = normalize(T - dot(T, N) * N);
+
+    // Calculate the bitangent B using the cross product.
+    // The inTangent.w component stores the handedness, which corrects the direction.
+    vec3 B = cross(N, T) * inTangent.w;
+
+    // Create and pass the TBN matrix to the fragment shader.
+    // This matrix will transform from tangent space to world space.
+    outTBN = mat3(T, B, N);
+    #endif
 
     // Final clip space position
     gl_Position = ubo.proj * ubo.view * worldPos;
@@ -66,6 +92,9 @@ void main() {
 layout (location = 0) in vec3 inWorldPos;
 layout (location = 1) in vec3 inWorldNormal;
 layout (location = 2) in vec2 inTexCoords;
+#ifdef HAS_NORMAL_MAP
+layout (location = 3) in mat3 inTBN; // Receive the TBN matrix
+#endif
 
 // -- UBO: Per-Frame Data (same as vertex shader) --
 layout (set = 0, binding = 0) uniform CameraData {
@@ -133,34 +162,59 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0) {
 
 void main() {
     // --- 1. Get Material Properties from Textures and UBOs ---
-    vec3 albedo = pow(texture(albedoMap, inTexCoords).rgb, vec3(2.2)) * material.baseColorFactor.rgb;
+    #ifdef HAS_ALBEDO_MAP
+    vec3 albedo = pow(texture(albedoMap, inTexCoords).rgb, vec3(2.2));
+    #else
+    vec3 albedo = vec3(1.0);// Default to white if no map
+    #endif
+    albedo *= material.baseColorFactor.rgb;
 
     // PBR map: R=AO, G=Roughness, B=Metalness
+    float metalness;
+    float roughness;
+
+    #ifdef HAS_METALROUGHNESS_MAP
+    // If a map is provided, sample from it.
+    // The GLTF2 standard uses: R=unused, G=Roughness, B=Metalness.
     vec4 pbrSample = texture(metalRoughnessMap, inTexCoords);
-    float roughness = pbrSample.g * material.roughnessFactor;
-    float metalness = pbrSample.b * material.metalnessFactor;
+    roughness = pbrSample.g;
+    metalness = pbrSample.b;
+    #else
+    // If no map is provided, use the uniform factors as the definitive values.
+    // We can just assign them directly.
+    roughness = material.roughnessFactor;
+    metalness = material.metalnessFactor;
+    #endif
 
     // --- 2. Setup Geometric Vectors ---
-    vec3 N = normalize(inWorldNormal);
+    vec3 N;
+    #ifdef HAS_NORMAL_MAP
+    // Unpack normal from map and transform to world space (TBN matrix)
+    vec3 tangentNormal = texture(normalMap, inTexCoords).xyz * 2.0 - 1.0;
+    // ... create TBN matrix and transform tangentNormal ...
+     N = normalize(inTBN * tangentNormal);
+    #else
+    N = normalize(inWorldNormal);// Use vertex normal if no map
+    #endif
     vec3 V = normalize(ubo.camPos - inWorldPos);
 
     // For now, a single hardcoded directional light for testing.
     vec3 lightDir = normalize(vec3(0.5, 0.5, -1.0));
     vec3 L = -lightDir;
-    vec3 lightColor = vec3(5.0, 5.0, 5.0); // A bright white light
+    vec3 lightColor = vec3(5.0, 5.0, 5.0);// A bright white light
 
     // Base reflectivity. For dielectrics, it's ~4% grey. For metals, it's the albedo color.
     vec3 F0 = vec3(0.04);
     F0 = mix(F0, albedo, metalness);
 
     // --- 3. PBR Lighting Calculation ---
-    vec3 Lo = vec3(0.0); // Outgoing radiance
+    vec3 Lo = vec3(0.0);// Outgoing radiance
 
     // Cook-Torrance BRDF
     vec3 H = normalize(V + L);
     float NdotL = max(dot(N, L), 0.0);
 
-    if(NdotL > 0.0) {
+    if (NdotL > 0.0) {
         // Calculate the terms of the BRDF
         float NDF = DistributionGGX(N, H, roughness);
         float G = GeometrySmith(N, V, L, roughness);
@@ -172,7 +226,7 @@ void main() {
 
         // Diffuse BRDF (energy-conserving)
         vec3 kD = vec3(1.0) - kS;
-        kD *= 1.0 - metalness; // Pure metals have no diffuse reflection
+        kD *= 1.0 - metalness;// Pure metals have no diffuse reflection
 
         // Add to outgoing radiance
         Lo += (kD * albedo / PI + specular) * lightColor * NdotL;

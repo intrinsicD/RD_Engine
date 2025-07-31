@@ -11,12 +11,6 @@ namespace RAL{
 
         explicit RenderHandle(entt::entity entity) : index(entity) {}
 
-        RenderHandle &operator=(const RenderHandle &other) {
-            if (this == &other) return *this; // Self-assignment check
-            index = other.index; // Copy the entity index
-            return *this;
-        }
-
         // Define an explicit invalid state.
         static constexpr RenderHandle INVALID() { return {}; }
 

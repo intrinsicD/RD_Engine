@@ -2,6 +2,7 @@
 #include "VulkanCommandBuffer.h"
 #include "VulkanCommon.h"
 #include "VulkanMappers.h"
+#include "VulkanTypes.h"
 
 #include "core/Log.h"
 #include "core/FileIOUtils.h"
@@ -17,19 +18,6 @@
 #include <GLFW/glfw3.h>
 
 namespace RDE {
-    // A debug callback function for the validation layers
-    static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
-        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-        VkDebugUtilsMessageTypeFlagsEXT messageType,
-        const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-        void *pUserData) {
-        // Only print warnings and errors
-        if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
-            RDE_CORE_ERROR("Validation Layer: {}", pCallbackData->pMessage);
-        }
-        return VK_FALSE;
-    }
-
     VulkanDevice::VulkanDevice(std::shared_ptr<VulkanContext> context, std::shared_ptr<VulkanSwapchain> swapchain)
         : m_Context(std::move(context)), m_Swapchain(std::move(swapchain)) {
         auto logicalDevice = m_Context->get_logical_device();
@@ -58,7 +46,9 @@ namespace RDE {
             allocInfo.commandBufferCount = 1;
             VK_CHECK(vkAllocateCommandBuffers(logicalDevice, &allocInfo, &m_UploadCommandBuffer));
 
-            VkFenceCreateInfo fenceInfo{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+            VkFenceCreateInfo fenceInfo{};
+            fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+            fenceInfo.pNext = nullptr;
             VK_CHECK(vkCreateFence(logicalDevice, &fenceInfo, nullptr, &m_UploadFence));
         }
         // === 3. Create Global Descriptor Pool ===
@@ -84,7 +74,9 @@ namespace RDE {
             m_InFlightFences.resize(FRAMES_IN_FLIGHT);
             m_FrameCommandBuffers.resize(FRAMES_IN_FLIGHT);
 
-            VkSemaphoreCreateInfo semaphoreInfo{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+            VkSemaphoreCreateInfo semaphoreInfo{};
+            semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+            semaphoreInfo.pNext = nullptr;
             VkFenceCreateInfo fenceInfo{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, nullptr, VK_FENCE_CREATE_SIGNALED_BIT};
 
             VkCommandBufferAllocateInfo allocInfo{};

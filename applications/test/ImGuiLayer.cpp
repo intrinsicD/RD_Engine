@@ -50,14 +50,14 @@ namespace RDE {
         m_Context = nullptr;
     }
 
-    void ImGuiLayer::on_update(float delta_time) {
+    void ImGuiLayer::on_update([[maybe_unused]] float delta_time) {
     }
 
     void ImGuiLayer::on_render_gui() {
         ImGui::ShowDemoWindow();
     }
 
-    void ImGuiLayer::on_event(Event &event) {
+    void ImGuiLayer::on_event([[maybe_unused]] Event &event) {
     }
 
     void ImGuiLayer::begin() {
@@ -181,7 +181,7 @@ namespace RDE {
         io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
         size_t upload_size = width * height * 4 * sizeof(char);
 
-// 1a. Create the FINAL destination texture on the GPU. It starts empty.
+        // 1a. Create the FINAL destination texture on the GPU. It starts empty.
         RAL::TextureDescription fontDesc{};
         fontDesc.width = width;
         fontDesc.height = height;
@@ -198,25 +198,29 @@ namespace RDE {
         RAL::BufferHandle stagingBuffer = m_device->create_buffer(stagingDesc);
 
         // 1c. Map the staging buffer and copy the font pixel data into it.
-        void* mappedData = m_device->map_buffer(stagingBuffer);
+        void *mappedData = m_device->map_buffer(stagingBuffer);
         memcpy(mappedData, pixels, upload_size);
         m_device->unmap_buffer(stagingBuffer);
 
         // 1d. Use an immediate command buffer to perform the GPU-side copy.
         // This is a blocking operation, which is fine for one-time setup.
 
-        m_device->immediate_submit([&](RAL::CommandBuffer* cmd){
+        m_device->immediate_submit([&](RAL::CommandBuffer *cmd) {
             // Transition the destination texture to be ready for the copy
             RAL::ResourceBarrier barrier_to_transfer_dst = {};
             barrier_to_transfer_dst.srcStage = RAL::PipelineStageFlags::TopOfPipe;
             barrier_to_transfer_dst.srcAccess = RAL::AccessFlags::None;
             barrier_to_transfer_dst.dstStage = RAL::PipelineStageFlags::Transfer;
             barrier_to_transfer_dst.dstAccess = RAL::AccessFlags::TransferWrite;
-            barrier_to_transfer_dst.textureTransition = { m_FontTexture, RAL::ImageLayout::Undefined, RAL::ImageLayout::TransferDst };
+            barrier_to_transfer_dst.textureTransition = {
+                m_FontTexture, RAL::ImageLayout::Undefined, RAL::ImageLayout::TransferDst
+            };
             cmd->pipeline_barrier(barrier_to_transfer_dst);
 
             // Record the copy command
-            cmd->copy_buffer_to_texture(stagingBuffer, m_FontTexture, width, height);
+            RAL::BufferTextureCopy copyRegion = {};
+            copyRegion.imageExtent = {(uint32_t) width, (uint32_t) height, 1};
+            cmd->copy_buffer_to_texture(stagingBuffer, m_FontTexture, {copyRegion});
 
             // Transition the texture to be ready for shader sampling
             RAL::ResourceBarrier barrier_to_shader_read = {};
@@ -224,7 +228,9 @@ namespace RDE {
             barrier_to_shader_read.srcAccess = RAL::AccessFlags::TransferWrite;
             barrier_to_shader_read.dstStage = RAL::PipelineStageFlags::FragmentShader;
             barrier_to_shader_read.dstAccess = RAL::AccessFlags::ShaderRead;
-            barrier_to_shader_read.textureTransition = { m_FontTexture, RAL::ImageLayout::TransferDst, RAL::ImageLayout::ShaderReadOnly };
+            barrier_to_shader_read.textureTransition = {
+                m_FontTexture, RAL::ImageLayout::TransferDst, RAL::ImageLayout::ShaderReadOnly
+            };
             cmd->pipeline_barrier(barrier_to_shader_read);
         });
 
@@ -242,21 +248,23 @@ namespace RDE {
         // === 2. Create Descriptor Set Layout ===
         RAL::DescriptorSetLayoutDescription layoutDesc{};
         layoutDesc.bindings.push_back({
-                                              .binding = 0,
-                                              .type = RAL::DescriptorType::CombinedImageSampler,
-                                              .stages = RAL::ShaderStage::Fragment
-                                      });
+            .binding = 0,
+            .type = RAL::DescriptorType::CombinedImageSampler,
+            .stages = RAL::ShaderStage::Fragment,
+            .name = "FontTexture"
+        });
 
         m_DsLayout = m_device->create_descriptor_set_layout(layoutDesc);
         // === 3. Create Descriptor Set ===
         RAL::DescriptorSetDescription setDesc{};
         setDesc.layout = m_DsLayout;
         setDesc.writes.push_back({
-                                         .binding = 0,
-                                         .type = RAL::DescriptorType::CombinedImageSampler,
-                                         .texture = m_FontTexture,
-                                         .sampler = m_FontSampler
-                                 });
+            .binding = 0,
+            .type = RAL::DescriptorType::CombinedImageSampler,
+            .buffer = RAL::BufferHandle::INVALID(),
+            .texture = m_FontTexture,
+            .sampler = m_FontSampler
+        });
         m_DescriptorSet = m_device->create_descriptor_set(setDesc);
 
         // === 4. Create Pipeline ===
@@ -280,10 +288,11 @@ namespace RDE {
 
         // Push Constants for scale/translate matrix
         psoDesc.pushConstantRanges.push_back({
-                                                     .stages = RAL::ShaderStage::Vertex,
-                                                     .offset = 0,
-                                                     .size = sizeof(float) * 4
-                                             });
+            .stages = RAL::ShaderStage::Vertex,
+            .offset = 0,
+            .size = sizeof(float) * 4,
+            .name = "Empty PushConstant"
+        });
 
         // Setup for alpha blending
         // Setup for alpha blending
@@ -309,11 +318,15 @@ namespace RDE {
         // ImGui vertex layout
         psoDesc.vertexBindings = {{.binding = 0, .stride = sizeof(ImDrawVert)}};
         psoDesc.vertexAttributes = {
-                {.location = 0, .binding = 0, .format = RAL::Format::R32G32_SFLOAT, .offset = offsetof(ImDrawVert,
-                                                                                                       pos)},
-                {.location = 1, .binding = 0, .format = RAL::Format::R32G32_SFLOAT, .offset = offsetof(ImDrawVert, uv)},
-                {.location = 2, .binding = 0, .format = RAL::Format::R8G8B8A8_UNORM, .offset = offsetof(ImDrawVert,
-                                                                                                        col)}
+            {
+                .location = 0, .binding = 0, .format = RAL::Format::R32G32_SFLOAT, .offset = offsetof(ImDrawVert,
+                    pos), .name = "in_Position"
+            },
+            {.location = 1, .binding = 0, .format = RAL::Format::R32G32_SFLOAT, .offset = offsetof(ImDrawVert, uv), .name = "in_TexCoord"},
+            {
+                .location = 2, .binding = 0, .format = RAL::Format::R8G8B8A8_UNORM, .offset = offsetof(ImDrawVert,
+                    col), .name = "in_Color"
+            }
         };
         m_Pipeline = m_device->create_pipeline(psoDesc);
 
@@ -333,5 +346,4 @@ namespace RDE {
         if (m_VertexBuffer.is_valid()) m_device->destroy_buffer(m_VertexBuffer);
         if (m_IndexBuffer.is_valid()) m_device->destroy_buffer(m_IndexBuffer);
     }
-
 }

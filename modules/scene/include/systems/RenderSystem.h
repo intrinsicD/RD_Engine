@@ -27,8 +27,8 @@ namespace RDE {
         void push_buffer_data_to_assets_database(entt::entity source_entity, AssetID target_asset_id, AttributeID attribute_id);
 
         AttributeRegistry attribute_registry;
-        RAL::Device *m_device;
         entt::registry &m_registry;
         std::shared_ptr<AssetDatabase> m_asset_database;
+        RAL::Device *m_device;
     };
 }

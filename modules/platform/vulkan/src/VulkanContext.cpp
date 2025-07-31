@@ -7,13 +7,14 @@
 #include <set>
 
 namespace RDE {
-    namespace { // Use an anonymous namespace for file-local helpers
+    namespace {
+        // Use an anonymous namespace for file-local helpers
         // A debug callback function for the validation layers
         static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
-                VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-                VkDebugUtilsMessageTypeFlagsEXT messageType,
-                const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-                void *pUserData) {
+            VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+            [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageType,
+            const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+            [[maybe_unused]] void *pUserData) {
             // Only print warnings and errors
             if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
                 RDE_CORE_ERROR("Validation Layer: {}", pCallbackData->pMessage);
@@ -41,7 +42,7 @@ namespace RDE {
         }
         if (m_DebugMessenger != VK_NULL_HANDLE) {
             auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(m_Instance,
-                                                                                   "vkDestroyDebugUtilsMessengerEXT");
+                "vkDestroyDebugUtilsMessengerEXT");
             if (func != nullptr) {
                 func(m_Instance, m_DebugMessenger, nullptr);
             } else {
@@ -188,8 +189,9 @@ namespace RDE {
             RDE_CORE_WARN("Sampler Anisotropy is not supported; textures may look blurry at angles.");
         }
 
-        VkPhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeature{
-                VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES};
+        VkPhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeature;
+        dynamicRenderingFeature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
+        dynamicRenderingFeature.pNext = nullptr; // No chaining needed here
         dynamicRenderingFeature.dynamicRendering = VK_TRUE;
 
         // --- Device Creation ---

@@ -1,6 +1,8 @@
-# RDE_Project/applications/sandbox/CMakeLists.txt
+# applications/sandbox/CMakeLists.txt
 
-set(IMGUI_SOURCES
+add_library(rde_imgui STATIC)
+add_library(RDE::ImGui ALIAS rde_imgui)
+target_sources(rde_imgui PRIVATE
         ${imgui_SOURCE_DIR}/imgui.cpp
         ${imgui_SOURCE_DIR}/imgui_draw.cpp
         ${imgui_SOURCE_DIR}/imgui_tables.cpp
@@ -11,12 +13,21 @@ set(IMGUI_SOURCES
         ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
         ${ImGuiFileDialog_SOURCE_DIR}/ImGuiFileDialog.cpp
 )
+target_compile_options(rde_imgui PRIVATE
+        "-Wno-unused-parameter"         # The one we had before
+        "-Wno-overloaded-virtual"       # FIX for the what() error
+        "-Wno-deprecated-enum-enum-conversion" # FIX for the bitwise enum error
+)
+target_include_directories(rde_imgui PUBLIC
+        ${imgui_SOURCE_DIR}
+        ${ImGuiFileDialog_SOURCE_DIR}
+)
+target_link_libraries(rde_imgui PRIVATE glfw)
 
 add_executable(Test)
 
 target_include_directories(Test PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
-        ${imgui_SOURCE_DIR}
 )
 
 target_sources(Test PRIVATE
@@ -25,7 +36,6 @@ target_sources(Test PRIVATE
         ImGuiLayer.cpp
         TestSceneLayer.cpp
         AssetViewerLayer.cpp
-        ${IMGUI_SOURCES}
 )
 
 find_package(OpenGL REQUIRED)
@@ -39,6 +49,7 @@ target_link_libraries(Test
         RDE::Scene
         RDE::Geometry
         RDE::Renderer
+        RDE::ImGui
         spdlog
         glfw
         glm

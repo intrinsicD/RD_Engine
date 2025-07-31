@@ -37,7 +37,7 @@ namespace RDE {
         m_registry.clear<BoundingVolumeDirty>();
     }
 
-    void BoundingVolumeSystem::update(float delta_time) {
+    void BoundingVolumeSystem::update([[maybe_unused]] float delta_time) {
         {
             auto group = m_registry.group<BoundingVolumeAABBComponent>(entt::get<BoundingVolumeDirty>);
             for (auto entity: group) {

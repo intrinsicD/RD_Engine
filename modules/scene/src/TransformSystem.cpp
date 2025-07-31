@@ -46,7 +46,7 @@ namespace RDE {
         return true;
     }
 
-    void TransformSystem::update(float delta_time) {
+    void TransformSystem::update([[maybe_unused]] float delta_time) {
         auto view = m_registry.view<TransformLocal, TransformDirty>();
 
         for (auto entity : view) {

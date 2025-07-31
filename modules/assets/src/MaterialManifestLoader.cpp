@@ -7,7 +7,6 @@
 #include <yaml-cpp/yaml.h>
 
 namespace RDE {
-
     std::vector<std::string> MaterialManifestLoader::get_supported_extensions() const {
         return {".mat"}; // Supported extensions for material manifests
     }
@@ -28,8 +27,8 @@ namespace RDE {
         std::string assetName;
 
         // --- Version & Name Parsing ---
-        if (doc["version"] && doc["version"].as<std::string>() != "1.0") {
-            RDE_CORE_WARN("Material '{}' has unsupported version. Expected 1.0.", uri);
+        if (doc["version"] && !check_version(doc["version"].as<std::string>())) {
+            RDE_CORE_WARN("Material '{}' has unsupported version. Expected {}", uri, get_expected_version());
             // Decide if this should be a fatal error
         }
 
@@ -43,7 +42,8 @@ namespace RDE {
         // --- Dependency Linking ---
         if (doc["dependencies"] && doc["dependencies"]["shaders"]) {
             // A material should only depend on ONE shader definition
-            const auto shader_def_path = doc["dependencies"]["shaders"][0].as<std::string>();
+            auto asset_path = get_asset_path();
+            const auto shader_def_path = asset_path.value() / doc["dependencies"]["shaders"][0].as<std::string>();
             material.pipeline = manager.get_loaded_asset(shader_def_path);
         } else {
             RDE_CORE_ERROR("Material '{}' is missing shader dependency.", uri);
@@ -77,13 +77,13 @@ namespace RDE {
                 if (param_type == "float") {
                     material.parameters.add<float>("p:" + param_name, valueNode.as<float>());
                 } else if (param_type == "vec2") {
-                    auto v = valueNode.as<std::vector<float>>();
+                    auto v = valueNode.as<std::vector<float> >();
                     material.parameters.add<glm::vec2>("p:" + param_name, {v[0], v[1]});
                 } else if (param_type == "vec3") {
-                    auto v = valueNode.as<std::vector<float>>();
+                    auto v = valueNode.as<std::vector<float> >();
                     material.parameters.add<glm::vec3>("p:" + param_name, {v[0], v[1], v[2]});
                 } else if (param_type == "vec4") {
-                    auto v = valueNode.as<std::vector<float>>();
+                    auto v = valueNode.as<std::vector<float> >();
                     material.parameters.add<glm::vec4>("p:" + param_name, {v[0], v[1], v[2], v[3]});
                 } else {
                     RDE_CORE_WARN("Unsupported parameter type '{}' in '{}'", param_type, uri);
@@ -96,10 +96,14 @@ namespace RDE {
             const auto &texture_deps = doc["dependencies"]["textures"];
             for (const auto &textureNode: doc["textures"]) {
                 const auto texture_name = textureNode["name"].as<std::string>();
-                int idx = textureNode["index"].as<int>();
+                size_t idx = textureNode["index"].as<int>();
 
                 if (idx < texture_deps.size()) {
-                    const auto texture_uri = texture_deps[idx].as<std::string>();
+                    // Quick fix, the asset base path is missing here because we load the relative path from the manifest.
+                    // Just prepend the base path to the texture URI.
+                    // TODO: Find a better way to handle absolute and relative paths in manifests.
+                    auto asset_path = get_asset_path();
+                    const auto texture_uri = asset_path.value() / texture_deps[idx].as<std::string>();
                     material.textures["t_" + texture_name] = manager.get_loaded_asset(texture_uri);
                 } else {
                     RDE_CORE_WARN("Texture index {} out of bounds for '{}' in '{}'", idx, texture_name, uri);

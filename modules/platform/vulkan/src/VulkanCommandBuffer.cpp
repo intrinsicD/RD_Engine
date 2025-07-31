@@ -1,6 +1,7 @@
 #include "VulkanCommandBuffer.h"
 #include "VulkanDevice.h"
 #include "VulkanCommon.h"
+#include "VulkanTypes.h"
 #include "VulkanResourceManager.h"
 #include "VulkanMappers.h"
 
@@ -276,27 +277,42 @@ namespace RDE {
     }
 
     void VulkanCommandBuffer::copy_buffer_to_texture(RAL::BufferHandle srcHandle, RAL::TextureHandle dstHandle,
-                                                     uint32_t width, uint32_t height) {
+                                                     const std::vector<RAL::BufferTextureCopy> &regions) {
         auto &db = m_device->get_resources_database();
         const auto &srcBuffer = db.get<VulkanBuffer>(srcHandle);
         const auto &dstTexture = db.get<VulkanTexture>(dstHandle);
-        const auto &dstDesc = db.get<RAL::TextureDescription>(dstHandle);
 
-        VkBufferImageCopy region{};
-        region.bufferOffset = 0;
-        region.bufferRowLength = 0;
-        region.bufferImageHeight = 0;
-        region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; // Assuming color
-        region.imageSubresource.mipLevel = 0;
-        region.imageSubresource.baseArrayLayer = 0;
-        region.imageSubresource.layerCount = 1;
-        region.imageOffset = {0, 0, 0};
-        region.imageExtent = {width, height, 1};
+        std::vector<VkBufferImageCopy> vkRegions;
+        vkRegions.reserve(regions.size());
 
-        // Important: The destination image must be in TRANSFER_DST_OPTIMAL layout
-        // The user is responsible for issuing a barrier before this call!
-        vkCmdCopyBufferToImage(m_handle, srcBuffer.handle, dstTexture.handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
-                               &region);
+        for (const auto &region: regions) {
+            VkBufferImageCopy vkRegion{};
+            vkRegion.bufferOffset = region.bufferOffset;
+            vkRegion.bufferRowLength = region.bufferRowLength;
+            vkRegion.bufferImageHeight = region.bufferImageHeight;
+
+            // Translate your RAL::ImageSubresourceLayers to VkImageSubresourceLayers
+            vkRegion.imageSubresource.aspectMask = translate_aspect_mask(region.imageSubresource.aspectMask);
+            vkRegion.imageSubresource.mipLevel = region.imageSubresource.mipLevel;
+            vkRegion.imageSubresource.baseArrayLayer = region.imageSubresource.baseArrayLayer;
+            vkRegion.imageSubresource.layerCount = region.imageSubresource.layerCount;
+
+            vkRegion.imageOffset = {region.imageOffset.x, region.imageOffset.y, region.imageOffset.z};
+            vkRegion.imageExtent = {region.imageExtent.width, region.imageExtent.height, region.imageExtent.depth};
+
+            vkRegions.push_back(vkRegion);
+        }
+
+        if (!vkRegions.empty()) {
+            vkCmdCopyBufferToImage(
+                m_handle,
+                srcBuffer.handle,
+                dstTexture.handle,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                static_cast<uint32_t>(vkRegions.size()),
+                vkRegions.data()
+            );
+        }
     }
 
     void VulkanCommandBuffer::push_constants(RAL::PipelineHandle pipeline_handle, RAL::ShaderStage stages,

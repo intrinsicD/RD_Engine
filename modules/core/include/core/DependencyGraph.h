@@ -36,7 +36,10 @@ namespace RDE {
                             std::vector<TResourceHandle> reads,
                             std::vector<TResourceHandle> writes) {
             NodeHandle handle{m_nodes.size()};
-            m_nodes.emplace_back(InternalNode{std::move(payload)});
+            InternalNode new_node;
+            // Ensure the payload is vali
+            new_node.payload = payload;
+            m_nodes.emplace_back(new_node);
 
             // --- This is the core dependency-building logic, now generic ---
 
@@ -74,6 +77,15 @@ namespace RDE {
             }
 
             return handle;
+        }
+
+        void add_edge(NodeHandle predecessor, NodeHandle successor) {
+            // Avoid self-loops and duplicate edges
+            if (predecessor.id == successor.id) return;
+            for (const auto &existing_succ: m_nodes[predecessor.id].successors) {
+                if (existing_succ.id == successor.id) return;
+            }
+            m_nodes[predecessor.id].successors.push_back(successor);
         }
 
         // "Bakes" the graph into executable stages, performing a topological sort.
@@ -143,14 +155,6 @@ namespace RDE {
             std::vector<NodeHandle> successors; // Nodes that depend on this one
         };
 
-        void add_edge(NodeHandle predecessor, NodeHandle successor) {
-            // Avoid self-loops and duplicate edges
-            if (predecessor.id == successor.id) return;
-            for (const auto &existing_succ: m_nodes[predecessor.id].successors) {
-                if (existing_succ.id == successor.id) return;
-            }
-            m_nodes[predecessor.id].successors.push_back(successor);
-        }
 
         std::vector<InternalNode> m_nodes;
         std::unordered_map<TResourceHandle, std::vector<NodeHandle> > m_resource_readers;

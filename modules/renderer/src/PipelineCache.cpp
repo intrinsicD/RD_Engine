@@ -25,6 +25,17 @@ namespace RDE {
 
     PipelineCache::~PipelineCache() {
         // ... destructor is fine, it cleans up RAL resources ...
+        for (auto &[key, cached_pipeline]: m_cache) {
+            // Clean up shader modules
+            for (auto &shader: cached_pipeline.shaderModules) {
+                m_device.destroy_shader(shader);
+            }
+            // Clean up descriptor set layouts
+            for (auto &layout: cached_pipeline.setLayouts) {
+                m_device.destroy_descriptor_set_layout(layout);
+            }
+            // The pipeline itself will be cleaned up by the RAL device.
+        }
     }
 
     RAL::PipelineHandle PipelineCache::getPipeline(const AssetID &shader_def_id, ShaderFeatureMask feature_mask) {
@@ -118,8 +129,13 @@ namespace RDE {
 
             // Apply vertex layout directly from the contract
             uint32_t current_offset = 0;
-            for (const auto &attr: shaderDef->vertexAttributes) {
-                psoDesc.vertexAttributes.push_back({attr.location, 0, attr.format, current_offset});
+            for (const auto &cond_attr: shaderDef->vertexAttributes) {
+                RAL::VertexInputAttribute attr;
+                attr.location = cond_attr.location;
+                attr.format = cond_attr.format; // Assuming this is a valid RAL format
+                attr.offset = current_offset;
+                attr.name = cond_attr.name; // Optional, if you want to keep names
+                psoDesc.vertexAttributes.emplace_back(attr);
                 current_offset += get_size_of_format(attr.format); // You need this helper
             }
             if (current_offset > 0) {

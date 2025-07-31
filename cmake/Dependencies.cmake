@@ -1,3 +1,4 @@
+#Dependencies.cmake
 include(FetchContent)
 
 # -----------------------------------------------------------------------------
@@ -23,7 +24,6 @@ FetchContent_Declare(EnTT GIT_REPOSITORY https://github.com/skypjack/entt.git GI
 FetchContent_Declare(tinyobjloader GIT_REPOSITORY https://github.com/tinyobjloader/tinyobjloader.git GIT_TAG v2.0.0rc13)
 FetchContent_Declare(yaml-cpp GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git GIT_TAG master)
 FetchContent_Declare(efsw GIT_REPOSITORY https://github.com/SpartanJ/efsw.git GIT_TAG 1.4.1)
-
 
 
 # -----------------------------------------------------------------------------
@@ -67,4 +67,23 @@ FetchContent_MakeAvailable(imgui)
 # Most of these are header-only or have simple builds.
 FetchContent_MakeAvailable(VulkanMemoryAllocator)
 #FetchContent_MakeAvailable(daxa)
-FetchContent_MakeAvailable(spdlog ImGuiFileDialog EnTT tinyobjloader yaml-cpp stb_image efsw glm)
+FetchContent_MakeAvailable(spdlog ImGuiFileDialog tinyobjloader yaml-cpp efsw glm)
+
+FetchContent_MakeAvailable(stb_image)
+add_library(rde_stb_image INTERFACE)
+add_library(RDE::StbImage ALIAS rde_stb_image)
+target_compile_options(rde_stb_image INTERFACE
+        "-Wno-deprecated-declarations" # Suppress warnings about deprecated functions in stb_image
+)
+target_include_directories(rde_stb_image SYSTEM INTERFACE
+        ${stb_image_SOURCE_DIR}
+)
+
+FetchContent_MakeAvailable(EnTT)
+
+# Create our own wrapper target for it
+target_include_directories(EnTT SYSTEM INTERFACE
+        # The $<BUILD_INTERFACE:...> generator expression is a robust way to say
+        # "get the include directories from this target".
+        $<BUILD_INTERFACE:${entt_SOURCE_DIR}/src>
+)

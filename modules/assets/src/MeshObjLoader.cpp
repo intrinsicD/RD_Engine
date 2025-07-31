@@ -59,7 +59,7 @@ namespace RDE {
     }
 
 
-    AssetID MeshObjLoader::load_asset(const std::string &uri, AssetDatabase &db, AssetManager &manager) const {
+    AssetID MeshObjLoader::load_asset(const std::string &uri, AssetDatabase &db,[[maybe_unused]] AssetManager &manager) const {
         tinyobj::ObjReader reader;
         tinyobj::ObjReaderConfig reader_config;
         reader_config.mtl_search_path = std::filesystem::path(uri).parent_path().string();

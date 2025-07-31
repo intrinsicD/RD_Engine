@@ -16,10 +16,10 @@ namespace RDE {
 
         ~SandboxApp() override;
 
-        void run(int width, int height, const char *title) override;
+        void run() override;
 
     private:
-        bool init(int width, int height, const char *title) override;
+        bool init() override;
 
         void shutdown() override;
 

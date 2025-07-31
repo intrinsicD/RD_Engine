@@ -40,7 +40,7 @@ namespace RDE {
         m_registry.clear<CameraPrimary>();
     }
 
-    void CameraSystem::update(float delta_time) {
+    void CameraSystem::update([[maybe_unused]] float delta_time) {
         // Query for all dirty cameras that have the necessary components
         auto view = m_registry.view<CameraComponent, TransformWorld, CameraDirty>();
 

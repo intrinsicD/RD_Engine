@@ -1,4 +1,4 @@
-# RDE_Project/modules/assets/CMakeLists.txt
+# modules/assets/CMakeLists.txt
 
 
 # An INTERFACE library has no source files and doesn't produce a binary.
@@ -10,7 +10,6 @@ add_library(RDE::AssetSystem ALIAS AssetSystem)
 target_include_directories(AssetSystem
         PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
-        ${stb_image_SOURCE_DIR}
 )
 
 target_sources(AssetSystem
@@ -19,7 +18,7 @@ target_sources(AssetSystem
         src/MeshObjLoader.cpp
         src/MeshMtlLoader.cpp
         src/MaterialManifestLoader.cpp
-        src/StbImage.cpp
+        src/StbImageLoader.cpp
         src/ShaderDefLoader.cpp
 )
 
@@ -27,6 +26,7 @@ target_link_libraries(AssetSystem
         PUBLIC
         RDE::Core
         RDE::Renderer
+        RDE::StbImage
         EnTT::EnTT
         efsw
         tinyobjloader

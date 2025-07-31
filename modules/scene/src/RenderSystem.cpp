@@ -9,12 +9,13 @@
 #include "core/Log.h"
 
 #include <entt/entity/registry.hpp>
+#include <utility>
 
 namespace RDE {
     RenderSystem::RenderSystem(entt::registry &registry,
                                std::shared_ptr<AssetDatabase> asset_database,
                                RAL::Device *device) : m_registry(registry),
-                                                      m_asset_database(asset_database), m_device(device) {
+                                                      m_asset_database(std::move(asset_database)), m_device(device) {
     }
 
     void RenderSystem::init() {
@@ -25,7 +26,7 @@ namespace RDE {
         // Cleanup logic for the render system
     }
 
-    void RenderSystem::update(float delta_time) {
+    void RenderSystem::update([[maybe_unused]] float delta_time) {
         // Update logic for the render system
         // This could include rendering entities, updating shaders, etc.
 
@@ -43,10 +44,10 @@ namespace RDE {
 
                 // Delegate the low-level work to the device.
                 m_device->update_buffer_data(
-                        command.target_buffer,
-                        command.data.data(),
-                        command.data.size(),
-                        command.destinationOffset
+                    command.target_buffer,
+                    command.data.data(),
+                    command.data.size(),
+                    command.destinationOffset
                 );
             }
 
@@ -63,17 +64,16 @@ namespace RDE {
 
                 // Delegate the low-level work to the device.
                 m_device->update_buffer_data(
-                        command.target_buffer,
-                        command.data.data(),
-                        command.data.size(),
-                        command.destinationOffset
+                    command.target_buffer,
+                    command.data.data(),
+                    command.data.size(),
+                    command.destinationOffset
                 );
             }
 
             // These commands are ephemeral. Once executed, they are gone.
             scene_registry.clear<Commands::UpdateBufferCommand>();
         }
-
     }
 
     void RenderSystem::declare_dependencies(SystemDependencyBuilder &builder) {
@@ -85,27 +85,27 @@ namespace RDE {
 
     void RenderSystem::pull_buffer_data_to_scene_registry(AssetID source_asset_id, entt::entity target_entity,
                                                           AttributeID attribute_id) {
-        auto &asset_registry =m_asset_database->get_registry();
+        auto &asset_registry = m_asset_database->get_registry();
         auto &asset_gpu_component = asset_registry.get<RenderGpuGeometry>(source_asset_id->entity_id);
         auto it = asset_gpu_component.attribute_buffers.find(attribute_id);
-        if(it == asset_gpu_component.attribute_buffers.end()) {
+        if (it == asset_gpu_component.attribute_buffers.end()) {
             /*RDE_CORE_ERROR("Attribute ID {} not found in asset GPU component for asset ID {}", attribute_id, source_asset_id);*/
             return;
         }
-        if(it != asset_gpu_component.attribute_buffers.end()) {
+        if (it != asset_gpu_component.attribute_buffers.end()) {
             auto &buffer_handle = it->second;
 
             // Create a new buffer in the scene registry
             auto &scene_registry = m_registry;
             auto &render_gpu_geometry = scene_registry.get_or_emplace<RenderGpuGeometry>(target_entity);
             auto it = render_gpu_geometry.attribute_buffers.find(attribute_id);
-            if(it == render_gpu_geometry.attribute_buffers.end()) {
+            if (it == render_gpu_geometry.attribute_buffers.end()) {
                 //Create a new buffer handle in the scene registry
-/*                RAL::BufferHandle buffer_handle = m_device->create_buffer(
-                        buffer_handle.get_size(),
-                        buffer_handle.get_usage_flags(),
-                        buffer_handle.get_memory_flags()
-                );*/
+                /*                RAL::BufferHandle buffer_handle = m_device->create_buffer(
+                                        buffer_handle.get_size(),
+                                        buffer_handle.get_usage_flags(),
+                                        buffer_handle.get_memory_flags()
+                                );*/
             }
             render_gpu_geometry.attribute_buffers[attribute_id] = buffer_handle;
 
@@ -113,13 +113,10 @@ namespace RDE {
             render_gpu_geometry.vertex_count = asset_gpu_component.vertex_count;
             render_gpu_geometry.index_count = asset_gpu_component.index_count;
         } else {
-
         }
     }
 
-    void RenderSystem::push_buffer_data_to_assets_database(entt::entity source_entity, AssetID target_asset_id,
-                                                           AttributeID attribute_id) {
-
+    void RenderSystem::push_buffer_data_to_assets_database([[maybe_unused]] entt::entity source_entity, [[maybe_unused]] AssetID target_asset_id,
+                                                           [[maybe_unused]] AttributeID attribute_id) {
     }
-
 }

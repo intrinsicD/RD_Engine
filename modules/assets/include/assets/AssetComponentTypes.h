@@ -6,6 +6,7 @@
 #include "ral/Resources.h"
 #include "components/DirtyTagComponent.h"
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -94,19 +95,29 @@ namespace RDE {
         std::vector<char> data; // Pointer to the raw texture data, if needed
     };
 
+    struct ConditionalVertexAttribute : RAL::VertexInputAttribute {
+        std::optional<std::string> required_feature;
+    };
+
+    struct ConditionalDescriptorBinding : RAL::DescriptorSetLayoutBinding {
+        std::optional<std::string> required_feature;
+    };
+
+    struct ConditionalDescriptorSetLayout {
+        uint32_t set;
+        std::vector<ConditionalDescriptorBinding> bindings;
+    };
+
+    // The updated AssetShaderDef
     struct AssetShaderDef {
         std::string name;
-
-        // Dependencies on the source code files
         std::unordered_map<std::string, std::vector<std::string>> dependencies;
+        std::vector<std::string> features; // The list of all possible features
 
-        // List of features for shader permutations
-        std::vector<std::string> features;
-
-        // The GPU pipeline interface contract
-        std::vector<RAL::VertexInputAttribute> vertexAttributes;
-        std::vector<RAL::DescriptorSetLayoutDescription> descriptorSetLayouts;
-        std::vector<RAL::PushConstantRange> pushConstantRanges;
+        // These now store the conditional information
+        std::vector<ConditionalVertexAttribute> vertexAttributes;
+        std::vector<ConditionalDescriptorSetLayout> descriptorSetLayouts;
+        std::vector<RAL::PushConstantRange> pushConstantRanges; // Push constants are usually not conditional
     };
 
     struct Prefab {

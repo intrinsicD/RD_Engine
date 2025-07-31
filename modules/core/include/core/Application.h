@@ -20,10 +20,10 @@ namespace RDE {
     public:
         virtual ~Application() = default;
 
-        virtual void run(int width, int height, const char *title) = 0;
+        virtual void run() = 0;
 
     private:
-        virtual bool init(int width, int height, const char *title) = 0;
+        virtual bool init() = 0;
 
         virtual void shutdown() = 0;
 

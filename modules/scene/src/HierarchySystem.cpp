@@ -16,7 +16,7 @@ namespace RDE {
         m_registry.clear<Hierarchy>();
     }
 
-    void HierarchySystem::update(float delta_time) {
+    void HierarchySystem::update([[maybe_unused]] float delta_time) {
         // Find all entities that have a Transform::Dirty and children.
         // These are the roots of the hierarchies we need to process.
         auto view = m_registry.view<Hierarchy, TransformDirty>();

@@ -13,13 +13,19 @@ namespace RDE {
     }
 
     // This loader parses the shader contract and stores it in an AssetShaderDef component.
-    AssetID ShaderDefLoader::load_asset(const std::string &uri, AssetDatabase &db, AssetManager &manager) const {
+    AssetID ShaderDefLoader::load_asset(const std::string &uri, AssetDatabase &db,
+                                        [[maybe_unused]] AssetManager &manager) const {
         YAML::Node doc;
         try {
             doc = YAML::LoadFile(uri);
         } catch (const YAML::Exception &e) {
             RDE_CORE_ERROR("Failed to load/parse shader manifest '{}': {}", uri, e.what());
             return nullptr;
+        }
+
+        if (doc["version"] && !check_version(doc["version"].as<std::string>())) {
+            RDE_CORE_WARN("ShaderDef '{}' has unsupported version. Expected {}", uri, get_expected_version());
+            // Decide if this should be a fatal error
         }
 
         AssetShaderDef shaderDefComponent;
@@ -58,10 +64,10 @@ namespace RDE {
             // Parse Descriptor Sets
             if (const auto &setsNode = interfaceNode["sets"]) {
                 for (const auto &setNode: setsNode) {
-                    RAL::DescriptorSetLayoutDescription setLayoutDesc;
+                    ConditionalDescriptorSetLayout setLayoutDesc;
                     setLayoutDesc.set = setNode["set"].as<uint32_t>();
                     for (const auto &bindingNode: setNode["bindings"]) {
-                        RAL::DescriptorSetLayoutBinding binding;
+                        ConditionalDescriptorBinding binding;
                         binding.stages = string_to_shader_stages_mask(bindingNode["stage"].as<std::string>());
                         binding.binding = bindingNode["binding"].as<uint32_t>();
                         binding.type = string_to_descriptor_type(bindingNode["type"].as<std::string>());

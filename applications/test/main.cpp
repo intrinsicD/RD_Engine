@@ -5,7 +5,11 @@
 namespace RDE {
     Application *CreateApplication() {
         //Here provide all dependencies to inject into the application
-        auto window = GlfwVulkanWindow::Create();
+        WindowConfig config;
+        config.title = "RDE SandboxApp";
+        config.width = 1280;
+        config.height = 720;
+        auto window = GlfwVulkanWindow::Create(config);
         return new SandboxApp(std::move(window));
     }
 }
@@ -13,7 +17,7 @@ namespace RDE {
 int main() {
     RDE::Application *app = RDE::CreateApplication();
     try {
-        app->run(1280, 720, "RDE SandboxApp");
+        app->run();
     } catch (const std::exception &e) {
         return EXIT_FAILURE;
     }

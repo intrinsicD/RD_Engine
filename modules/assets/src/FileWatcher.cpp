@@ -19,9 +19,9 @@ namespace RDE {
             m_event_queue_moved(queue_moved) {
         }
 
-        void handleFileAction(efsw::WatchID watchid, const std::string &dir,
+        void handleFileAction([[maybe_unused]] efsw::WatchID watchid, const std::string &dir,
                               const std::string &filename, efsw::Action action,
-                              std::string old_filename) override {
+                              [[maybe_unused]] std::string old_filename) override {
             // We only care about certain actions.
             // For hot reloading, 'Modified' is the most important.
             // 'Add' can be useful for adding new assets while the engine is running.

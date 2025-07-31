@@ -15,6 +15,7 @@
 #include <filesystem>
 #include <queue>
 #include <utility>
+#include <algorithm>
 
 namespace RDE {
     class AssetManager {
@@ -103,6 +104,9 @@ namespace RDE {
 
             // -- II. SCHEDULING PHASE --
             auto stages = graph.bake();
+
+            // Quick fix, the stages are in reverse order because the dependency graph is implemented for as a render graph.
+            std::reverse(stages.begin(), stages.end());
 
             // -- III. EXECUTION PHASE --
             for (const auto& stage : stages) {

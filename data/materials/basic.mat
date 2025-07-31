@@ -14,7 +14,7 @@ dependencies:
 # --- GPU Pipeline State ---
 # Defines how the mesh is rendered.
 pipeline:
-  cullMode: Back      # Options: Back, Front, None
+  cullMode: Back     # Options: Back, Front, None
   polygonMode: Fill  # Options: Fill, Line, Point
   depthTest: true    # Enable depth testing
   depthWrite: true   # Write to the depth buffer

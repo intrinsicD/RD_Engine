@@ -41,7 +41,7 @@ namespace RDE {
 
     }
 
-    bool SandboxApp::init(int width, int height, const char *title) {
+    bool SandboxApp::init() {
         if (!m_window) {
             throw std::runtime_error("Failed to create GLFW window");
         }
@@ -118,12 +118,13 @@ namespace RDE {
         }
     }
 
-    void SandboxApp::run(int width, int height, const char *title) {
-        if (!init(width, height, title)) {
+    void SandboxApp::run() {
+        if (!init()) {
             throw std::runtime_error("Failed to initialize the application");
         }
 
         Ticker timer;
+        int width, height;
         while (!m_window->should_close() && m_is_running) {
             // Poll events
             m_window->poll_events();

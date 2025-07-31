@@ -9,7 +9,7 @@ struct ImGuiContext;
 struct ImDrawData;
 
 namespace RDE {
-    struct IWindow; // Forward declaration of ApplicationContext
+    class IWindow; // Forward declaration of ApplicationContext
 
     class ImGuiLayer : public ILayer {
     public:
@@ -23,7 +23,7 @@ namespace RDE {
 
         void on_update(float delta_time) override;
 
-        void on_render(RAL::CommandBuffer *cmd) override {
+        void on_render([[maybe_unused]] RAL::CommandBuffer *cmd) override {
             // This is where we would render ImGui, but we handle it in the end() method.
         }
 

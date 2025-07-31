@@ -84,7 +84,7 @@ namespace RDE {
 
     struct DimTraits {
         template<typename T>
-        static size_t GetDims(const T &t) {
+        static size_t GetDims(const T &) {
             return 1; // Default for scalar types
         }
 
@@ -94,7 +94,7 @@ namespace RDE {
         }
 
         template<typename T, size_t N>
-        static size_t GetDims(const std::array<T, N> &t) {
+        static size_t GetDims(const std::array<T, N> &) {
             return N; // For array types, return the size of the array
         }
 
@@ -276,7 +276,7 @@ namespace RDE {
                 m_parrays.resize(rhs.n_properties());
                 m_size = rhs.size();
                 for (size_t i = 0; i < m_parrays.size(); ++i) {
-                    m_parrays[i] = std::move(rhs.m_parrays[i]->clone());
+                    m_parrays[i] = rhs.m_parrays[i]->clone();
                     m_property_map[m_parrays[i]->name()] = i;
                 }
             }
@@ -289,7 +289,7 @@ namespace RDE {
 
         [[nodiscard]] size_t n_properties() const { return m_parrays.size(); }
 
-        [[nodiscard]] std::vector<std::string> properties(const std::initializer_list<int> filter_dims = {}) const {
+        [[nodiscard]] std::vector<std::string> properties(const std::initializer_list<size_t> filter_dims = {}) const {
             //TODO figure out filtering by type, float, int, other custom types ...
             std::vector<std::string> names;
             names.reserve(m_parrays.size());

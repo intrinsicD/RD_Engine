@@ -11,7 +11,7 @@ namespace RDE {
     class Scene {
     public:
         Scene(AssetDatabase *asset_database = nullptr)
-                : m_asset_database(asset_database) {
+            : m_asset_database(asset_database) {
         };
 
         ~Scene() = default;
@@ -45,10 +45,11 @@ namespace RDE {
             m_system_scheduler.shutdown();
             m_registry.clear(); // Clear the registry to remove all entities and components
         }
+
     private:
         entt::registry m_registry; // Entity registry for managing entities and components
         entt::dispatcher m_dispatcher; // Event dispatcher for handling events
         SystemScheduler m_system_scheduler; // System scheduler for managing systems in the scene
-        AssetDatabase *m_asset_database = nullptr; // Pointer to the asset database for loading assets
+        [[maybe_unused]] AssetDatabase *m_asset_database = nullptr; // Pointer to the asset database for loading assets
     };
 }

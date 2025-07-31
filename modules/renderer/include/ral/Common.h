@@ -79,6 +79,14 @@ namespace RAL {
         uint32_t width, height;
     };
 
+    struct Offset3D {
+        int32_t x, y, z;
+    };
+
+    struct Extent3D {
+        uint32_t width, height, depth;
+    };
+
     enum class Format {
         UNKNOWN,
 

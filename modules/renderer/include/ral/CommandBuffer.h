@@ -39,7 +39,7 @@ namespace RAL {
 
         virtual void copy_buffer(BufferHandle src, BufferHandle dst, uint64_t size, uint64_t srcOffset = 0, uint64_t dstOffset = 0) = 0;
 
-        virtual void copy_buffer_to_texture(BufferHandle src, TextureHandle dst, uint32_t width, uint32_t height) = 0;
+        virtual void copy_buffer_to_texture(BufferHandle src, TextureHandle dst, const std::vector<BufferTextureCopy> &regions) = 0;
 
         virtual void push_constants(PipelineHandle pipeline, ShaderStage stages, uint32_t offset, uint32_t size, const void* data) = 0;
 

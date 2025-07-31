@@ -24,15 +24,15 @@ namespace RDE {
         // Cleanup logic if needed
     }
 
-    void TestSceneLayer::on_update(float delta_time) {
+    void TestSceneLayer::on_update([[maybe_unused]] float delta_time) {
         // Update logic for the test scene
     }
 
-    void TestSceneLayer::on_event(Event &e) {
+    void TestSceneLayer::on_event([[maybe_unused]] Event &e) {
         // Handle events for the test scene
     }
 
-    void TestSceneLayer::on_render(RAL::CommandBuffer *cmd) {
+    void TestSceneLayer::on_render([[maybe_unused]] RAL::CommandBuffer *cmd) {
         // Render logic for the test scene
         // This would typically involve binding the pipeline, setting up descriptor sets, etc.
     }
@@ -58,7 +58,7 @@ namespace RDE {
         auto entity = m_registry.create();
 
         // 3. Add components
-        auto &local_transform = m_registry.emplace<TransformLocal>(entity);
+        [[maybe_unused]] auto &local_transform = m_registry.emplace<TransformLocal>(entity);
         f_cube_mesh_id.wait();
         auto cube_mesh_id = f_cube_mesh_id.get();
         if(cube_mesh_id && cube_mesh_id->is_valid()){

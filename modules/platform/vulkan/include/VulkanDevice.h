@@ -6,19 +6,15 @@
 #include "VulkanSwapchain.h"
 #include "VulkanResourceManager.h"
 #include "VulkanCommandBuffer.h"
-#include "VulkanTypes.h"
 #include "VulkanDeletionQueue.h"
 
 #include <vulkan/vulkan.h>
-#include <vk_mem_alloc.h> // Include the VMA header
 #include <memory>
 #include <functional>
 
 struct GLFWwindow; // Forward declaration of GLFWwindow
 
 namespace RDE {
-    class VulkanHelper;
-
     // This will be our concrete implementation of the RAL::Device interface
     class VulkanDevice final : public RAL::Device {
     public:
