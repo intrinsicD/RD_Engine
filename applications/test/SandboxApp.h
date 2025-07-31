@@ -5,6 +5,7 @@
 #include "core/InputManager.h"
 #include "renderer/Renderer.h"
 #include "scene/Scene.h"
+#include "material/MaterialDatabase.h"
 
 namespace RDE {
     class ImGuiLayer;
@@ -37,6 +38,7 @@ namespace RDE {
 
         // --- Data Ownership ---
         std::shared_ptr<RDE::AssetDatabase> m_asset_database;
+        std::shared_ptr<RDE::MaterialDatabase> m_material_database;
         std::unique_ptr<RDE::Scene> m_scene;
         RDE::LayerStack m_layer_stack;
         ImGuiLayer *m_imgui_layer = nullptr; // Pointer to ImGui layer for UI rendering

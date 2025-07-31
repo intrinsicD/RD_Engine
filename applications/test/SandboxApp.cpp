@@ -1,6 +1,7 @@
 #include "SandboxApp.h"
 #include "ImGuiLayer.h"
 #include "TestSceneLayer.h"
+#include "AssetViewerLayer.h"
 
 #include "core/EntryPoint.h"
 #include "core/events/ApplicationEvent.h"
@@ -12,8 +13,7 @@
 #include "systems/CameraSystem.h"
 #include "systems/HierarchySystem.h"
 #include "systems/BoundingVolumeSystem.h"
-#include "systems/RenderPacketSystem.h"
-#include "systems/GpuGeometryUploadSystem.h"
+
 
 #include "assets/StbImageLoader.h"
 #include "assets/MeshMtlLoader.h"
@@ -54,6 +54,10 @@ namespace RDE {
         m_selected_entities.clear();
 
         {
+            m_material_database = std::make_shared<MaterialDatabase>();
+        }
+
+        {
             m_asset_database = std::make_shared<AssetDatabase>();
             m_asset_manager = std::make_unique<AssetManager>(*m_asset_database);
             m_file_watcher = std::make_unique<FileWatcher>();
@@ -76,7 +80,7 @@ namespace RDE {
             system_scheduler.register_system<BoundingVolumeSystem>(scene_registry);
             system_scheduler.register_system<CameraSystem>(scene_registry);
             //system_scheduler.register_system<GpuGeometryUploadSystem>(scene_registry, m_renderer->get_device());
-            system_scheduler.register_system<RenderPacketSystem>(scene_registry, *m_asset_database, m_main_view);
+            //system_scheduler.register_system<RenderPacketSystem>(scene_registry, *m_asset_database, m_main_view);
             RDE_INFO("Registered systems: HierarchySystem, TransformSystem, BoundingVolumeSystem, CameraSystem");
         }
 
@@ -89,6 +93,9 @@ namespace RDE {
 
         auto test_scene_layer = std::make_shared<TestSceneLayer>(m_asset_manager.get(), m_scene->get_registry());
         m_layer_stack.push_layer(test_scene_layer);
+
+        auto asset_viewer_layer = std::make_shared<AssetViewerLayer>(m_asset_database.get());
+        m_layer_stack.push_layer(asset_viewer_layer);
         return true;
     }
 

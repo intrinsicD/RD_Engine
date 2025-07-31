@@ -87,8 +87,8 @@ namespace RDE {
         auto &registry = db.get_registry();
         entt::entity entity_id = registry.create();
 
-        registry.emplace<AssetShaderDef>(entity_id, std::move(shaderDefComponent));
         registry.emplace<AssetName>(entity_id, shaderDefComponent.name);
+        registry.emplace<AssetShaderDef>(entity_id, std::move(shaderDefComponent));
         registry.emplace<AssetFilepath>(entity_id, uri);
 
         RDE_CORE_INFO("Loaded shader definition '{}'", uri);

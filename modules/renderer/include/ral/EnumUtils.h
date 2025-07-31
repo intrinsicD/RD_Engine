@@ -32,6 +32,20 @@ namespace RDE {
         throw std::runtime_error("Unknown shader stage: " + s);
     }
 
+    inline std::string shader_stage_to_string(RAL::ShaderStage stage) {
+        switch (stage) {
+            case RAL::ShaderStage::Vertex: return "Vertex";
+            case RAL::ShaderStage::Fragment: return "Fragment";
+            case RAL::ShaderStage::Compute: return "Compute";
+            case RAL::ShaderStage::Geometry: return "Geometry";
+            case RAL::ShaderStage::TessellationControl: return "TessellationControl";
+            case RAL::ShaderStage::TessellationEvaluation: return "TessellationEvaluation";
+            case RAL::ShaderStage::Task: return "Task";
+            case RAL::ShaderStage::Mesh: return "Mesh";
+            default: throw std::runtime_error("Unknown shader stage enum value");
+        }
+    }
+
     inline RAL::ShaderStage string_to_shader_stages_mask(const std::string& stages_str) {
         RAL::ShaderStage mask = RAL::ShaderStage::None;
         std::stringstream ss(stages_str);
@@ -64,6 +78,18 @@ namespace RDE {
         throw std::runtime_error("Unknown RAL format: " + s);
     }
 
+    inline std::string ral_format_to_string(RAL::Format format) {
+        switch (format) {
+            case RAL::Format::R32G32B32A32_SFLOAT: return "R32G32B32A32_SFLOAT";
+            case RAL::Format::R32G32B32_SFLOAT: return "R32G32B32_SFLOAT";
+            case RAL::Format::R32G32_SFLOAT: return "R32G32_SFLOAT";
+            case RAL::Format::R32_SFLOAT: return "R32_SFLOAT";
+            case RAL::Format::R8G8B8A8_UNORM: return "R8G8B8A8_UNORM";
+            // Add other formats as needed...
+            default: throw std::runtime_error("Unknown RAL format enum value");
+        }
+    }
+
     // While we're at it, let's add a helper for the pipeline state.
     inline RAL::CullMode string_to_cull_mode(const std::string &s) {
         if (s == "None") return RAL::CullMode::None;
@@ -72,11 +98,29 @@ namespace RDE {
         return RAL::CullMode::Back; // Default
     }
 
+    inline std::string cull_mode_to_string(RAL::CullMode mode) {
+        switch (mode) {
+            case RAL::CullMode::None: return "None";
+            case RAL::CullMode::Front: return "Front";
+            case RAL::CullMode::Back: return "Back";
+            default: throw std::runtime_error("Unknown cull mode enum value");
+        }
+    }
+
     inline RAL::PolygonMode string_to_polygon_mode(const std::string &s) {
         if (s == "Fill") return RAL::PolygonMode::Fill;
         if (s == "Line") return RAL::PolygonMode::Line;
         if (s == "Point") return RAL::PolygonMode::Point;
         throw std::runtime_error("Unknown polygon mode: " + s);
+    }
+
+    inline std::string polygon_mode_to_string(RAL::PolygonMode mode) {
+        switch (mode) {
+            case RAL::PolygonMode::Fill: return "Fill";
+            case RAL::PolygonMode::Line: return "Line";
+            case RAL::PolygonMode::Point: return "Point";
+            default: throw std::runtime_error("Unknown polygon mode enum value");
+        }
     }
 
     inline RAL::DescriptorType string_to_descriptor_type(const std::string &s) {
@@ -88,5 +132,17 @@ namespace RDE {
         if (s == "Sampler") return RAL::DescriptorType::Sampler;
         // Add other descriptor types as needed...
         throw std::runtime_error("Unknown descriptor type: " + s);
+    }
+
+    inline std::string descriptor_type_to_string(RAL::DescriptorType type) {
+        switch (type) {
+            case RAL::DescriptorType::UniformBuffer: return "UniformBuffer";
+            case RAL::DescriptorType::StorageBuffer: return "StorageBuffer";
+            case RAL::DescriptorType::SampledImage: return "SampledImage";
+            case RAL::DescriptorType::StorageImage: return "StorageImage";
+            case RAL::DescriptorType::CombinedImageSampler: return "CombinedImageSampler";
+            case RAL::DescriptorType::Sampler: return "Sampler";
+            default: throw std::runtime_error("Unknown descriptor type enum value");
+        }
     }
 } // namespace RDE

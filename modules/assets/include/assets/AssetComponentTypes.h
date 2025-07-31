@@ -39,16 +39,6 @@ namespace RDE {
         bool depthWrite = true;
     };
 
-    struct AssetMaterial {
-        std::string name; // Name of the material
-
-        AssetID pipeline_asset; // Pipeline state for rendering
-
-        PropertyContainer parameters; // Material parameters (e.g., color, metallic, roughness)
-
-        std::unordered_map<std::string, AssetID> texture_bindings;
-    };
-
     struct PrefabHierarchyComponent {
         AssetID parent;
         std::vector<AssetID> children; // Direct handles to child nodes' assets
@@ -63,6 +53,7 @@ namespace RDE {
         uint32_t index_offset{0}; // Offset in the geometry data
         uint32_t index_count{0}; // Number of indices in this sub-view
         int material_index{-1}; // Index of the material to use for this sub-view
+        std::string name; // Optional name for the sub-view-material
         std::string material_name; // Optional name for the sub-view-material
     };
 

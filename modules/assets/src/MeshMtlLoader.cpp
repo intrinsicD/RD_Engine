@@ -1,5 +1,6 @@
 #include "assets/MeshMtlLoader.h"
 #include "assets/AssetComponentTypes.h"
+#include "material/MaterialDescription.h"
 
 #include <variant>
 
@@ -191,14 +192,15 @@ namespace RDE {
             auto& registry = db.get_registry();
             entt::entity entity_id = registry.create();
 
-            AssetMaterial materialComponent;
+            MaterialDescription materialComponent;
+            materialComponent.name = mtlData.name;
 
             // Handle Albedo (either a color or a texture)
             if (const auto* color = std::get_if<glm::vec4>(&mtlData.albedo)) {
                 materialComponent.parameters.add<glm::vec4>("p:albedo_color", *color);
             } else if (const auto* path = std::get_if<std::string>(&mtlData.albedo)) {
                 // Here we state a dependency. The AssetManager MUST have already loaded this texture.
-                materialComponent.texture_bindings["t_albedo"] = manager.get_loaded_asset(*path);
+                materialComponent.textures["t_albedo"] = manager.get_loaded_asset(*path);
             }
 
             // Handle Roughness
@@ -206,7 +208,7 @@ namespace RDE {
                 materialComponent.parameters.add<float>("p:roughness", *value);
             } else if (const auto* path = std::get_if<std::string>(&mtlData.roughness)) {
                 // Here we state a dependency. The AssetManager MUST have already loaded this texture.
-                materialComponent.texture_bindings["t_roughness"] = manager.get_loaded_asset(*path);
+                materialComponent.textures["t_roughness"] = manager.get_loaded_asset(*path);
             }
 
             // Handle Metallic
@@ -214,7 +216,7 @@ namespace RDE {
                 materialComponent.parameters.add<float>("p:metallic", *value);
             } else if (const auto* path = std::get_if<std::string>(&mtlData.metallic)) {
                 // Here we state a dependency. The AssetManager MUST have already loaded this texture.
-                materialComponent.texture_bindings["t_metallic"] = manager.get_loaded_asset(*path);
+                materialComponent.textures["t_metallic"] = manager.get_loaded_asset(*path);
             }
 
             // Handle Emissive
@@ -222,7 +224,7 @@ namespace RDE {
                 materialComponent.parameters.add<glm::vec3>("p:emissive_color", *color);
             } else if (const auto* path = std::get_if<std::string>(&mtlData.emissive)) {
                 // Here we state a dependency. The AssetManager MUST have already loaded this texture.
-                materialComponent.texture_bindings["t_emissive"] = manager.get_loaded_asset(*path);
+                materialComponent.textures["t_emissive"] = manager.get_loaded_asset(*path);
             }
 
             // Handle Opacity
@@ -230,12 +232,12 @@ namespace RDE {
                 materialComponent.parameters.add<float>("p:opacity", *value);
             } else if (const auto* path = std::get_if<std::string>(&mtlData.opacity)) {
                 // Here we state a dependency. The AssetManager MUST have already loaded this texture.
-                materialComponent.texture_bindings["t_opacity"] = manager.get_loaded_asset(*path);
+                materialComponent.textures["t_opacity"] = manager.get_loaded_asset(*path);
             }
 
             // Handle Normal Map
             if (!mtlData.normalMapPath.empty()) {
-                materialComponent.texture_bindings["t_normal"] = manager.get_loaded_asset(mtlData.normalMapPath);
+                materialComponent.textures["t_normal"] = manager.get_loaded_asset(mtlData.normalMapPath);
             }
 
             // Legacy properties (if they were used, we can convert them)
@@ -249,7 +251,7 @@ namespace RDE {
                 materialComponent.parameters.add<float>("p:legacy_index_of_refraction", mtlData.legacy_index_of_refraction);
             }
 
-            registry.emplace<AssetMaterial>(entity_id, std::move(materialComponent));
+            registry.emplace<MaterialDescription>(entity_id, std::move(materialComponent));
             registry.emplace<AssetFilepath>(entity_id, material_uri);
             registry.emplace<AssetName>(entity_id, mtlData.name);
 

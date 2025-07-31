@@ -24,6 +24,7 @@ target_sources(Test PRIVATE
         main.cpp
         ImGuiLayer.cpp
         TestSceneLayer.cpp
+        AssetViewerLayer.cpp
         ${IMGUI_SOURCES}
 )
 

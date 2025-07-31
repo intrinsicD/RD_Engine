@@ -11,6 +11,7 @@ target_sources(Renderer
         src/Renderer.cpp
         src/ShaderReflector.cpp
         src/PipelineCache.cpp
+        src/MaterialManager.cpp
 )
 
 target_link_libraries(Renderer

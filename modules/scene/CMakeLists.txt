@@ -26,7 +26,6 @@ target_sources(Scene
         src/BoundingVolumeSystem.cpp
         src/RenderSystem.cpp
         src/RenderPacketSystem.cpp
-        src/GpuGeometryUploadSystem.cpp
 )
 
 target_link_libraries(Scene
