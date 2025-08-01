@@ -272,15 +272,29 @@ namespace RDE {
 
         PropertyContainer &operator=(const PropertyContainer &rhs) {
             if (this != &rhs) {
-                clear();
-                m_parrays.resize(rhs.n_properties());
-                m_size = rhs.size();
-                for (size_t i = 0; i < m_parrays.size(); ++i) {
-                    m_parrays[i] = rhs.m_parrays[i]->clone();
-                    m_property_map[m_parrays[i]->name()] = i;
-                }
+                copy_values(rhs);
             }
             return *this;
+        }
+
+        void copy_ptrs(const PropertyContainer &rhs) {
+            clear();
+            m_parrays.resize(rhs.n_properties());
+            m_size = rhs.size();
+            for (size_t i = 0; i < m_parrays.size(); ++i) {
+                m_parrays[i] = rhs.m_parrays[i];
+                m_property_map[m_parrays[i]->name()] = i;
+            }
+        }
+
+        void copy_values(const PropertyContainer &rhs) {
+            clear();
+            m_parrays.resize(rhs.n_properties());
+            m_size = rhs.size();
+            for (size_t i = 0; i < m_parrays.size(); ++i) {
+                m_parrays[i] = rhs.m_parrays[i]->clone();
+                m_property_map[m_parrays[i]->name()] = i;
+            }
         }
 
         [[nodiscard]] bool empty() const { return m_size == 0; }
