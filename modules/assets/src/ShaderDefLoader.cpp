@@ -34,10 +34,19 @@ namespace RDE {
 
         // --- Parse Dependencies ---
         if (const auto &depsNode = doc["dependencies"]) {
-            for (YAML::const_iterator it = depsNode.begin(); it != depsNode.end(); ++it) {
-                const auto key = it->first.as<std::string>();
-                for (const auto &valNode: it->second) {
-                    shaderDefComponent.dependencies[key].push_back(valNode.as<std::string>());
+            if(const auto &spirvDepsNode = depsNode["spirv"]) {
+                for (const auto &valNode: spirvDepsNode) {
+                    shaderDefComponent.dependencies.spirv_dependencies.push_back(valNode.as<std::string>());
+                }
+            }
+            if(const auto &sourceDepsNode = depsNode["source"]) {
+                for (const auto &valNode: sourceDepsNode) {
+                    shaderDefComponent.dependencies.source_dependencies.push_back(valNode.as<std::string>());
+                }
+            }
+            if(const auto &includeDepsNode = depsNode["include"]) {
+                for (const auto &valNode: includeDepsNode) {
+                    shaderDefComponent.dependencies.include_dependencies.push_back(valNode.as<std::string>());
                 }
             }
         }
@@ -54,7 +63,7 @@ namespace RDE {
             // Parse Vertex Attributes
             if (const auto &attrsNode = interfaceNode["vertex_attributes"]) {
                 for (const auto &attrNode: attrsNode) {
-                    RAL::VertexInputAttribute attr;
+                    ConditionalVertexAttribute attr;
                     attr.location = attrNode["location"].as<uint32_t>();
                     attr.format = string_to_ral_format(attrNode["format"].as<std::string>());
                     attr.name = attrNode["semantic"].as<std::string>();

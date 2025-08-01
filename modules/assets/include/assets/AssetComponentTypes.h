@@ -108,10 +108,16 @@ namespace RDE {
         std::vector<ConditionalDescriptorBinding> bindings;
     };
 
+    struct ShaderDependencies{
+        std::vector<std::string> spirv_dependencies; // List of SPIR-V files this shader depends on
+        std::vector<std::string> source_dependencies; // List of source files this shader depends on
+        std::vector<std::string> include_dependencies; // List of included files (e.g., headers)
+    };
+
     // The updated AssetShaderDef
     struct AssetShaderDef {
         std::string name;
-        std::unordered_map<std::string, std::vector<std::string>> dependencies;
+        ShaderDependencies dependencies;
         std::vector<std::string> features; // The list of all possible features
 
         // These now store the conditional information

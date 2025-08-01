@@ -13,7 +13,7 @@ include(cmake/Dependencies.cmake)
 
 string(REPLACE "\\" "/" PROJECT_SOURCE_DIR_SLASH_FORWARD ${PROJECT_SOURCE_DIR})
 add_compile_definitions(RDE_PROJECT_ROOT_DIR="${PROJECT_SOURCE_DIR_SLASH_FORWARD}")
-add_compile_options("-Wall" "-Wextra" "-Werror")
+add_compile_options("-Wall" "-Wextra" "-Werror" "-Wpedantic")
 
 # --- Project Structure ---
 add_subdirectory(modules)

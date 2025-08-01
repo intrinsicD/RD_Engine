@@ -282,8 +282,10 @@ namespace RDE {
         RAL::ShaderHandle fs = m_device->create_shader(fsDesc);
 
         RAL::PipelineDescription psoDesc{};
-        psoDesc.vertexShader = vs;
-        psoDesc.fragmentShader = fs;
+        RAL::GraphicsShaderStages graphicsStages;
+        graphicsStages.vertexShader = vs;
+        graphicsStages.fragmentShader = fs;
+        psoDesc.stages = graphicsStages; // Set the graphics stages
         psoDesc.descriptorSetLayouts.push_back(m_DsLayout); // Use the layout we created
 
         // Push Constants for scale/translate matrix

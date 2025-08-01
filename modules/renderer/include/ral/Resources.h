@@ -2,8 +2,9 @@
 #pragma once
 
 #include "Common.h" // For handles
-#include <vector> // For handles
-#include <string> // For handles
+#include <vector>
+#include <string>
+#include <variant>
 
 namespace RAL {
     // --- ADDED: Image Layouts for Barriers ---
@@ -32,6 +33,7 @@ namespace RAL {
         HostRead = 1 << 8,
         HostWrite = 1 << 9,
     };
+
     ENABLE_ENUM_FLAG_OPERATORS(AccessFlags)
 
     // --- ADDED: Pipeline Stage Flags for Barriers ---
@@ -49,6 +51,7 @@ namespace RAL {
         Transfer = 1 << 9,
         BottomOfPipe = 1 << 10,
     };
+
     ENABLE_ENUM_FLAG_OPERATORS(PipelineStageFlags)
 
     // --- ADDED: The Barrier Description ---
@@ -179,9 +182,9 @@ namespace RAL {
     };
 
     enum class ImageAspect : uint32_t {
-        None    = 0,
-        Color   = 1 << 0, // Bit 0
-        Depth   = 1 << 1, // Bit 1
+        None = 0,
+        Color = 1 << 0, // Bit 0
+        Depth = 1 << 1, // Bit 1
         Stencil = 1 << 2  // Bit 2
     };
 
@@ -267,19 +270,25 @@ namespace RAL {
         BlendAttachmentState attachment;
     };
 
-    struct PipelineDescription {
+    struct GraphicsShaderStages {
         ShaderHandle vertexShader;
         ShaderHandle fragmentShader;
-
         ShaderHandle geometryShader;
         ShaderHandle tessControlShader;
         ShaderHandle tessEvalShader;
+    };
 
+    struct ComputeShaderStages {
         ShaderHandle computeShader;
+    };
 
+    struct MeshShaderStages {
         ShaderHandle taskShader;
         ShaderHandle meshShader;
+    };
 
+    struct PipelineDescription {
+        std::variant<GraphicsShaderStages, ComputeShaderStages, MeshShaderStages> stages;
 
         std::vector<DescriptorSetLayoutHandle> descriptorSetLayouts;
         std::vector<PushConstantRange> pushConstantRanges;

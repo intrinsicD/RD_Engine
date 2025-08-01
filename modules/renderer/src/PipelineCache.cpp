@@ -81,7 +81,7 @@ namespace RDE {
         // 3. LOAD and CREATE Shader Modules for this specific permutation
         // The dependency list in the shaderDef gives us the base paths.
         // We append the permutation mask to get the correct file.
-        const auto &spirvDeps = shaderDef->dependencies.at("spirv");
+        const auto &spirvDeps = shaderDef->dependencies.spirv_dependencies;
         for (const auto &baseSpirvPath: spirvDeps) {
             std::string permutationPath = baseSpirvPath + "." + std::to_string(mask) + ".spv";
 
@@ -111,13 +111,34 @@ namespace RDE {
         psoDesc.pushConstantRanges = ralPushConstantRanges;
 
         // Find the appropriate shader handles from the ones we just created.
-        psoDesc.vertexShader = find_shader_handle(new_cached_pipeline.shaderModules, RAL::ShaderStage::Vertex);
-        psoDesc.fragmentShader = find_shader_handle(new_cached_pipeline.shaderModules, RAL::ShaderStage::Fragment);
+        bool is_graphics_pipeline = find_shader_handle(new_cached_pipeline.shaderModules, RAL::ShaderStage::Vertex).is_valid() &&
+                            find_shader_handle(new_cached_pipeline.shaderModules, RAL::ShaderStage::Fragment).is_valid();
+        bool is_mesh_pipeline = find_shader_handle(new_cached_pipeline.shaderModules, RAL::ShaderStage::Task).is_valid() &&
+                                find_shader_handle(new_cached_pipeline.shaderModules, RAL::ShaderStage::Mesh).is_valid();
+        bool is_compute_pipeline = find_shader_handle(new_cached_pipeline.shaderModules, RAL::ShaderStage::Compute).is_valid();
+        if(is_graphics_pipeline){
+            RAL::GraphicsShaderStages graphicsStages;
+            graphicsStages.vertexShader = find_shader_handle(new_cached_pipeline.shaderModules, RAL::ShaderStage::Vertex);
+            graphicsStages.fragmentShader = find_shader_handle(new_cached_pipeline.shaderModules, RAL::ShaderStage::Fragment);
+            graphicsStages.geometryShader = find_shader_handle(new_cached_pipeline.shaderModules, RAL::ShaderStage::Geometry);
+            graphicsStages.tessControlShader = find_shader_handle(new_cached_pipeline.shaderModules, RAL::ShaderStage::TessellationControl);
+            graphicsStages.tessEvalShader = find_shader_handle(new_cached_pipeline.shaderModules, RAL::ShaderStage::TessellationEvaluation);
+            psoDesc.stages = graphicsStages; // Set the graphics stages
+        } else if(is_compute_pipeline){
+            RAL::ComputeShaderStages computeStages;
+            computeStages.computeShader = find_shader_handle(new_cached_pipeline.shaderModules, RAL::ShaderStage::Compute);
+            psoDesc.stages = computeStages; // Set the compute stages
+        }else if(is_mesh_pipeline){
+            RAL::MeshShaderStages meshStages;
+            meshStages.taskShader = find_shader_handle(new_cached_pipeline.shaderModules, RAL::ShaderStage::Task);
+            meshStages.meshShader = find_shader_handle(new_cached_pipeline.shaderModules, RAL::ShaderStage::Mesh);
+            psoDesc.stages = meshStages; // Set the mesh stages
+        }
+
+
 
         // Check if this is a compute pipeline instead
-        bool is_compute = find_shader_handle(new_cached_pipeline.shaderModules, RAL::ShaderStage::Compute).is_valid();
-
-        if (!is_compute) {
+        if (!is_compute_pipeline) {
             // --- GRAPHICS PIPELINE SETUP ---
             // F-3 from your old code is now much cleaner, but we need to get the state
             // from the AssetMaterial's pipeline description, not the shader def.
@@ -141,9 +162,6 @@ namespace RDE {
             if (current_offset > 0) {
                 psoDesc.vertexBindings.push_back({0, current_offset});
             }
-        } else {
-            // --- COMPUTE PIPELINE SETUP ---
-            psoDesc.computeShader = find_shader_handle(new_cached_pipeline.shaderModules, RAL::ShaderStage::Compute);
         }
 
         // 5. CREATE and CACHE the pipeline

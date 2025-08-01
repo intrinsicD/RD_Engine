@@ -89,12 +89,18 @@ namespace RDE {
                 if (asset_registry.all_of<AssetShaderDef>(asset)) {
                     auto &shader_def = asset_registry.get<AssetShaderDef>(asset);
                     ImGui::Text("Shader Definition: %s", shader_def.name.c_str());
-                    ImGui::Text("Dependencies:");
-                    for (const auto &dep: shader_def.dependencies) {
-                        ImGui::Text(" - %s:", dep.first.c_str());
-                        for (const auto &dep_child: dep.second) {
-                            ImGui::Text("   - %s", dep_child.c_str());
-                        }
+                    ImGui::Text("Source Dependencies:");
+                    const auto deps = shader_def.dependencies;
+                    for (const auto &dep: deps.source_dependencies) {
+                        ImGui::Text(" - %s:", dep.c_str());
+                    }
+                    ImGui::Text("Spirv Dependencies:");
+                    for (const auto &dep: deps.spirv_dependencies) {
+                        ImGui::Text(" - %s:", dep.c_str());
+                    }
+                    ImGui::Text("Include Dependencies:");
+                    for (const auto &dep: deps.include_dependencies) {
+                        ImGui::Text(" - %s:", dep.c_str());
                     }
                     ImGui::Text("Features: ");
                     for (const auto &feature: shader_def.features) {
