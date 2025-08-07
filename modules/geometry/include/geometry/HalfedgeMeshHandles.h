@@ -19,7 +19,7 @@ namespace RDE{
         bool is_valid() const {
             return index != static_cast<IndexType>(-1);
         }
-
+^
         bool operator==(const VertexHandle &other) const {
             return index == other.index;
         }
@@ -48,6 +48,7 @@ namespace RDE{
             return VertexHandle{static_cast<IndexType>(-1)};
         }
     };
+
     struct HalfedgeHandle{
         IndexType index;
 
