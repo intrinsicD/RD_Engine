@@ -176,7 +176,7 @@ namespace RDE {
         asset_registry.emplace<AssetName>(entity_id, std::filesystem::path(uri).filename().string());
         asset_registry.emplace<AssetCpuGeometry>(entity_id, std::move(geometry));
 
-        RDE_CORE_INFO("MeshObjLoader: Successfully populated asset for '{}'", uri);
+        RDE_CORE_TRACE("MeshObjLoader: Successfully populated asset for '{}'", uri);
         return std::make_shared<AssetID_Data>(entity_id, uri);
     }
 

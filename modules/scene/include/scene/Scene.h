@@ -45,7 +45,6 @@ namespace RDE {
             m_system_scheduler.shutdown();
             m_registry.clear(); // Clear the registry to remove all entities and components
         }
-
     private:
         entt::registry m_registry; // Entity registry for managing entities and components
         entt::dispatcher m_dispatcher; // Event dispatcher for handling events

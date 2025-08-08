@@ -479,7 +479,7 @@ namespace RDE {
                     return false;
             }
 
-            // the edges v0-vr and vr-v1 must not be both boundary edges
+            // the edges v0-vr and vr-v1 must not be both boundary edges´
             if (!is_boundary(v1v0)) {
                 vr = get_vertex(get_next(v1v0));
                 h1 = get_next(v1v0);
