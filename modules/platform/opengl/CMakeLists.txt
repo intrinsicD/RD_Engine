@@ -7,7 +7,7 @@ add_library(RDE::Platform::OpenGL ALIAS OpenGLPlatform)
 # This module needs to know where the abstract Renderer interfaces are.
 target_include_directories(OpenGLPlatform
         PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
         PRIVATE
         ${PROJECT_SOURCE_DIR}/modules/renderer/include
         ${PROJECT_SOURCE_DIR}/modules/engine/include
@@ -15,12 +15,6 @@ target_include_directories(OpenGLPlatform
 )
 
 target_sources(OpenGLPlatform PRIVATE
-        src/OpenGLShader.cpp
-        src/OpenGLBuffer.cpp
-        src/OpenGLRenderer.cpp
-        src/OpenGLVertexArray.cpp
-        src/OpenGLGraphicsAPI.cpp
-        src/OpenGLTexture.cpp
         src/OpenGLDevice.cpp
         src/OpenGLCommandBuffer.cpp
 )
@@ -29,8 +23,9 @@ target_sources(OpenGLPlatform PRIVATE
 find_package(OpenGL REQUIRED)
 target_link_libraries(OpenGLPlatform
         PUBLIC
-        RDE::Engine
-        RDE::Renderer
-        glad_gl_core
         OpenGL::GL
+        RDE::Renderer
+        RDE::Core
+        glad_gl_core
+        glfw
 )

@@ -25,6 +25,7 @@ namespace RAL {
         uint32_t frameIndex; // Index of the current frame in flight
         // Internal sync primitives would be here (e.g., semaphores) but are hidden from the user.
         uint32_t swapchainImageIndex;
+        TextureHandle depthTexture; // NEW optional depth attachment for this frame (INVALID if none)
     };
 
     class Device {

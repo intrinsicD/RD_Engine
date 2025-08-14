@@ -32,6 +32,8 @@ namespace RAL {
         TransferWrite = 1 << 7,
         HostRead = 1 << 8,
         HostWrite = 1 << 9,
+        VertexAttributeRead = 1 << 10, // NEW
+        IndexRead = 1 << 11             // NEW
     };
 
     ENABLE_ENUM_FLAG_OPERATORS(AccessFlags)
@@ -236,6 +238,7 @@ namespace RAL {
     struct VertexInputBinding {
         uint32_t binding;
         uint32_t stride;
+        enum class Rate { PerVertex, PerInstance } inputRate = Rate::PerVertex; // NEW
     };
 
     // Defines a range of push constants accessible to the pipeline.
@@ -289,17 +292,17 @@ namespace RAL {
 
     struct PipelineDescription {
         std::variant<GraphicsShaderStages, ComputeShaderStages, MeshShaderStages> stages;
-
         std::vector<DescriptorSetLayoutHandle> descriptorSetLayouts;
         std::vector<PushConstantRange> pushConstantRanges;
-
         RasterizationState rasterizationState;
         ColorBlendState colorBlendState;
         DepthStencilState depthStencilState;
-
         std::vector<VertexInputBinding> vertexBindings;
         std::vector<VertexInputAttribute> vertexAttributes;
         PrimitiveTopology topology = PrimitiveTopology::TriangleList;
+        // NEW: explicit attachment formats (optional). If empty, backend may infer swapchain format.
+        std::vector<Format> colorAttachmentFormats; // size = number of color attachments
+        Format depthAttachmentFormat = Format::UNKNOWN; // UNKNOWN if no depth
     };
 
     // --- NEW: Descriptor Set Descriptions ---

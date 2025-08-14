@@ -91,7 +91,7 @@ namespace RDE {
         m_imgui_layer = imgui_layer.get();
         m_layer_stack.push_overlay(imgui_layer); // Assuming you have a push_layer method
 
-        auto test_scene_layer = std::make_shared<TestSceneLayer>(m_asset_manager.get(), m_scene->get_registry());
+        auto test_scene_layer = std::make_shared<TestSceneLayer>(m_asset_manager.get(), m_scene->get_registry(), m_renderer->get_device());
         m_layer_stack.push_layer(test_scene_layer);
 
         auto asset_viewer_layer = std::make_shared<AssetViewerLayer>(m_asset_database.get());
@@ -177,71 +177,50 @@ namespace RDE {
         }
 
         if (RAL::CommandBuffer *cmd = m_renderer->begin_frame()) {
-            //TODO evolve this to use a render graph
-
             const auto& frameCtx = m_renderer->get_current_frame_context();
-
             cmd->begin();
-            RAL::ResourceBarrier barrier_to_render_target{};
-            barrier_to_render_target.srcStage = RAL::PipelineStageFlags::TopOfPipe;
-            barrier_to_render_target.srcAccess = RAL::AccessFlags::None;
-            barrier_to_render_target.dstStage = RAL::PipelineStageFlags::ColorAttachmentOutput;
-            barrier_to_render_target.dstAccess = RAL::AccessFlags::ColorAttachmentWrite;
-            barrier_to_render_target.textureTransition = { frameCtx.swapchainTexture, RAL::ImageLayout::Undefined, RAL::ImageLayout::ColorAttachment };
-            cmd->pipeline_barrier(barrier_to_render_target);
-
 
             // --- 1. Main Scene Render Pass ---
-            // For now, we are just clearing the screen. In the future, you would
-            // render your 3D scene here inside a render pass.
             RAL::RenderPassDescription scenePass{};
             scenePass.colorAttachments.resize(1);
             scenePass.colorAttachments[0].texture = frameCtx.swapchainTexture;
-            scenePass.colorAttachments[0].loadOp = RAL::LoadOp::Clear; // CLEAR the screen
+            scenePass.colorAttachments[0].loadOp = RAL::LoadOp::Clear;
             scenePass.colorAttachments[0].storeOp = RAL::StoreOp::Store;
             scenePass.colorAttachments[0].clearColor[0] = 0.1f;
             scenePass.colorAttachments[0].clearColor[1] = 0.1f;
             scenePass.colorAttachments[0].clearColor[2] = 0.15f;
             scenePass.colorAttachments[0].clearColor[3] = 1.0f;
+            if(frameCtx.depthTexture.is_valid()){
+                scenePass.depthStencilAttachment.texture = frameCtx.depthTexture;
+                scenePass.depthStencilAttachment.loadOp = RAL::LoadOp::Clear;
+                scenePass.depthStencilAttachment.storeOp = RAL::StoreOp::Store;
+                scenePass.depthStencilAttachment.clearDepth = 1.0f;
+                scenePass.depthStencilAttachment.clearStencil = 0;
+            }
             cmd->begin_render_pass(scenePass);
-
-            // 2. Let your scene layers render themselves (e.g., the 3D world)
             for (auto &layer: m_layer_stack) {
-                if (layer.get() != m_imgui_layer) { // Don't call on_render for the UI layer here
+                if (layer.get() != m_imgui_layer) {
                     layer->on_render(cmd);
                 }
             }
-
             cmd->end_render_pass();
 
-            // 3. Render ImGui
-            m_imgui_layer->begin(); // Starts a new ImGui frame
-
-            // Let all layers draw their UI components
+            // 2. Render ImGui
+            m_imgui_layer->begin();
             for (auto &layer: m_layer_stack) {
                 layer->on_render_gui();
             }
             RAL::RenderPassDescription uiPass{};
             uiPass.colorAttachments.resize(1);
-            uiPass.colorAttachments[0].texture = frameCtx.swapchainTexture; // Use the same texture as the scene pass
-            uiPass.colorAttachments[0].loadOp = RAL::LoadOp::Load; // LOAD the previous result
+            uiPass.colorAttachments[0].texture = frameCtx.swapchainTexture;
+            uiPass.colorAttachments[0].loadOp = RAL::LoadOp::Load;
             uiPass.colorAttachments[0].storeOp = RAL::StoreOp::Store;
-            cmd->begin_render_pass(uiPass); // Begin the UI pass
-
-            m_imgui_layer->end(cmd); // Finishes ImGui frame and records draw commands to your command buffer
-
+            // Removed depth attachment for UI pass to match ImGui pipeline (no depth)
+            cmd->begin_render_pass(uiPass);
+            m_imgui_layer->end(cmd);
             cmd->end_render_pass();
 
-            RAL::ResourceBarrier barrier_to_present{};
-            barrier_to_present.srcStage = RAL::PipelineStageFlags::ColorAttachmentOutput;
-            barrier_to_present.srcAccess = RAL::AccessFlags::ColorAttachmentWrite;
-            barrier_to_present.dstStage = RAL::PipelineStageFlags::BottomOfPipe;
-            barrier_to_present.dstAccess = RAL::AccessFlags::None;
-            barrier_to_present.textureTransition = { frameCtx.swapchainTexture, RAL::ImageLayout::ColorAttachment, RAL::ImageLayout::PresentSrc };
-            cmd->pipeline_barrier(barrier_to_present);
-
             cmd->end();
-            // 4. End the frame
             m_renderer->end_frame({cmd});
         }
         m_input_manager->on_frame_end();
@@ -295,6 +274,3 @@ namespace RDE {
         }
     }
 }
-
-
-

@@ -140,14 +140,6 @@ namespace RDE {
         // Check if this is a compute pipeline instead
         if (!is_compute_pipeline) {
             // --- GRAPHICS PIPELINE SETUP ---
-            // F-3 from your old code is now much cleaner, but we need to get the state
-            // from the AssetMaterial's pipeline description, not the shader def.
-            // Let's assume for now the shader def holds default state.
-            // TODO: Get this from AssetPipelineDescription component via the material.
-            // psoDesc.rasterizationState.cullMode = def->cull_mode;
-            // psoDesc.depthStencilState.depthTestEnable = def->depth_test;
-            // psoDesc.depthStencilState.depthWriteEnable = def->depth_write;
-
             // Apply vertex layout directly from the contract
             uint32_t current_offset = 0;
             for (const auto &cond_attr: shaderDef->vertexAttributes) {
@@ -162,6 +154,8 @@ namespace RDE {
             if (current_offset > 0) {
                 psoDesc.vertexBindings.push_back({0, current_offset});
             }
+            // --- NEW: specify depth attachment format to match dynamic rendering depth image ---
+            psoDesc.depthAttachmentFormat = RAL::Format::D32_SFLOAT;
         }
 
         // 5. CREATE and CACHE the pipeline
@@ -184,9 +178,10 @@ namespace RDE {
     RAL::ShaderHandle
     PipelineCache::find_shader_handle(const std::vector<RAL::ShaderHandle> &handles, RAL::ShaderStage stage) const {
         for (auto handle: handles) {
-            // This assumes your RAL::Device can query the stage of a ShaderHandle.
-            // If not, you'll need to store the stage alongside the handle when creating them.
-            if (m_device.get_resources_database().get<RAL::ShaderDescription>(handle).stage == stage) {
+            if (!m_device.get_resources_database().is_valid(handle)) continue;
+            // Shaders created via create_shader_module store a RAL::ShaderStage component directly.
+            const auto &storedStage = m_device.get_resources_database().get<RAL::ShaderStage>(handle);
+            if (storedStage == stage) {
                 return handle;
             }
         }

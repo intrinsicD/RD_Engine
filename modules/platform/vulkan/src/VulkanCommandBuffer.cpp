@@ -9,7 +9,7 @@
 
 namespace RDE {
     VulkanCommandBuffer::VulkanCommandBuffer(VkCommandBuffer handle, VulkanDevice *device) : m_handle(handle),
-        m_device(device) {
+                                                                                             m_device(device) {
     }
 
     // --- RAL Interface Implementation (all will be stubbed for now) ---
@@ -23,15 +23,95 @@ namespace RDE {
     }
 
     void VulkanCommandBuffer::end() {
+        // Auto-close an open dynamic rendering pass to guarantee present transition path
+        if(m_inRenderPass) {
+            end_render_pass();
+        }
         VK_CHECK(vkEndCommandBuffer(m_handle));
     }
 
     void VulkanCommandBuffer::begin_render_pass(const RAL::RenderPassDescription &desc) {
+        m_inRenderPass = true; // NEW
         // --- Step 1: Validate that there is something to render to. ---
         assert(!desc.colorAttachments.empty() || desc.depthStencilAttachment.texture.is_valid() &&
-            "Render pass must have at least one color or depth attachment.");
+                                                 "Render pass must have at least one color or depth attachment.");
 
         auto &db = m_device->get_resources_database();
+        m_currentColorAttachments.clear(); // NEW
+        // Layout transition barriers (image) collected first
+        std::vector<VkImageMemoryBarrier> imageBarriers; // NEW
+        std::vector<RAL::TextureHandle> imagesToUpdateLayout; // NEW: defer layout state update until after barrier
+        auto add_transition = [&](RAL::TextureHandle texHandle, RAL::ImageLayout desiredLayout, bool isDepth){
+            if(!texHandle.is_valid()) return;
+            auto &vkTex = db.get<VulkanTexture>(texHandle);
+            if(vkTex.currentLayout == desiredLayout) return; // already correct
+            const auto &ralDesc = db.get<RAL::TextureDescription>(texHandle);
+            VkImageMemoryBarrier b{}; b.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            b.oldLayout = ToVulkanImageLayout(vkTex.currentLayout);
+            b.newLayout = ToVulkanImageLayout(desiredLayout);
+            b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            b.image = vkTex.handle;
+            // Removed incorrect override of oldLayout for swapchain images; must use tracked state (Undefined first use)
+            if (has_flag(ralDesc.usage, RAL::TextureUsage::DepthStencilAttachment)) {
+                b.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+                if (ralDesc.format == RAL::Format::D24_UNORM_S8_UINT || ralDesc.format == RAL::Format::D32_SFLOAT_S8_UINT)
+                    b.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+            } else {
+                b.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            }
+            b.subresourceRange.baseMipLevel = 0; b.subresourceRange.levelCount = ralDesc.mipLevels;
+            b.subresourceRange.baseArrayLayer = 0; b.subresourceRange.layerCount = 1;
+            // Conservative src/dst access + stages (we will use TOP_OF_PIPE -> appropriate below)
+            if (isDepth) {
+                b.srcAccessMask = 0;
+                b.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+            } else {
+                b.srcAccessMask = 0;
+                b.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            }
+            imageBarriers.push_back(b);
+            imagesToUpdateLayout.push_back(texHandle); // defer state update
+        };
+        for (const auto &c: desc.colorAttachments) {
+            add_transition(c.texture, RAL::ImageLayout::ColorAttachment, false);
+        }
+        if (desc.depthStencilAttachment.texture.is_valid()) {
+            add_transition(desc.depthStencilAttachment.texture, RAL::ImageLayout::DepthStencilAttachment, true);
+        }
+        if (!imageBarriers.empty()) {
+            vkCmdPipelineBarrier(
+                    m_handle,
+                    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                    0,
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(imageBarriers.size()), imageBarriers.data()
+            );
+            // Now that the barrier is recorded, update tracked layouts to the new state.
+            for (auto h: imagesToUpdateLayout) {
+                auto &vkTex = db.get<VulkanTexture>(h);
+                // Determine target layout we requested above
+                // (We can map from current barrier list but simpler: use desired inferred from render pass role)
+                // If it was depth attachment, set DepthStencilAttachment else ColorAttachment.
+                // Exact desired tracked in add_transition invocation order; reuse logic quickly:
+                // We know new layout encoded in barrier already executed; derive from first matching barrier.
+                // Simplicity: find barrier with same image handle.
+                for (const auto &b: imageBarriers) {
+                    if (b.image == vkTex.handle) {
+                        // Map VkImageLayout back to RAL::ImageLayout
+                        if (b.newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                            vkTex.currentLayout = RAL::ImageLayout::ColorAttachment;
+                        else if (b.newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                            vkTex.currentLayout = RAL::ImageLayout::DepthStencilAttachment;
+                        else if (b.newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+                            vkTex.currentLayout = RAL::ImageLayout::PresentSrc;
+                        break;
+                    }
+                }
+            }
+        }
 
         // --- Step 2: Prepare storage for Vulkan attachment descriptions. ---
         // These vectors must stay in scope until vkCmdBeginRendering is called.
@@ -42,6 +122,8 @@ namespace RDE {
 
         // --- Step 3: Process all Color Attachments from the RAL description. ---
         for (const auto &ralColorAttachment: desc.colorAttachments) {
+            // record handle
+            m_currentColorAttachments.push_back(ralColorAttachment.texture); // NEW
             assert(ralColorAttachment.texture.is_valid() && "Color attachment texture handle is invalid.");
             const auto &vkTexture = db.get<VulkanTexture>(ralColorAttachment.texture);
 
@@ -52,12 +134,12 @@ namespace RDE {
             attachmentInfo.loadOp = ToVulkanLoadOp(ralColorAttachment.loadOp); // You'll need a ToVulkanLoadOp mapper
             attachmentInfo.storeOp = ToVulkanStoreOp(ralColorAttachment.storeOp); // And a ToVulkanStoreOp mapper
             attachmentInfo.clearValue.color = {
-                {
-                    ralColorAttachment.clearColor[0],
-                    ralColorAttachment.clearColor[1],
-                    ralColorAttachment.clearColor[2],
-                    ralColorAttachment.clearColor[3]
-                }
+                    {
+                            ralColorAttachment.clearColor[0],
+                            ralColorAttachment.clearColor[1],
+                            ralColorAttachment.clearColor[2],
+                            ralColorAttachment.clearColor[3]
+                    }
             };
 
             vkColorAttachments.push_back(attachmentInfo);
@@ -73,8 +155,8 @@ namespace RDE {
             vkDepthAttachment.loadOp = ToVulkanLoadOp(desc.depthStencilAttachment.loadOp);
             vkDepthAttachment.storeOp = ToVulkanStoreOp(desc.depthStencilAttachment.storeOp);
             vkDepthAttachment.clearValue.depthStencil = {
-                desc.depthStencilAttachment.clearDepth,
-                desc.depthStencilAttachment.clearStencil
+                    desc.depthStencilAttachment.clearDepth,
+                    desc.depthStencilAttachment.clearStencil
             };
         }
 
@@ -109,7 +191,7 @@ namespace RDE {
             // If the format has a stencil component, point pStencilAttachment to the same struct.
             const auto &depthDesc = db.get<RAL::TextureDescription>(desc.depthStencilAttachment.texture);
             if (depthDesc.format == RAL::Format::D24_UNORM_S8_UINT || depthDesc.format ==
-                RAL::Format::D32_SFLOAT_S8_UINT) {
+                                                                      RAL::Format::D32_SFLOAT_S8_UINT) {
                 renderingInfo.pStencilAttachment = &vkDepthAttachment;
             } else {
                 renderingInfo.pStencilAttachment = nullptr;
@@ -124,25 +206,62 @@ namespace RDE {
     }
 
     void VulkanCommandBuffer::end_render_pass() {
+        if(!m_inRenderPass) return; // guard
+        m_inRenderPass = false;
         vkCmdEndRendering(m_handle);
+        // Transition swapchain color attachments back to PRESENT_SRC_KHR (isSwapchainImage flag)
+        if (!m_currentColorAttachments.empty()) {
+            auto &db = m_device->get_resources_database();
+            std::vector<VkImageMemoryBarrier> presentBarriers;
+            for (auto h: m_currentColorAttachments) {
+                if (!h.is_valid()) continue;
+                auto &vkTex = db.get<VulkanTexture>(h);
+                if (vkTex.isSwapchainImage && vkTex.currentLayout == RAL::ImageLayout::ColorAttachment) {
+                    VkImageMemoryBarrier b{}; b.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+                    b.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                    b.dstAccessMask = 0;
+                    b.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                    b.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+                    b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                    b.image = vkTex.handle;
+                    b.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                    b.subresourceRange.baseMipLevel = 0; b.subresourceRange.levelCount = 1;
+                    b.subresourceRange.baseArrayLayer = 0; b.subresourceRange.layerCount = 1;
+                    presentBarriers.push_back(b);
+                    vkTex.currentLayout = RAL::ImageLayout::PresentSrc; // update tracking
+                }
+            }
+            if (!presentBarriers.empty()) {
+                vkCmdPipelineBarrier(
+                        m_handle,
+                        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                        0,
+                        0, nullptr,
+                        0, nullptr,
+                        static_cast<uint32_t>(presentBarriers.size()), presentBarriers.data()
+                );
+            }
+        }
+        m_currentColorAttachments.clear();
     }
 
     void VulkanCommandBuffer::set_viewport(const RAL::Viewport &viewport) {
         VkViewport vkViewport{
-            .x = viewport.x,
-            .y = viewport.y,
-            .width = viewport.width,
-            .height = viewport.height,
-            .minDepth = viewport.min_depth,
-            .maxDepth = viewport.max_depth
+                .x = viewport.x,
+                .y = viewport.y,
+                .width = viewport.width,
+                .height = viewport.height,
+                .minDepth = viewport.min_depth,
+                .maxDepth = viewport.max_depth
         };
         vkCmdSetViewport(m_handle, 0, 1, &vkViewport);
     }
 
     void VulkanCommandBuffer::set_scissor(const RAL::Rect2D &scissor) {
         VkRect2D vkScissor{
-            .offset = {scissor.x, scissor.y},
-            .extent = {scissor.width, scissor.height}
+                .offset = {scissor.x, scissor.y},
+                .extent = {scissor.width, scissor.height}
         };
         vkCmdSetScissor(m_handle, 0, 1, &vkScissor);
     }
@@ -159,23 +278,27 @@ namespace RDE {
 
     void VulkanCommandBuffer::bind_pipeline(RAL::PipelineHandle pipeline_handle) {
         auto &pipeline = m_device->get_resources_database().get<VulkanPipeline>(pipeline_handle);
-        vkCmdBindPipeline(m_handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.handle);
+        vkCmdBindPipeline(m_handle, pipeline.bindPoint, pipeline.handle); // UPDATED
     }
 
     void VulkanCommandBuffer::pipeline_barrier(const RAL::ResourceBarrier &barrier) {
-        // For now, we only implement the image barrier, which is the most common.
-        // A full implementation would also handle buffer and global memory barriers.
         VkImageMemoryBarrier imageBarrier{};
+        bool hasImage = false;
         if (barrier.textureTransition.texture.is_valid()) {
-            const auto &vkTexture = m_device->get_resources_database().get<VulkanTexture>(
-                barrier.textureTransition.texture);
-            const auto &ralDesc = m_device->get_resources_database().get<RAL::TextureDescription>(
-                barrier.textureTransition.texture);
+            auto &db = m_device->get_resources_database();
+            auto &vkTexture = db.get<VulkanTexture>(barrier.textureTransition.texture);
+            const auto &ralDesc = db.get<RAL::TextureDescription>(barrier.textureTransition.texture);
 
             imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
             imageBarrier.srcAccessMask = ToVulkanAccessFlags(barrier.srcAccess);
             imageBarrier.dstAccessMask = ToVulkanAccessFlags(barrier.dstAccess);
-            imageBarrier.oldLayout = ToVulkanImageLayout(barrier.textureTransition.oldLayout);
+            // Override oldLayout with tracked layout to avoid stale/mismatched user input.
+            auto trackedOld = vkTexture.currentLayout;
+            if (barrier.textureTransition.oldLayout != trackedOld && barrier.textureTransition.oldLayout != RAL::ImageLayout::Undefined) {
+                // Optional: log mismatch (could be noisy)
+                // RDE_CORE_WARN("pipeline_barrier: overriding user oldLayout ({})-> tracked ({})", (int)barrier.textureTransition.oldLayout, (int)trackedOld);
+            }
+            imageBarrier.oldLayout = ToVulkanImageLayout(trackedOld);
             imageBarrier.newLayout = ToVulkanImageLayout(barrier.textureTransition.newLayout);
             imageBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             imageBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -183,39 +306,43 @@ namespace RDE {
 
             if (has_flag(ralDesc.usage, RAL::TextureUsage::DepthStencilAttachment)) {
                 imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-                // Add stencil if your format supports it
-                if (ralDesc.format == RAL::Format::D24_UNORM_S8_UINT || ralDesc.format ==
-                    RAL::Format::D32_SFLOAT_S8_UINT) {
+                if (ralDesc.format == RAL::Format::D24_UNORM_S8_UINT || ralDesc.format == RAL::Format::D32_SFLOAT_S8_UINT)
                     imageBarrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-                }
             } else {
                 imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
             }
-
             imageBarrier.subresourceRange.baseMipLevel = 0;
             imageBarrier.subresourceRange.levelCount = ralDesc.mipLevels;
             imageBarrier.subresourceRange.baseArrayLayer = 0;
             imageBarrier.subresourceRange.layerCount = 1;
+            hasImage = true;
         }
 
-        // A global memory barrier is defined by having no resource-specific transitions
         VkMemoryBarrier memoryBarrier{};
+        bool hasMemory = false;
         if (!barrier.textureTransition.texture.is_valid()) {
             memoryBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
             memoryBarrier.srcAccessMask = ToVulkanAccessFlags(barrier.srcAccess);
             memoryBarrier.dstAccessMask = ToVulkanAccessFlags(barrier.dstAccess);
+            hasMemory = true;
         }
 
-        vkCmdPipelineBarrier(
-            m_handle,
-            ToVulkanPipelineStageFlags(barrier.srcStage),
-            ToVulkanPipelineStageFlags(barrier.dstStage),
-            0, // Dependency flags
-            (memoryBarrier.sType == VK_STRUCTURE_TYPE_MEMORY_BARRIER) ? 1 : 0, &memoryBarrier, // Global memory barriers
-            0, nullptr, // Buffer memory barriers
-            (imageBarrier.sType == VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER) ? 1 : 0,
-            &imageBarrier // Image memory barriers
-        );
+        if (hasImage || hasMemory) {
+            vkCmdPipelineBarrier(
+                m_handle,
+                ToVulkanPipelineStageFlags(barrier.srcStage),
+                ToVulkanPipelineStageFlags(barrier.dstStage),
+                0,
+                hasMemory ? 1u : 0u, hasMemory ? &memoryBarrier : nullptr,
+                0, nullptr,
+                hasImage ? 1u : 0u, hasImage ? &imageBarrier : nullptr
+            );
+        }
+
+        if (barrier.textureTransition.texture.is_valid()) {
+            auto &vkTexture = m_device->get_resources_database().get<VulkanTexture>(barrier.textureTransition.texture);
+            vkTexture.currentLayout = barrier.textureTransition.newLayout;
+        }
     }
 
     void VulkanCommandBuffer::bind_vertex_buffer(RAL::BufferHandle buffer_handle, uint32_t binding) {
@@ -228,8 +355,8 @@ namespace RDE {
     void VulkanCommandBuffer::bind_index_buffer(RAL::BufferHandle buffer_handle, RAL::IndexType indexType) {
         auto &buffer = m_device->get_resources_database().get<VulkanBuffer>(buffer_handle);
         VkIndexType vkIndexType = (indexType == RAL::IndexType::UINT16)
-                                      ? VK_INDEX_TYPE_UINT16
-                                      : VK_INDEX_TYPE_UINT32;
+                                  ? VK_INDEX_TYPE_UINT16
+                                  : VK_INDEX_TYPE_UINT32;
         vkCmdBindIndexBuffer(m_handle, buffer.handle, 0, vkIndexType);
     }
 
@@ -252,14 +379,14 @@ namespace RDE {
 
         // 3. Record the command.
         vkCmdBindDescriptorSets(
-            m_handle, // The VkCommandBuffer
-            VK_PIPELINE_BIND_POINT_GRAPHICS, // We're binding for a graphics pipeline
-            pipelineLayout, // The layout the pipeline was created with
-            setIndex, // The set index to bind to (e.g., set=0, set=1 in GLSL)
-            1, // We are binding one set at a time
-            &vkSet.handle, // Pointer to the descriptor set handle
-            0, // No dynamic offsets (an advanced feature)
-            nullptr // No dynamic offsets
+                m_handle, // The VkCommandBuffer
+                VK_PIPELINE_BIND_POINT_GRAPHICS, // We're binding for a graphics pipeline
+                pipelineLayout, // The layout the pipeline was created with
+                setIndex, // The set index to bind to (e.g., set=0, set=1 in GLSL)
+                1, // We are binding one set at a time
+                &vkSet.handle, // Pointer to the descriptor set handle
+                0, // No dynamic offsets (an advanced feature)
+                nullptr // No dynamic offsets
         );
     }
 
@@ -305,12 +432,12 @@ namespace RDE {
 
         if (!vkRegions.empty()) {
             vkCmdCopyBufferToImage(
-                m_handle,
-                srcBuffer.handle,
-                dstTexture.handle,
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                static_cast<uint32_t>(vkRegions.size()),
-                vkRegions.data()
+                    m_handle,
+                    srcBuffer.handle,
+                    dstTexture.handle,
+                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    static_cast<uint32_t>(vkRegions.size()),
+                    vkRegions.data()
             );
         }
     }
@@ -319,8 +446,8 @@ namespace RDE {
                                              uint32_t offset,
                                              uint32_t size, const void *data) {
         assert(
-            m_device->get_resources_database().is_valid(pipeline_handle) &&
-            "Invalid pipeline handle provided to push_constants");
+                m_device->get_resources_database().is_valid(pipeline_handle) &&
+                "Invalid pipeline handle provided to push_constants");
         assert(data != nullptr && "Data pointer for push_constants cannot be null");
         assert(size > 0 && "Push constant size must be greater than 0");
 
@@ -334,12 +461,12 @@ namespace RDE {
 
         // 3. Record the command.
         vkCmdPushConstants(
-            m_handle, // The VkCommandBuffer
-            pipelineLayout, // The layout defining the push constant ranges
-            vkStageFlags, // The shader stage(s) that will access the data
-            offset, // The byte offset within the push constant block
-            size, // The size of the data to update
-            data // Pointer to the data
+                m_handle, // The VkCommandBuffer
+                pipelineLayout, // The layout defining the push constant ranges
+                vkStageFlags, // The shader stage(s) that will access the data
+                offset, // The byte offset within the push constant block
+                size, // The size of the data to update
+                data // Pointer to the data
         );
     }
 

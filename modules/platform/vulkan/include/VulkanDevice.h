@@ -11,6 +11,7 @@
 #include <vulkan/vulkan.h>
 #include <memory>
 #include <functional>
+#include <unordered_map>
 
 struct GLFWwindow; // Forward declaration of GLFWwindow
 
@@ -35,10 +36,6 @@ namespace RDE {
 
         // --- Swapchain Management ---
         void recreate_swapchain() override;
-
-        VulkanSwapchain &get_swapchain() {
-            return *m_Swapchain;
-        }
 
         // --- Resource Creation (implements RAL) ---
         RAL::BufferHandle create_buffer(const RAL::BufferDescription &desc) override;
@@ -86,14 +83,18 @@ namespace RDE {
         void update_buffer_data(RAL::BufferHandle targetBuffer, const void *data, size_t size,
                                 size_t offset = 0) override;
 
+        VulkanSwapchain &get_swapchain() {
+            return *m_Swapchain;
+        }
+
     private:
         void submit_internal(const std::vector<VkCommandBuffer> &vkCommandBuffers);
-
         std::vector<RAL::TextureHandle> m_SwapchainTextureHandles;
-
+        std::vector<RAL::TextureHandle> m_SwapchainDepthTextureHandles; // NEW per-swapchain-image depth textures
         void create_swapchain_texture_handles();
-
         void destroy_swapchain_texture_handles();
+        void create_depth_textures(); // NEW
+        void destroy_depth_textures(); // NEW
 
         //--------------------------------------------------------------------------------------------------------------
         // --- Core Dependencies (not owned) ---
@@ -123,5 +124,9 @@ namespace RDE {
         DeletionQueue &get_current_frame_deletion_queue();
 
         VkShaderModule create_shader_module(const std::vector<char> &code);
+
+        // Descriptor set layout cache (hash -> handle)
+        struct CachedLayoutEntry { RAL::DescriptorSetLayoutHandle handle; size_t refCount; RAL::DescriptorSetLayoutDescription desc; }; // NEW
+        std::unordered_map<size_t, CachedLayoutEntry> m_DescriptorSetLayoutCache; // CHANGED
     };
 }

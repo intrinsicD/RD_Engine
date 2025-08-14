@@ -23,6 +23,7 @@ namespace RDE {
         void end_frame(const std::vector<RAL::CommandBuffer *> &command_buffers);
 
         void render(const View &view);
+        void update_camera(const glm::mat4 &view, const glm::mat4 &proj, const glm::vec3 &camPos);
 
         // This allows access for systems that *truly* need the low-level device, like ImGui
         RAL::Device *get_device() { return m_device.get(); }
@@ -35,5 +36,14 @@ namespace RDE {
         std::unique_ptr<RAL::Device> m_device;
         RAL::CommandBuffer *m_CurrentFrameCommandBuffer = nullptr;
         RAL::FrameContext m_CurrentFrameContext;
+
+        // Camera UBO resources (set = 0, binding = 0)
+        RAL::BufferHandle m_cameraBuffer{RAL::BufferHandle::INVALID()};
+        RAL::DescriptorSetLayoutHandle m_cameraSetLayout{RAL::DescriptorSetLayoutHandle::INVALID()};
+        RAL::DescriptorSetHandle m_cameraDescriptorSet{RAL::DescriptorSetHandle::INVALID()};
+        size_t m_cameraBufferSize = 0;
+        void init_camera_resources();
+        void destroy_camera_resources();
+        void init_camera_resources_from_layout(RAL::DescriptorSetLayoutHandle layout);
     };
 }

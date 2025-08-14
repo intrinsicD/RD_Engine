@@ -38,6 +38,8 @@ namespace RDE {
         if (has_flag(flags, RAL::AccessFlags::TransferWrite)) result |= VK_ACCESS_TRANSFER_WRITE_BIT;
         if (has_flag(flags, RAL::AccessFlags::HostRead)) result |= VK_ACCESS_HOST_READ_BIT;
         if (has_flag(flags, RAL::AccessFlags::HostWrite)) result |= VK_ACCESS_HOST_WRITE_BIT;
+        if (has_flag(flags, RAL::AccessFlags::VertexAttributeRead)) result |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT; // NEW
+        if (has_flag(flags, RAL::AccessFlags::IndexRead)) result |= VK_ACCESS_INDEX_READ_BIT; // NEW
         return result;
     }
 
@@ -202,6 +204,7 @@ namespace RDE {
         if (has_flag(usage, RAL::BufferUsage::VertexBuffer)) flags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
         if (has_flag(usage, RAL::BufferUsage::IndexBuffer)) flags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
         if (has_flag(usage, RAL::BufferUsage::UniformBuffer)) flags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+        if (has_flag(usage, RAL::BufferUsage::StorageBuffer)) flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT; // NEW
         if (has_flag(usage, RAL::BufferUsage::TransferSrc)) flags |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
         if (has_flag(usage, RAL::BufferUsage::TransferDst)) flags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
         return flags;
@@ -481,6 +484,31 @@ namespace RDE {
                 // For now, we'll assert or throw
                 throw std::runtime_error("Unsupported or unknown RAL::Format!");
                 return RAL::Format::UNKNOWN;
+        }
+    }
+
+    inline VkPrimitiveTopology ToVulkanPrimitive(RAL::PrimitiveTopology t) { // NEW
+        switch (t) {
+            case RAL::PrimitiveTopology::PointList: return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+            case RAL::PrimitiveTopology::LineList: return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+            case RAL::PrimitiveTopology::LineStrip: return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+            case RAL::PrimitiveTopology::TriangleList: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+            case RAL::PrimitiveTopology::TriangleStrip: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+        }
+        return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    }
+
+    inline VkCompareOp ToVulkanCompareOp(RAL::CompareOp op) { // NEW
+        switch (op) {
+            case RAL::CompareOp::Never: return VK_COMPARE_OP_NEVER;
+            case RAL::CompareOp::Less: return VK_COMPARE_OP_LESS;
+            case RAL::CompareOp::Equal: return VK_COMPARE_OP_EQUAL;
+            case RAL::CompareOp::LessOrEqual: return VK_COMPARE_OP_LESS_OR_EQUAL;
+            case RAL::CompareOp::Greater: return VK_COMPARE_OP_GREATER;
+            case RAL::CompareOp::NotEqual: return VK_COMPARE_OP_NOT_EQUAL;
+            case RAL::CompareOp::GreaterOrEqual: return VK_COMPARE_OP_GREATER_OR_EQUAL;
+            case RAL::CompareOp::Always: return VK_COMPARE_OP_ALWAYS;
+            default: return VK_COMPARE_OP_LESS_OR_EQUAL;
         }
     }
 }

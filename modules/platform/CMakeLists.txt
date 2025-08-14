@@ -1,3 +1,3 @@
 add_subdirectory(glfw)
-#add_subdirectory(opengl)
+add_subdirectory(opengl)
 add_subdirectory(vulkan)

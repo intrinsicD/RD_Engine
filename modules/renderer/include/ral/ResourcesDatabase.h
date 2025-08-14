@@ -30,7 +30,7 @@ namespace RAL {
         }
 
         template<typename... Type>
-        [[nodiscard]] decltype(auto) get([[maybe_unused]] const RenderHandle &handle) const {
+        [[nodiscard]] decltype(auto) get([[maybe_unused]] const RenderHandle &handle) {
             return m_registry.get<Type...>(handle.index);
         }
 

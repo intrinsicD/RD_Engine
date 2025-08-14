@@ -96,11 +96,13 @@ namespace RDE {
             }
         }
         create_swapchain_texture_handles();
+        create_depth_textures(); // NEW depth attachments
         RDE_CORE_INFO("Vulkan Device Initialized successfully.");
     }
 
     VulkanDevice::~VulkanDevice() {
         wait_idle();
+        destroy_depth_textures(); // NEW
         destroy_swapchain_texture_handles();
         auto logicalDevice = m_Context->get_logical_device();
 
@@ -126,16 +128,17 @@ namespace RDE {
 
         for (size_t i = 0; i < swapchainImages.size(); ++i) {
             auto handle = RAL::TextureHandle{m_resources_db.create()};
-
             VulkanTexture vkTexture;
             vkTexture.handle = swapchainImages[i];
             vkTexture.image_view = swapchainImageViews[i];
             vkTexture.allocation = nullptr; // Not managed by VMA
+            vkTexture.currentLayout = RAL::ImageLayout::Undefined; // start undefined per spec
+            vkTexture.isSwapchainImage = true; // explicit flag
 
             RAL::TextureDescription desc;
             desc.width = m_Swapchain->get_extent().width;
             desc.height = m_Swapchain->get_extent().height;
-            desc.format = ToRALFormat(m_Swapchain->get_image_format()); // You'll need a ToRALFormat mapper
+            desc.format = ToRALFormat(m_Swapchain->get_image_format());
             desc.usage = RAL::TextureUsage::ColorAttachment;
 
             m_resources_db.emplace<VulkanTexture>(handle, vkTexture);
@@ -154,6 +157,27 @@ namespace RDE {
         m_SwapchainTextureHandles.clear();
     }
 
+    void VulkanDevice::create_depth_textures() { // NEW
+        destroy_depth_textures();
+        auto extent = m_Swapchain->get_extent();
+        VkFormat depthFormat = VK_FORMAT_D32_SFLOAT; // Could add selection logic
+        m_SwapchainDepthTextureHandles.resize(m_SwapchainTextureHandles.size());
+        for(size_t i=0;i<m_SwapchainDepthTextureHandles.size();++i){
+            RAL::TextureDescription d{}; d.width = extent.width; d.height = extent.height; d.depth = 1; d.mipLevels = 1; d.format = ToRALFormat(depthFormat); d.usage = RAL::TextureUsage::DepthStencilAttachment;
+            auto tex = create_texture(d);
+            auto &vkTex = m_resources_db.get<VulkanTexture>(tex);
+            vkTex.currentLayout = RAL::ImageLayout::Undefined; // will transition on first use
+            m_SwapchainDepthTextureHandles[i] = tex;
+        }
+    }
+
+    void VulkanDevice::destroy_depth_textures() { // NEW
+        for(auto &h : m_SwapchainDepthTextureHandles){
+            if(h.is_valid()) destroy_texture(h);
+        }
+        m_SwapchainDepthTextureHandles.clear();
+    }
+
     RAL::FrameContext VulkanDevice::begin_frame() {
         auto logicalDevice = m_Context->get_logical_device();
         VK_CHECK(vkWaitForFences(logicalDevice, 1, &m_InFlightFences[m_CurrentFrameIndex], VK_TRUE, UINT64_MAX));
@@ -163,10 +187,12 @@ namespace RDE {
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
             recreate_swapchain();
-            return {RAL::TextureHandle::INVALID(), 0, 0}; // Indicate frame should be skipped
+            return {RAL::TextureHandle::INVALID(), 0, 0, RAL::TextureHandle::INVALID()}; // Return an invalid context
         } else if (result != VK_SUCCESS) {
             throw std::runtime_error("Failed to acquire swapchain image!");
         }
+
+        // remove forced layout reset; rely on tracked currentLayout (Undefined first use, PresentSrc thereafter)
 
         // Now we can safely reset the fence as we are about to use its frame resources
         VK_CHECK(vkResetFences(logicalDevice, 1, &m_InFlightFences[m_CurrentFrameIndex]));
@@ -176,7 +202,7 @@ namespace RDE {
         VulkanCommandBuffer *cmd = m_FrameCommandBuffers[m_CurrentFrameIndex].get();
         VK_CHECK(vkResetCommandBuffer(cmd->get_handle(), 0));
 
-        return {m_SwapchainTextureHandles[imageIndex], m_CurrentFrameIndex, imageIndex};
+        return {m_SwapchainTextureHandles[imageIndex], m_CurrentFrameIndex, imageIndex, m_SwapchainDepthTextureHandles.empty()? RAL::TextureHandle::INVALID() : m_SwapchainDepthTextureHandles[imageIndex]};
     }
 
     void VulkanDevice::end_frame(const RAL::FrameContext &context,
@@ -188,15 +214,56 @@ namespace RDE {
         }
 
         std::vector<VkCommandBuffer> vkCommandBuffers;
-        vkCommandBuffers.reserve(command_buffers.size());
+        vkCommandBuffers.reserve(command_buffers.size()+1);
         for (const auto &cmd: command_buffers) {
             vkCommandBuffers.push_back(dynamic_cast<VulkanCommandBuffer *>(cmd)->get_handle());
         }
 
+        // SAFETY: Ensure the swapchain image is back to PRESENT layout before presenting.
+        // If user code (or an unexpected path) failed to transition it, inject a late barrier.
+        if(m_resources_db.is_valid(context.swapchainTexture)) {
+            auto &vkTex = m_resources_db.get<VulkanTexture>(context.swapchainTexture);
+            if(vkTex.currentLayout != RAL::ImageLayout::PresentSrc) {
+                RDE_CORE_WARN("Swapchain image not in PRESENT layout at end_frame (tracked={}, imageIndex={}). Injecting fix-up barrier.", (int)vkTex.currentLayout, context.swapchainImageIndex);
+                // Allocate a transient command buffer to perform the transition
+                VkCommandBufferAllocateInfo allocInfo;
+                allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+                allocInfo.commandPool = m_CommandPool;
+                allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+                allocInfo.commandBufferCount = 1;
+                VkCommandBuffer fixupCmd{};
+                VK_CHECK(vkAllocateCommandBuffers(m_Context->get_logical_device(), &allocInfo, &fixupCmd));
+                VkCommandBufferBeginInfo beginInfo;
+                beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+                beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+                VK_CHECK(vkBeginCommandBuffer(fixupCmd, &beginInfo));
+                VkImageMemoryBarrier b{};
+                b.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+                b.image = vkTex.handle;
+                b.oldLayout = ToVulkanImageLayout(vkTex.currentLayout);
+                b.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+                b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                b.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                b.subresourceRange.baseMipLevel = 0; b.subresourceRange.levelCount = 1;
+                b.subresourceRange.baseArrayLayer = 0; b.subresourceRange.layerCount = 1;
+                // Assume last use was color attachment
+                b.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                b.dstAccessMask = 0;
+                vkCmdPipelineBarrier(
+                    fixupCmd,
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                    0, 0,nullptr,0,nullptr,1,&b
+                );
+                VK_CHECK(vkEndCommandBuffer(fixupCmd));
+                vkCommandBuffers.push_back(fixupCmd);
+                vkTex.currentLayout = RAL::ImageLayout::PresentSrc; // update tracking
+            }
+        }
+
         submit_internal(vkCommandBuffers);
 
-        /*VkResult result = m_Swapchain->present(m_RenderFinishedSemaphores[m_CurrentFrameIndex],
-                                               m_Context->get_present_queue());*/
         VkResult result = m_Swapchain->present(
                 m_RenderFinishedSemaphores[m_CurrentFrameIndex],
                 m_Context->get_present_queue(),
@@ -438,9 +505,7 @@ namespace RDE {
     RAL::PipelineHandle VulkanDevice::create_pipeline(const RAL::PipelineDescription &desc) {
         auto logicalDevice = m_Context->get_logical_device();
         VulkanPipeline newPipeline; // Will hold the final VkPipeline and VkPipelineLayout
-
-        // --- 1. Create Pipeline Layout (Common to ALL pipeline types) ---
-        // This part is the same for graphics, compute, and mesh pipelines.
+        // --- 1. Create Pipeline Layout (unchanged) ---
         {
             std::vector<VkDescriptorSetLayout> vkSetLayouts;
             for (const auto &layoutHandle: desc.descriptorSetLayouts) {
@@ -465,18 +530,12 @@ namespace RDE {
         // This is the core of the new logic. We visit the 'stages' variant.
         std::visit([&](auto &&stages) {
             using T = std::decay_t<decltype(stages)>;
-
-            // --- BRANCH 1: Graphics Pipeline ---
             if constexpr (std::is_same_v<T, RAL::GraphicsShaderStages>) {
-                // This block is mostly your old code, but now it's scoped correctly.
-
                 std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
-
-                // Helper lambda to reduce boilerplate
                 auto add_shader_stage = [&](RAL::ShaderHandle handle, VkShaderStageFlagBits stage) {
                     if (handle.is_valid()) {
                         const auto &shader = m_resources_db.get<VulkanShader>(handle);
-                        VkPipelineShaderStageCreateInfo stageInfo{};
+                        VkPipelineShaderStageCreateInfo stageInfo{}; // zero init
                         stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
                         stageInfo.stage = stage;
                         stageInfo.module = shader.module;
@@ -484,76 +543,72 @@ namespace RDE {
                         shaderStages.push_back(stageInfo);
                     }
                 };
-
                 add_shader_stage(stages.vertexShader, VK_SHADER_STAGE_VERTEX_BIT);
                 add_shader_stage(stages.fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT);
                 add_shader_stage(stages.geometryShader, VK_SHADER_STAGE_GEOMETRY_BIT);
                 add_shader_stage(stages.tessControlShader, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
                 add_shader_stage(stages.tessEvalShader, VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
 
-                // --- Vertex Input ---
+                // Vertex Input
                 std::vector<VkVertexInputBindingDescription> bindings;
                 for (const auto &b: desc.vertexBindings) {
-                    bindings.push_back(
-                            {.binding = b.binding, .stride = b.stride, .inputRate = VK_VERTEX_INPUT_RATE_VERTEX});
+                    VkVertexInputRate rate = (b.inputRate == RAL::VertexInputBinding::Rate::PerVertex)
+                                             ? VK_VERTEX_INPUT_RATE_VERTEX
+                                             : VK_VERTEX_INPUT_RATE_INSTANCE;
+                    bindings.push_back({b.binding, b.stride, rate});
                 }
                 std::vector<VkVertexInputAttributeDescription> attributes;
                 for (const auto &a: desc.vertexAttributes) {
-                    attributes.push_back({
-                                                 .location = a.location, .binding = a.binding, .format = ToVulkanFormat(
-                                    a.format),
-                                                 .offset = a.offset
-                                         });
+                    attributes.push_back({a.location, a.binding, ToVulkanFormat(a.format), a.offset});
                 }
 
-                VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-                vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+                VkPipelineVertexInputStateCreateInfo vertexInputInfo{}; vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
                 vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindings.size());
                 vertexInputInfo.pVertexBindingDescriptions = bindings.data();
                 vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size());
                 vertexInputInfo.pVertexAttributeDescriptions = attributes.data();
 
-                // --- Fixed Function Stages ---
-                VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
-                inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-                inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+                VkPipelineInputAssemblyStateCreateInfo inputAssembly{}; inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+                inputAssembly.topology = ToVulkanPrimitive(desc.topology);
                 inputAssembly.primitiveRestartEnable = VK_FALSE;
 
-                VkPipelineViewportStateCreateInfo viewportState{};
-                viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-                viewportState.viewportCount = 1;
-                viewportState.scissorCount = 1;
+                VkPipelineViewportStateCreateInfo viewportState{}; viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+                viewportState.viewportCount = 1; viewportState.scissorCount = 1;
 
-                std::vector<VkDynamicState> dynamicStates = {
-                        VK_DYNAMIC_STATE_VIEWPORT,
-                        VK_DYNAMIC_STATE_SCISSOR
-                };
-                VkPipelineDynamicStateCreateInfo dynamicState{};
-                dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+                std::vector<VkDynamicState> dynamicStates = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+                VkPipelineDynamicStateCreateInfo dynamicState{}; dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
                 dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
                 dynamicState.pDynamicStates = dynamicStates.data();
 
-                VkPipelineRasterizationStateCreateInfo rasterizer{};
-                rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-                rasterizer.depthClampEnable = VK_FALSE;
-                rasterizer.rasterizerDiscardEnable = VK_FALSE;
+                VkPipelineRasterizationStateCreateInfo rasterizer{}; rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+                rasterizer.depthClampEnable = VK_FALSE; rasterizer.rasterizerDiscardEnable = VK_FALSE;
                 rasterizer.polygonMode = ToVulkanPolygonMode(desc.rasterizationState.polygonMode);
                 rasterizer.lineWidth = 1.0f;
                 rasterizer.cullMode = ToVulkanCullMode(desc.rasterizationState.cullMode);
                 rasterizer.frontFace = ToVulkanFrontFace(desc.rasterizationState.frontFace);
                 rasterizer.depthBiasEnable = VK_FALSE;
 
-                VkPipelineMultisampleStateCreateInfo multisampling{};
-                multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-                multisampling.sampleShadingEnable = VK_FALSE;
-                multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+                VkPipelineMultisampleStateCreateInfo multisampling{}; multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+                multisampling.sampleShadingEnable = VK_FALSE; multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+                VkPipelineDepthStencilStateCreateInfo depthStencil{}; depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+                VkPipelineDepthStencilStateCreateInfo *pDepthStencilState = nullptr;
+                if (desc.depthAttachmentFormat != RAL::Format::UNKNOWN) {
+                    // Always provide a depth-stencil state when a depth (or stencil) attachment format is specified,
+                    // even if tests are disabled (spec requirement for dynamic rendering without dynamic state3).
+                    depthStencil.depthTestEnable = desc.depthStencilState.depthTestEnable ? VK_TRUE : VK_FALSE;
+                    depthStencil.depthWriteEnable = desc.depthStencilState.depthWriteEnable ? VK_TRUE : VK_TRUE; // must be valid; if disabled writeEnable ignored
+                    depthStencil.depthCompareOp = ToVulkanCompareOp(desc.depthStencilState.depthCompareOp);
+                    depthStencil.depthBoundsTestEnable = VK_FALSE;
+                    depthStencil.stencilTestEnable = desc.depthStencilState.stencilTestEnable ? VK_TRUE : VK_FALSE;
+                    depthStencil.front = {};
+                    depthStencil.back = {};
+                    pDepthStencilState = &depthStencil;
+                }
 
                 VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-                colorBlendAttachment.colorWriteMask =
-                        VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
-                        VK_COLOR_COMPONENT_A_BIT;
-                colorBlendAttachment.blendEnable = desc.colorBlendState.attachment.blendEnable; // VK_TRUE for ImGui
-
+                colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+                colorBlendAttachment.blendEnable = desc.colorBlendState.attachment.blendEnable;
                 const auto &ralBlend = desc.colorBlendState.attachment;
                 colorBlendAttachment.srcColorBlendFactor = ToVulkanBlendFactor(ralBlend.srcColorBlendFactor);
                 colorBlendAttachment.dstColorBlendFactor = ToVulkanBlendFactor(ralBlend.dstColorBlendFactor);
@@ -561,28 +616,28 @@ namespace RDE {
                 colorBlendAttachment.srcAlphaBlendFactor = ToVulkanBlendFactor(ralBlend.srcAlphaBlendFactor);
                 colorBlendAttachment.dstAlphaBlendFactor = ToVulkanBlendFactor(ralBlend.dstAlphaBlendFactor);
                 colorBlendAttachment.alphaBlendOp = ToVulkanBlendOp(ralBlend.alphaBlendOp);
+                VkPipelineColorBlendStateCreateInfo colorBlending{}; colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+                colorBlending.logicOpEnable = VK_FALSE; colorBlending.attachmentCount = 1; colorBlending.pAttachments = &colorBlendAttachment;
 
-                VkPipelineColorBlendStateCreateInfo colorBlending{};
-                colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-                colorBlending.logicOpEnable = VK_FALSE;
-                colorBlending.attachmentCount = 1;
-                colorBlending.pAttachments = &colorBlendAttachment;
+                std::vector<VkFormat> colorFormats;
+                if (!desc.colorAttachmentFormats.empty()) {
+                    for (auto f : desc.colorAttachmentFormats) colorFormats.push_back(ToVulkanFormat(f));
+                } else { colorFormats.push_back(m_Swapchain->get_image_format()); }
+                VkFormat depthFormat = VK_FORMAT_UNDEFINED;
+                if (desc.depthAttachmentFormat != RAL::Format::UNKNOWN) depthFormat = ToVulkanFormat(desc.depthAttachmentFormat);
+                VkPipelineRenderingCreateInfoKHR pipelineRenderingCreateInfo{}; pipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+                pipelineRenderingCreateInfo.colorAttachmentCount = static_cast<uint32_t>(colorFormats.size());
+                pipelineRenderingCreateInfo.pColorAttachmentFormats = colorFormats.data();
+                pipelineRenderingCreateInfo.depthAttachmentFormat = depthFormat;
+                // Only supply stencil attachment format if depth format actually has stencil aspect
+                if(depthFormat == VK_FORMAT_D24_UNORM_S8_UINT || depthFormat == VK_FORMAT_D32_SFLOAT_S8_UINT) {
+                    pipelineRenderingCreateInfo.stencilAttachmentFormat = depthFormat;
+                } else {
+                    pipelineRenderingCreateInfo.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
+                }
 
-                // --- Dynamic Rendering Info ---
-                VkFormat swapchainImageFormat = m_Swapchain->get_image_format();
-
-                VkPipelineRenderingCreateInfoKHR pipelineRenderingCreateInfo{};
-                pipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
-                pipelineRenderingCreateInfo.colorAttachmentCount = 1;
-                pipelineRenderingCreateInfo.pColorAttachmentFormats = &swapchainImageFormat;
-                // We are not using a depth buffer yet
-                pipelineRenderingCreateInfo.depthAttachmentFormat = VK_FORMAT_UNDEFINED;
-                pipelineRenderingCreateInfo.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
-
-                // --- Final Graphics Pipeline Create Info ---
-                VkGraphicsPipelineCreateInfo pipelineInfo{};
+                VkGraphicsPipelineCreateInfo pipelineInfo{}; pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
                 pipelineInfo.pNext = &pipelineRenderingCreateInfo;
-                pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
                 pipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
                 pipelineInfo.pStages = shaderStages.data();
                 pipelineInfo.layout = newPipeline.layout;
@@ -591,37 +646,24 @@ namespace RDE {
                 pipelineInfo.pViewportState = &viewportState;
                 pipelineInfo.pRasterizationState = &rasterizer;
                 pipelineInfo.pMultisampleState = &multisampling;
-                pipelineInfo.pDepthStencilState = nullptr; // No depth testing for now
+                pipelineInfo.pDepthStencilState = pDepthStencilState;
                 pipelineInfo.pColorBlendState = &colorBlending;
                 pipelineInfo.pDynamicState = &dynamicState;
                 pipelineInfo.subpass = 0;
-                // ... link all the other state structs ...
-
-                VK_CHECK(vkCreateGraphicsPipelines(logicalDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr,
-                                                   &newPipeline.handle));
-            }
-                // --- BRANCH 2: Compute Pipeline ---
-            else if constexpr (std::is_same_v<T, RAL::ComputeShaderStages>) {
-                VkComputePipelineCreateInfo pipelineInfo{};
-                pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+                VK_CHECK(vkCreateGraphicsPipelines(logicalDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &newPipeline.handle));
+                newPipeline.bindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+            } else if constexpr (std::is_same_v<T, RAL::ComputeShaderStages>) {
+                VkComputePipelineCreateInfo pipelineInfo{}; pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
                 pipelineInfo.layout = newPipeline.layout;
-
                 const auto &shader = m_resources_db.get<VulkanShader>(stages.computeShader);
-                VkPipelineShaderStageCreateInfo &stageInfo = pipelineInfo.stage;
-                stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-                stageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-                stageInfo.module = shader.module;
-                stageInfo.pName = "main";
+                VkPipelineShaderStageCreateInfo stageInfo{}; stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+                stageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT; stageInfo.module = shader.module; stageInfo.pName = "main";
+                pipelineInfo.stage = stageInfo;
 
-                VK_CHECK(vkCreateComputePipelines(logicalDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr,
-                                                  &newPipeline.handle));
-            }
-                // --- BRANCH 3: Mesh Shader Pipeline ---
-            else if constexpr (std::is_same_v<T, RAL::MeshShaderStages>) {
-                // NOTE: This requires enabling the mesh shader device feature and extension.
-                // This is a placeholder for that future implementation.
+                VK_CHECK(vkCreateComputePipelines(logicalDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &newPipeline.handle));
+                newPipeline.bindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;
+            } else if constexpr (std::is_same_v<T, RAL::MeshShaderStages>) {
                 RDE_CORE_ERROR("Mesh shader pipelines are not yet implemented!");
-                // You would use vkCreateGraphicsPipelines here as well, but with Task/Mesh stages.
             }
 
         }, desc.stages);
@@ -657,6 +699,15 @@ namespace RDE {
 
     RAL::DescriptorSetLayoutHandle VulkanDevice::create_descriptor_set_layout(
             const RAL::DescriptorSetLayoutDescription &desc) {
+        // Hash descriptor set layout
+        size_t h = std::hash<uint32_t>()(desc.set);
+        for(const auto &b : desc.bindings){
+            size_t bh = ((size_t)b.binding<<1) ^ (size_t)b.type ^ (size_t)ToVulkanShaderStageFlags(b.stages);
+            h ^= (bh + 0x9e3779b97f4a7c15ULL + (h<<6) + (h>>2));
+        }
+        if(auto it = m_DescriptorSetLayoutCache.find(h); it != m_DescriptorSetLayoutCache.end()){
+            it->second.refCount++; return it->second.handle;
+        }
         std::vector<VkDescriptorSetLayoutBinding> bindings;
         bindings.reserve(desc.bindings.size());
 
@@ -683,19 +734,28 @@ namespace RDE {
         m_resources_db.emplace<VulkanDescriptorSetLayout>(handle, layout);
         m_resources_db.emplace<RAL::DescriptorSetLayoutDescription>(handle, desc); // Store the recipe!
 
+        // store in cache
+        m_DescriptorSetLayoutCache.emplace(h, CachedLayoutEntry{handle,1,desc});
         return handle;
     }
 
     void VulkanDevice::destroy_descriptor_set_layout(RAL::DescriptorSetLayoutHandle handle) {
         if (!m_resources_db.is_valid(handle)) return;
-
+        // locate in cache and decrement
+        for(auto it = m_DescriptorSetLayoutCache.begin(); it != m_DescriptorSetLayoutCache.end(); ++it){
+            if(it->second.handle == handle){
+                if(--it->second.refCount > 0){
+                    m_resources_db.destroy(handle); return; // still in use
+                } else {
+                    // proceed to destroy
+                    m_DescriptorSetLayoutCache.erase(it);
+                    break;
+                }
+            }
+        }
         const auto &vk_descriptor_set_layout = m_resources_db.get<VulkanDescriptorSetLayout>(handle);
         VkDevice logicalDevice = m_Context->get_logical_device();
-
-        get_current_frame_deletion_queue().push([=]() {
-            vkDestroyDescriptorSetLayout(logicalDevice, vk_descriptor_set_layout.handle, nullptr);
-        });
-
+        get_current_frame_deletion_queue().push([=]() { vkDestroyDescriptorSetLayout(logicalDevice, vk_descriptor_set_layout.handle, nullptr); });
         m_resources_db.destroy(handle);
     }
 
@@ -891,7 +951,7 @@ namespace RDE {
 
         VmaAllocator allocator = m_Context->get_vma_allocator();
         VulkanBuffer newBuffer;
-        VmaAllocationInfo vmaAllocInfo;
+        VmaAllocationInfo vmaAllocInfo{};
         VK_CHECK(
                 vmaCreateBuffer(allocator, &bufferInfo, &allocInfo, &newBuffer.handle, &newBuffer.allocation,
                                 &vmaAllocInfo)
@@ -989,10 +1049,11 @@ namespace RDE {
 
     void VulkanDevice::recreate_swapchain() {
         if (m_Swapchain) {
-            // If it exists, recreate it
+            destroy_depth_textures();
             destroy_swapchain_texture_handles();
             m_Swapchain->recreate();
             create_swapchain_texture_handles();
+            create_depth_textures();
         }
     }
 }

@@ -139,35 +139,23 @@ namespace RAL {
     // --- Processes all queued uploads for the frame ---
     void BufferUploadManager::flush() {
         if (m_request_queue.empty()) {
-            // Nothing to do.
             return;
         }
 
-        // Get a temporary command buffer to record our copy commands.
-        // Using `get_command_buffer` is fine here because we will submit and wait on it,
-        // ensuring it's free before the main render loop needs it.
-        RAL::CommandBuffer *cmd = m_device->get_command_buffer();
-        cmd->begin();
-
-        // Record all the queued copy commands into this single command buffer.
-        for (const auto &request: m_request_queue) {
-            cmd->copy_buffer(
-                    m_staging_buffer,           // Source is always our big staging buffer
+        // Use a dedicated immediate-submit path so we don't consume the frame's primary command buffer.
+        m_device->immediate_submit([&](RAL::CommandBuffer *cmd) {
+            for (const auto &request: m_request_queue) {
+                cmd->copy_buffer(
+                    m_staging_buffer,
                     request.destination_buffer,
                     request.size,
-                    request.source_offset_in_staging, // With the correct offset
+                    request.source_offset_in_staging,
                     request.destination_offset
-            );
-        }
-
-        cmd->end();
-
-        // Submit the work and synchronously wait for the GPU to finish all copies.
-        m_device->submit_and_wait({cmd});
+                );
+            }
+        });
 
         RDE_CORE_TRACE("UploadManager flushed {} requests.", m_request_queue.size());
-
-        // Now that the GPU is done, we can safely reuse the entire staging buffer.
         m_request_queue.clear();
         m_current_staging_offset = 0;
     }

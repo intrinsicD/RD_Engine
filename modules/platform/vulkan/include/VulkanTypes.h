@@ -17,6 +17,8 @@ namespace RDE {
         VkImage handle = VK_NULL_HANDLE;
         VkImageView image_view = VK_NULL_HANDLE;
         VmaAllocation allocation = VK_NULL_HANDLE;
+        RAL::ImageLayout currentLayout = RAL::ImageLayout::Undefined; // NEW: track layout
+        bool isSwapchainImage = false; // NEW: explicit flag instead of allocation == nullptr heuristic
     };
 
     struct VulkanShader {
@@ -26,6 +28,7 @@ namespace RDE {
     struct VulkanPipeline {
         VkPipeline handle{VK_NULL_HANDLE};
         VkPipelineLayout layout{VK_NULL_HANDLE};
+        VkPipelineBindPoint bindPoint{VK_PIPELINE_BIND_POINT_GRAPHICS}; // NEW
     };
 
     struct VulkanSampler {

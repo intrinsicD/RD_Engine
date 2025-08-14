@@ -8,29 +8,6 @@
 #include <limits>
 
 namespace RAL {
-    /*struct RenderHandle {
-        uint32_t index{std::numeric_limits<uint32_t>::max()};
-        uint32_t generation{0};
-
-        // Define an explicit invalid state.
-        static constexpr RenderHandle INVALID() { return {}; }
-
-        constexpr bool is_valid() const {
-            return index != std::numeric_limits<uint32_t>::max();
-        }
-
-        // For use in std::map, etc.
-        bool operator<(const RenderHandle &other) const {
-            if (index < other.index) return true;
-            if (index > other.index) return false;
-            return generation < other.generation;
-        }
-
-        bool operator==(const RenderHandle &other) const {
-            return index == other.index && generation == other.generation;
-        }
-    };*/
-
     struct BufferHandle : RenderHandle {
         static constexpr BufferHandle INVALID() { return {}; }
     };

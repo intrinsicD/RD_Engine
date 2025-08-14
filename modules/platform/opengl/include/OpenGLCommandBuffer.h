@@ -1,19 +1,18 @@
-//vulkan/VulkanCommandBuffer.h
+//vulkan/OpenGLCommandBuffer.h
 #pragma once
 
 #include "ral/CommandBuffer.h"
 
-#include <vulkan/vulkan.h>
-#include <vector> // Added for m_currentColorAttachments
+#include <glad/gl.h>
 
 namespace RDE {
-    class VulkanDevice; // Forward declare
+    class OpenGLDevice; // Forward declare
 
-    class VulkanCommandBuffer : public RAL::CommandBuffer {
+    class OpenGLCommandBuffer : public RAL::CommandBuffer {
     public:
-        explicit VulkanCommandBuffer(VkCommandBuffer handle, VulkanDevice *device);
+        explicit OpenGLCommandBuffer(OpenGLDevice *device);
 
-        ~VulkanCommandBuffer() override = default;
+        ~OpenGLCommandBuffer() override = default;
 
         void begin() override;
 
@@ -59,13 +58,17 @@ namespace RDE {
 
         void dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) override;
 
-        // --- Vulkan Specific ---
-        VkCommandBuffer get_handle() const { return m_handle; }
+        // --- OpenGL Specific ---
+
 
     private:
-        VkCommandBuffer m_handle = VK_NULL_HANDLE;
-        VulkanDevice *m_device;
-        std::vector<RAL::TextureHandle> m_currentColorAttachments; // cleared at end_render_pass
-        bool m_inRenderPass = false; // NEW: track if a render pass is active
+        OpenGLDevice *m_device;
+        bool m_recording = false;
+        bool m_inRenderPass = false;
+
+        // Cached state (optional)
+        GLuint m_boundProgram = 0;
+        GLuint m_indexBuffer = 0;
+        GLenum m_indexTypeGL = GL_UNSIGNED_INT;
     };
 }
