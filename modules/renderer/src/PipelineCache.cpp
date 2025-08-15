@@ -154,8 +154,10 @@ namespace RDE {
             if (current_offset > 0) {
                 psoDesc.vertexBindings.push_back({0, current_offset});
             }
-            // --- NEW: specify depth attachment format to match dynamic rendering depth image ---
-            psoDesc.depthAttachmentFormat = RAL::Format::D32_SFLOAT;
+            // REMOVED: forcing a depth attachment format here caused validation issues when the
+            // pipeline did not actually require depth. The renderer will inject the correct
+            // depthAttachmentFormat later if a depth buffer is present for the frame.
+            // psoDesc.depthAttachmentFormat = RAL::Format::D32_SFLOAT;
         }
 
         // 5. CREATE and CACHE the pipeline
