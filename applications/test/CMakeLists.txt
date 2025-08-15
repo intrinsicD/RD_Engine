@@ -36,6 +36,11 @@ target_sources(Test PRIVATE
         ImGuiLayer.cpp
         TestSceneLayer.cpp
         AssetViewerLayer.cpp
+        CameraControllers.cpp
+        CameraControllerLayer.cpp
+        CameraControllerLayer.h
+        EditorLayer.cpp
+        EditorLayer.h
 )
 
 find_package(OpenGL REQUIRED)

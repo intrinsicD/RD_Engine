@@ -4,6 +4,7 @@
 
 #include <glm/glm.hpp>
 #include <variant>
+#include <string>
 
 namespace RDE {
     struct CameraMatrices {
@@ -25,12 +26,14 @@ namespace RDE {
         struct Perspective {
             float fov_degrees = 45.0f;
             float aspect_ratio = 16.0f / 9.0f;
+            std::string name = "Perspective Camera";
         };
         struct Orthographic {
             float left = -1.0f;
             float right = 1.0f;
             float bottom = -1.0f;
             float top = 1.0f;
+            std::string name = "Orthographic Camera";
         };
 
         std::variant<Perspective, Orthographic> parameters { Perspective{} };
@@ -59,6 +62,8 @@ namespace RDE::CameraUtils{
     glm::mat4 CalculateViewMatrixFromModelMatrix(const glm::mat4 &model_matrix);
 
     CameraViewParameters GetViewParamsFromViewMatrix(const glm::mat4 &view_matrix);
+
+    glm::mat4 CalculateViewMatrix(const CameraViewParameters &view_params);
 
     glm::mat4 CalculatePerspectiveProjectionMatrix(const CameraProjectionParameters::Perspective &perspective_params,
                                                    float near_plane = 0.1f, float far_plane = 100.0f);

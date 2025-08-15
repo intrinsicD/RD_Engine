@@ -4,11 +4,16 @@
 #include "assets/AssetManager.h"
 #include "ral/Device.h"
 #include "ral/Resources.h"
+#include "renderer/Renderer.h"
+#include "components/TransformComponent.h" // for TransformLocal
 
 namespace RDE {
+    // Minimal tag to mark triangle test entities
+    struct TriangleTag {};
+
     class TestSceneLayer : public ILayer {
     public:
-        TestSceneLayer(AssetManager *asset_manager, entt::registry &registry, RAL::Device *device);
+        TestSceneLayer(AssetManager *asset_manager, entt::registry &registry, RAL::Device *device, Renderer *renderer);
 
         ~TestSceneLayer() override;
 
@@ -24,25 +29,24 @@ namespace RDE {
 
         void on_render_gui() override;
 
-        const char *get_name() const override {
+        [[nodiscard]] const char *get_name() const override {
             return "TestSceneLayer";
         }
 
     private:
-        void create_test_scene();
-
         void create_triangle_resources();
 
         void destroy_triangle_resources();
 
-        AssetManager *m_asset_manager = nullptr; // Pointer to the AssetManager for loading assets
-        entt::registry &m_registry; // Reference to the registry for entity management
-        RAL::Device *m_device = nullptr; // NEW
+        [[maybe_unused]] AssetManager *m_asset_manager = nullptr; // kept for future use (currently unused)
+        entt::registry &m_registry;
+        RAL::Device *m_device = nullptr;
+        Renderer *m_renderer = nullptr; // to access camera descriptor set
 
-        // Triangle resources
-        RAL::BufferHandle m_triangleVertexBuffer; // NEW
-        RAL::PipelineHandle m_trianglePipeline; // NEW
-        RAL::ShaderHandle m_triangleVS; // NEW
-        RAL::ShaderHandle m_triangleFS; // NEW
+        // Triangle GPU resources
+        RAL::BufferHandle m_triangleVertexBuffer;
+        RAL::PipelineHandle m_trianglePipeline;
+        RAL::ShaderHandle m_triangleVS;
+        RAL::ShaderHandle m_triangleFS;
     };
 }

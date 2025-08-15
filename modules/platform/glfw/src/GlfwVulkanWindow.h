@@ -35,6 +35,8 @@ namespace RDE {
 
         void get_framebuffer_size(int &width, int &height) const override;
 
+        void get_window_content_scale(float &xscale, float &yscale) const override;
+
         void terminate() override;
 
     private:

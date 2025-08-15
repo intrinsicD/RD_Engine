@@ -1,4 +1,5 @@
 #include "CameraControllers.h"
+#include "components/CameraComponent.h"
 
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -31,7 +32,9 @@ namespace RDE::Camera {
     }
 
     void ViewController::rotate(const glm::quat &q) {
-
+        // Rotate the forward and up vectors using quaternion multiplication
+        m_view_params.forward = glm::normalize(q * m_view_params.forward);
+        m_view_params.up = glm::normalize(q * m_view_params.up);
     }
 
     void ViewController::rotate(const glm::mat3 &rot_matrix) {
@@ -136,7 +139,14 @@ namespace RDE::Camera {
     }
 
     void FirstPersonController::look_around(float delta_x, float delta_y) {
+        // Adjust the forward vector based on mouse movement
+        float sensitivity = 0.1f; // Adjust sensitivity as needed
+        glm::quat yaw = glm::angleAxis(glm::radians(delta_x * sensitivity), m_view_params.up);
+        glm::quat pitch = glm::angleAxis(glm::radians(delta_y * sensitivity), glm::normalize(glm::cross(m_view_params.forward, m_view_params.up)));
 
+        // Apply the rotations to the forward vector
+        m_view_params.forward = glm::normalize(yaw * pitch * m_view_params.forward);
+        m_view_params.up = glm::normalize(glm::cross(m_view_params.forward, glm::vec3(0.0f, 1.0f, 0.0f)));
     }
 
     void ArcBallController::rotate_around_target(const glm::vec3 &target_world_space, const glm::vec3 &axis,
@@ -202,12 +212,12 @@ namespace RDE::Camera {
         glm::vec4 ray_clip = glm::vec4(ray_nds.x, ray_nds.y, -1.0, 1.0);
 
         // Convert to eye space
-        glm::mat4 inv_projection = glm::inverse(CalculateProjectionMatrix(m_projection_params));
+        glm::mat4 inv_projection = glm::inverse(CameraUtils::CalculateProjectionMatrix(m_projection_params));
         glm::vec4 ray_eye = inv_projection * ray_clip;
         ray_eye = glm::vec4(ray_eye.x, ray_eye.y, -1.0, 0.0);
 
         // Convert to world space
-        glm::mat4 inv_view = glm::inverse(CalculateViewMatrix(m_view_params));
+        glm::mat4 inv_view = glm::inverse(CameraUtils::CalculateViewMatrix(m_view_params));
         glm::vec3 ray_world_dir = glm::normalize(glm::vec3(inv_view * ray_eye));
 
         return {m_view_params.position, ray_world_dir};
@@ -224,5 +234,80 @@ namespace RDE::Camera {
             return out_distance >= 0; // Intersection must be in front of the ray's origin
         }
         return false;
+    }
+
+    bool TrackballController::map_to_sphere(const glm::vec2 &p, int w, int h, glm::vec3 &out) const {
+        if (p.x < 0.f || p.x > (float)w || p.y < 0.f || p.y > (float)h) return false;
+        float x = (p.x - 0.5f * w) / (float)w;            // [-0.5,0.5]
+        float y = (0.5f * h - p.y) / (float)h;             // [-0.5,0.5] with y up
+        float sinx = std::sin(std::numbers::pi_v<float> * x);
+        float siny = std::sin(std::numbers::pi_v<float> * y);
+        float ss = sinx * sinx + siny * siny;
+        float z = ss < 1.f ? std::sqrt(1.f - ss) : 0.f;
+        out = glm::vec3(sinx, siny, z);
+        return true;
+    }
+
+    void TrackballController::apply_rotation(const glm::vec3 &from, const glm::vec3 &to) {
+        glm::vec3 axis = glm::cross(from, to);
+        float dotv = glm::clamp(glm::dot(from, to), -1.f, 1.f);
+        if (glm::length(axis) < 1e-8f || fabsf(dotv) > 0.9999f) return; // negligible
+        float angle = std::acos(dotv); // radians
+        // Rotate camera position around scene center
+        glm::vec3 cam_dir = m_view_params.position - m_scene_center;
+        glm::mat4 R = glm::rotate(glm::mat4(1.f), angle, glm::normalize(axis));
+        cam_dir = glm::vec3(R * glm::vec4(cam_dir, 1.f));
+        m_view_params.position = m_scene_center + cam_dir;
+        // Rotate up vector
+        m_view_params.up = glm::normalize(glm::vec3(R * glm::vec4(m_view_params.up, 0.f)));
+        // Recompute forward
+        m_view_params.forward = glm::normalize(m_scene_center - m_view_params.position);
+    }
+
+    void TrackballController::begin_rotate(const glm::vec2 &screen_point, int width, int height) {
+        m_rotating = true;
+        m_prev_ok = map_to_sphere(screen_point, width, height, m_prev_point_3d);
+        m_prev_point_2d = screen_point;
+    }
+
+    void TrackballController::update_rotate(const glm::vec2 &screen_point, int width, int height) {
+        if (!m_rotating || !m_prev_ok) return;
+        glm::vec3 cur3d;
+        if (map_to_sphere(screen_point, width, height, cur3d)) {
+            apply_rotation(m_prev_point_3d, cur3d);
+            m_prev_point_3d = cur3d;
+            m_prev_point_2d = screen_point;
+        }
+    }
+
+    void TrackballController::end_rotate() {
+        m_rotating = false;
+        m_prev_ok = false;
+    }
+
+    void TrackballController::pan(float dx_pixels, float dy_pixels) {
+        // Determine scale factor based on distance & FOV
+        float distance = glm::length(m_view_params.position - m_scene_center);
+        glm::vec3 right = glm::normalize(glm::cross(m_view_params.forward, m_view_params.up));
+        float pixels_per_unit = 800.f; // heuristic reference scale
+        float scale = (distance * 2.f) / pixels_per_unit; // more distance => larger pan per pixel
+        glm::vec3 translation = (-right * dx_pixels + m_view_params.up * dy_pixels) * scale;
+        m_view_params.position += translation;
+        m_scene_center += translation; // keep orbit target consistent
+    }
+
+    void TrackballController::dolly(float scroll_delta) {
+        // Move camera toward/away from center exponentially for stability
+        float distance = glm::length(m_view_params.position - m_scene_center);
+        distance *= std::pow(0.9f, scroll_delta); // scroll_delta positive zooms in
+        distance = glm::clamp(distance, 0.05f * m_scene_radius, 50.f * m_scene_radius);
+        m_view_params.position = m_scene_center - m_view_params.forward * distance;
+    }
+
+    void TrackballController::view_all() {
+        // Place camera back so entire scene fits (~2.5 * radius like reference)
+        if (glm::length(m_view_params.forward) < 1e-6f) m_view_params.forward = glm::vec3(0.f, 0.f, -1.f);
+        if (glm::length(m_view_params.up) < 1e-6f) m_view_params.up = glm::vec3(0.f, 1.f, 0.f);
+        m_view_params.position = m_scene_center - m_view_params.forward * (2.5f * m_scene_radius);
     }
 }

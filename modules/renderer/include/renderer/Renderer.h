@@ -25,6 +25,10 @@ namespace RDE {
         void render(const View &view);
         void update_camera(const glm::mat4 &view, const glm::mat4 &proj, const glm::vec3 &camPos);
 
+        // Access camera descriptor resources
+        RAL::DescriptorSetLayoutHandle get_camera_set_layout() const { return m_cameraSetLayout; }
+        RAL::DescriptorSetHandle get_camera_descriptor_set() const { return m_cameraDescriptorSet; }
+
         // This allows access for systems that *truly* need the low-level device, like ImGui
         RAL::Device *get_device() { return m_device.get(); }
 

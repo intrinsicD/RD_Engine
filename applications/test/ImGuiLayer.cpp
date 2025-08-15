@@ -35,7 +35,45 @@ namespace RDE {
         ImGui::StyleColorsDark();
         ImGui_ImplGlfw_InitForVulkan(static_cast<GLFWwindow *>(m_window->get_native_handle()), true);
 
-        // 2. NOW, WE BUILD OUR OWN RENDERER BACKEND
+        // --- NEW: DPI-aware font & style scaling before creating font atlas/texture ---
+        float xscale = 1.0f, yscale = 1.0f;
+        m_window->get_window_content_scale(xscale, yscale);
+        float dpiScale = (xscale + yscale) * 0.5f;
+        if(dpiScale <= 0.f) dpiScale = 1.f;
+        // Base desired font size (logical points)
+        const float basePtSize = 13.0f; // larger than default 13
+        const float fontSize = basePtSize * dpiScale;
+
+        // Clear default font and add ours; fallback to AddFontDefault
+        io.Fonts->Clear();
+        bool customLoaded = false;
+        // Attempt to load a commonly available font (user can replace path with project font later)
+        // If you add a font under data/fonts/Roboto-Medium.ttf it will be picked up automatically.
+        const char* candidatePaths[] = {
+            "fonts/Roboto-Medium.ttf",
+            "Roboto-Medium.ttf"
+        };
+        auto asset_path = get_asset_path();
+        if(asset_path.has_value()) {
+            for(const char* p : candidatePaths){
+                auto full = (asset_path.value() / p).string();
+                if(std::filesystem::exists(full)) {
+                    if(io.Fonts->AddFontFromFileTTF(full.c_str(), fontSize)) { customLoaded = true; break; }
+                }
+            }
+        }
+        if(!customLoaded) {
+            RDE_CORE_WARN("ImGuiLayer: Falling back to default font (Roboto-Medium.ttf not loaded)");
+            io.Fonts->AddFontDefault();
+        }
+        // Scale style metrics proportionally to font size vs default 13
+        float styleScale = fontSize / 13.0f;
+        ImGuiStyle &style = ImGui::GetStyle();
+        style.ScaleAllSizes(styleScale);
+        // Optional additional global scale tweak (kept at 1.0 since we scaled sizes)
+        io.FontGlobalScale = 1.0f;
+
+        // 2. NOW, WE BUILD OUR OWN RENDERER BACKEND (font texture built inside)
         create_ral_resources();
     }
 
@@ -64,6 +102,12 @@ namespace RDE {
         ImGui_ImplGlfw_NewFrame(); // Let ImGui process input from the window
         ImGui::NewFrame();
         ImGui::BeginMainMenuBar();
+        if(ImGui::BeginMenu("Open")) {
+            if(ImGui::MenuItem("Editor")) {
+                if(m_openEditorCallback) m_openEditorCallback();
+            }
+            ImGui::EndMenu();
+        }
     }
 
     void ImGuiLayer::end(RAL::CommandBuffer *cmd) {

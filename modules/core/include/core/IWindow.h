@@ -41,6 +41,8 @@ namespace RDE {
 
         virtual void get_framebuffer_size(int &width, int &height) const = 0;
 
+        virtual void get_window_content_scale(float &xscale, float &yscale) const = 0;
+
         virtual void terminate() = 0;
 
         static std::unique_ptr<IWindow> Create(const WindowConfig &config = WindowConfig());

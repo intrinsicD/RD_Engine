@@ -23,7 +23,7 @@ namespace RDE {
 
         void on_update(float delta_time) override;
 
-        void on_render([[maybe_unused]] RAL::CommandBuffer *cmd) override {
+        void on_render(RAL::CommandBuffer *) override {
             // This is where we would render ImGui, but we handle it in the end() method.
         }
 
@@ -38,7 +38,7 @@ namespace RDE {
 
         void end(RAL::CommandBuffer *cmd);
         //--------------------------------------------------------------------------------------------------------------
-
+        void set_open_editor_callback(std::function<void()> cb) { m_openEditorCallback = std::move(cb); }
     private:
         void setup_render_state(ImDrawData* draw_data, RAL::CommandBuffer* cmd, int fb_width, int fb_height);
 
@@ -68,5 +68,7 @@ namespace RDE {
         RAL::BufferHandle m_IndexBuffer;
         size_t m_VertexBufferSize = 0;
         size_t m_IndexBufferSize = 0;
+
+        std::function<void()> m_openEditorCallback; // optional editor activation callback
     };
 }

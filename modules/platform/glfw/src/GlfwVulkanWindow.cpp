@@ -262,6 +262,12 @@ namespace RDE {
         glfwGetFramebufferSize(m_window, &width, &height);
     }
 
+    void GlfwVulkanWindow::get_window_content_scale(float &xscale, float &yscale) const {
+        glfwGetWindowContentScale(m_window, &xscale, &yscale);
+        if (xscale <= 0.f) xscale = 1.f; // Prevent division by zero
+        if (yscale <= 0.f) yscale = 1.f; // Prevent division by zero
+    }
+
     bool GlfwVulkanWindow::should_close() {
         return glfwWindowShouldClose(m_window);
     }

@@ -2,6 +2,8 @@
 #include "ImGuiLayer.h"
 #include "TestSceneLayer.h"
 #include "AssetViewerLayer.h"
+#include "CameraControllerLayer.h"
+#include "EditorLayer.h"
 
 #include "core/EntryPoint.h"
 #include "core/events/ApplicationEvent.h"
@@ -21,6 +23,7 @@
 #include "assets/MaterialManifestLoader.h"
 #include "assets/ShaderDefLoader.h"
 #include "assets/GenerateDefaultTextures.h"
+#include "components/CameraComponent.h"
 
 #include <imgui.h>
 
@@ -49,7 +52,7 @@ namespace RDE {
         m_is_running = true;
         m_is_minimized = false;
 
-        m_primary_camera_entity = m_scene->get_registry().create();
+        m_primary_camera_entity = entt::null; // will be created on demand
         m_last_selected_entity = entt::null; // No entity selected initially
         m_selected_entities.clear();
 
@@ -85,13 +88,20 @@ namespace RDE {
         }
 
         m_renderer->init();
+        ensure_primary_camera();
 
         auto imgui_layer = std::make_shared<ImGuiLayer>(m_window.get(),
                                                         m_renderer->get_device());
         m_imgui_layer = imgui_layer.get();
+        // Provide callback for opening editor
+        m_imgui_layer->set_open_editor_callback([this]() { attach_editor_layer(); });
         m_layer_stack.push_overlay(imgui_layer); // Assuming you have a push_layer method
 
-        auto test_scene_layer = std::make_shared<TestSceneLayer>(m_asset_manager.get(), m_scene->get_registry(), m_renderer->get_device());
+        // Camera controller layer (input -> camera)
+        auto camera_controller_layer = std::make_shared<CameraControllerLayer>(m_scene->get_registry(), m_window.get());
+        m_layer_stack.push_layer(camera_controller_layer);
+
+        auto test_scene_layer = std::make_shared<TestSceneLayer>(m_asset_manager.get(), m_scene->get_registry(), m_renderer->get_device(), m_renderer.get());
         m_layer_stack.push_layer(test_scene_layer);
 
         auto asset_viewer_layer = std::make_shared<AssetViewerLayer>(m_asset_database.get());
@@ -159,14 +169,29 @@ namespace RDE {
                 m_asset_manager->force_load(file_path);
             }
         }
-
+        ensure_primary_camera();
         // Update layers
         for (auto &layer: m_layer_stack) {
             layer->on_update(delta_time);
         }
-
         auto &system_scheduler = m_scene->get_system_scheduler();
         system_scheduler.execute(delta_time);
+        // --- NEW: push primary camera matrices to renderer camera UBO ---
+        auto &registry = m_scene->get_registry();
+        entt::entity primary = CameraUtils::GetCameraEntityPrimary(registry);
+        if(primary != entt::null && registry.valid(primary)) {
+            if(registry.all_of<CameraMatrices>(primary)) {
+                const auto &camMats = registry.get<CameraMatrices>(primary);
+                glm::vec3 camPos{0.0f};
+                if(registry.all_of<TransformWorld>(primary)) {
+                    const auto &tw = registry.get<TransformWorld>(primary);
+                    camPos = glm::vec3(tw.matrix[3]);
+                } else if(registry.all_of<TransformLocal>(primary)) {
+                    camPos = registry.get<TransformLocal>(primary).translation;
+                }
+                m_renderer->update_camera(camMats.view_matrix, camMats.projection_matrix, camPos);
+            }
+        }
     }
 
     void SandboxApp::on_render() {
@@ -272,5 +297,42 @@ namespace RDE {
                 (*it)->on_event(e);
             }
         }
+    }
+
+    void SandboxApp::ensure_primary_camera() {
+        auto &registry = m_scene->get_registry();
+        // If current primary camera handle invalid or null, try to find an existing one
+        if (m_primary_camera_entity == entt::null || !registry.valid(m_primary_camera_entity) ||
+            !registry.all_of<CameraComponent, TransformLocal>(m_primary_camera_entity)) {
+            // Search for any existing camera
+            entt::entity found = entt::null;
+            auto view = registry.view<CameraComponent, TransformLocal>();
+            for (auto e : view) { found = e; break; }
+            if (found != entt::null) {
+                m_primary_camera_entity = found;
+                CameraUtils::MakeCameraEntityPrimary(registry, m_primary_camera_entity);
+                return;
+            }
+            // Create new camera from default config
+            entt::entity cam = registry.create();
+            registry.emplace<TransformLocal>(cam, m_default_camera_config.transform);
+            CameraComponent camComp{}; camComp.projection_params = m_default_camera_config.projection;
+            registry.emplace<CameraComponent>(cam, camComp);
+            CameraUtils::MakeCameraEntityPrimary(registry, cam);
+            m_primary_camera_entity = cam;
+        } else {
+            // Ensure it has primary tag
+            if (!registry.all_of<CameraPrimary>(m_primary_camera_entity)) {
+                CameraUtils::MakeCameraEntityPrimary(registry, m_primary_camera_entity);
+            }
+        }
+    }
+
+    void SandboxApp::attach_editor_layer() {
+        if(m_editor_layer) return; // already attached
+        auto editor = std::make_shared<EditorLayer>(m_scene->get_registry(), this);
+        m_editor_layer = editor.get();
+        m_layer_stack.push_layer(editor);
+        RDE_INFO("EditorLayer attached");
     }
 }

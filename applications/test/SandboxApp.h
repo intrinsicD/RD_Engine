@@ -6,9 +6,13 @@
 #include "renderer/Renderer.h"
 #include "scene/Scene.h"
 #include "material/MaterialDatabase.h"
+#include "components/CameraComponent.h"
+#include "components/TransformComponent.h"
 
 namespace RDE {
     class ImGuiLayer;
+
+    class EditorLayer;
 
     class SandboxApp : public Application {
     public:
@@ -17,6 +21,10 @@ namespace RDE {
         ~SandboxApp() override;
 
         void run() override;
+
+        entt::entity get_last_selected_entity() const { return m_last_selected_entity; }
+
+        void set_last_selected_entity(entt::entity e) { m_last_selected_entity = e; }
 
     private:
         bool init() override;
@@ -28,6 +36,11 @@ namespace RDE {
         void on_render() override;
 
         void on_event(Event &e) override;
+
+        void ensure_primary_camera();
+
+
+        void attach_editor_layer();
 
         std::unique_ptr<RDE::IWindow> m_window;
         std::unique_ptr<RDE::InputManager> m_input_manager;
@@ -42,11 +55,19 @@ namespace RDE {
         std::unique_ptr<RDE::Scene> m_scene;
         RDE::LayerStack m_layer_stack;
         ImGuiLayer *m_imgui_layer = nullptr; // Pointer to ImGui layer for UI rendering
+        EditorLayer *m_editor_layer = nullptr; // Optional editor layer pointer
 
         // --- Application State ---
         bool m_is_running = true;
         bool m_is_minimized = false;
         bool m_window_resized = false;
+
+        // --- Default Camera Config ---
+        struct DefaultCameraConfig {
+            CameraProjectionParameters projection{}; // perspective by default
+            TransformLocal transform{{0.0f, 0.0f, 5.0f}, glm::quat(1, 0, 0, 0), {1, 1, 1}};
+        };
+        DefaultCameraConfig m_default_camera_config{};
 
         // --- Scene/Editor State ---
         entt::entity m_primary_camera_entity;

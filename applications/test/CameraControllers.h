@@ -1,9 +1,12 @@
 #pragma once
 
-#include "Cameracomponent.h"
-#include "Ray.h"
+#include "components/CameraComponent.h" // fixed include
+#include "geometry/Ray.h"
 
 namespace RDE::Camera {
+    // Renamed aliases for clarity with existing component types
+    using ViewParameters = CameraViewParameters;
+    using ProjectionParameters = CameraProjectionParameters;
 
     class ViewController {
     public:
@@ -115,5 +118,43 @@ namespace RDE::Camera {
         glm::vec3 m_initial_camera_position{};
         glm::vec3 m_drag_plane_point{};
         bool m_is_dragging = false;
+    };
+
+    class TrackballController {
+    public:
+        explicit TrackballController(ViewParameters &view_params,
+                            const glm::vec3 &scene_center = glm::vec3(0.0f),
+                            float scene_radius = 1.0f)
+                : m_view_params(view_params),
+                  m_scene_center(scene_center),
+                  m_scene_radius(scene_radius) {}
+
+        void set_scene(const glm::vec3 &center, float radius) { m_scene_center = center; m_scene_radius = radius; }
+
+        // Begin a potential rotation (mouse down)
+        void begin_rotate(const glm::vec2 &screen_point, int width, int height);
+        // Update rotation (mouse move while rotating)
+        void update_rotate(const glm::vec2 &screen_point, int width, int height);
+        void end_rotate();
+
+        // Pan (translate perpendicular to view direction)
+        void pan(float dx_pixels, float dy_pixels);
+        // Dolly/zoom (positive delta > zoom in)
+        void dolly(float scroll_delta);
+
+        // Reframe entire scene
+        void view_all();
+
+    private:
+        bool map_to_sphere(const glm::vec2 &p, int w, int h, glm::vec3 &out) const;
+        void apply_rotation(const glm::vec3 &from, const glm::vec3 &to);
+
+        ViewParameters &m_view_params;
+        glm::vec3 m_scene_center{0.0f};
+        float m_scene_radius{1.0f};
+        glm::vec2 m_prev_point_2d{};
+        glm::vec3 m_prev_point_3d{};
+        bool m_prev_ok = false;
+        bool m_rotating = false;
     };
 }
