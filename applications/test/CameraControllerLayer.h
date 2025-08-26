@@ -23,6 +23,7 @@ namespace RDE {
         void on_render_gui() override;
         const char *get_name() const override { return "CameraControllerLayer"; }
     private:
+        enum class Mode { Trackball, Fly };
         bool capture_events() const; // returns true if ImGui wants mouse
         void sync_from_components();
         void sync_to_components();
@@ -41,7 +42,13 @@ namespace RDE {
         // Interaction state
         bool m_left_down = false;
         bool m_middle_down = false;
+        bool m_right_down = false;
         glm::vec2 m_prev_mouse{0.0f};
+
+        // Mode and params
+        Mode m_mode = Mode::Trackball;
+        float m_fly_speed = 2.0f;
+        float m_look_sensitivity = 0.1f; // degrees per pixel
 
         bool m_enable_input = true;
         bool m_ignore_imgui_capture = false;

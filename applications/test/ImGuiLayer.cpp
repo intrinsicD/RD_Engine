@@ -6,6 +6,7 @@
 #include <imgui.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_vulkan.h>
+#include <filesystem>
 
 namespace RDE {
     ImGuiLayer::ImGuiLayer(IWindow *window, RAL::Device *device) : m_window(window), m_device(device) {
@@ -99,6 +100,13 @@ namespace RDE {
     }
 
     void ImGuiLayer::begin() {
+        // Update IO sizes every frame to handle resize and DPI changes
+        ImGuiIO &io = ImGui::GetIO();
+        int fbw=0, fbh=0; m_window->get_framebuffer_size(fbw, fbh);
+        if(fbw>0 && fbh>0) io.DisplaySize = ImVec2((float)fbw, (float)fbh);
+        float xscale=1.0f, yscale=1.0f; m_window->get_window_content_scale(xscale, yscale);
+        io.DisplayFramebufferScale = ImVec2(xscale, yscale);
+
         ImGui_ImplGlfw_NewFrame(); // Let ImGui process input from the window
         ImGui::NewFrame();
         ImGui::BeginMainMenuBar();

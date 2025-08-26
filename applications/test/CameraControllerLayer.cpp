@@ -7,6 +7,7 @@
 #include "components/TransformComponent.h"
 #include "CameraControllers.h"
 #include "core/InputManager.h" // added
+#include "core/KeyCodes.h"
 
 #include <imgui.h>
 #include <entt/entity/registry.hpp>
@@ -94,8 +95,31 @@ namespace RDE {
         m_proj_params_ptr = nullptr;
     }
 
-    void CameraControllerLayer::on_update(float /*delta_time*/) {
+    void CameraControllerLayer::on_update(float delta_time) {
         sync_from_components();
+        if(!m_enable_input) return;
+
+        // Fly movement with WASD (and QE up/down) when in Fly mode
+        if(m_mode == Mode::Fly && m_camera_entity != entt::null) {
+            // Only move when RMB held, to avoid unintended drift while using UI
+            if(m_right_down) {
+                float speed = m_fly_speed;
+                if(InputManager::is_key_held(KEY_LEFT_SHIFT) || InputManager::is_key_held(KEY_RIGHT_SHIFT)) speed *= 4.0f;
+                glm::vec3 right = glm::normalize(glm::cross(m_view_params.forward, m_view_params.up));
+                glm::vec3 move{0};
+                if(InputManager::is_key_held(KEY_W)) move += m_view_params.forward;
+                if(InputManager::is_key_held(KEY_S)) move -= m_view_params.forward;
+                if(InputManager::is_key_held(KEY_D)) move += right;
+                if(InputManager::is_key_held(KEY_A)) move -= right;
+                if(InputManager::is_key_held(KEY_E)) move += m_view_params.up;   // up
+                if(InputManager::is_key_held(KEY_Q)) move -= m_view_params.up;   // down
+                if(glm::length(move) > 1e-6f) {
+                    m_view_params.position += glm::normalize(move) * speed * delta_time;
+                    sync_to_components();
+                }
+            }
+        }
+
         if(m_dirty_gui) { // GUI changed values -> push to components
             sync_to_components();
             m_dirty_gui = false;
@@ -115,17 +139,20 @@ namespace RDE {
 
     bool CameraControllerLayer::on_mouse_button_pressed(MouseButtonPressedEvent &e) {
         if (!m_enable_input) return false;
-        if (m_camera_entity == entt::null || !m_trackball) return false;
+        if (m_camera_entity == entt::null) return false;
         // Use InputManager for current cursor position
         auto ci = InputManager::get_cursor_info();
         m_prev_mouse = ci.current_position;
         if (e.is_left_button()) {
             m_left_down = true;
-            int w,h; m_window->get_framebuffer_size(w,h);
-            m_trackball->begin_rotate(m_prev_mouse, w, h);
+            if(m_mode == Mode::Trackball && m_trackball) {
+                int w,h; m_window->get_framebuffer_size(w,h);
+                m_trackball->begin_rotate(m_prev_mouse, w, h);
+            }
             return true;
         }
         if (e.is_middle_button()) { m_middle_down = true; return true; }
+        if (e.is_right_button()) { m_right_down = true; return true; }
         return false;
     }
 
@@ -133,27 +160,52 @@ namespace RDE {
         bool consumed = false;
         if (e.is_left_button()) { m_left_down = false; if (m_trackball) m_trackball->end_rotate(); consumed = true; }
         if (e.is_middle_button()) { m_middle_down = false; consumed = true; }
+        if (e.is_right_button()) { m_right_down = false; consumed = true; }
         return consumed;
     }
 
     bool CameraControllerLayer::on_mouse_move(MouseMovedEvent &) {
         if (!m_enable_input) return false;
-        if (m_camera_entity == entt::null || !m_trackball) return false;
+        if (m_camera_entity == entt::null) return false;
         // Always fetch latest position from InputManager instead of event payload
         glm::vec2 cur = InputManager::get_cursor_info().current_position;
         int w,h; m_window->get_framebuffer_size(w,h);
-        if (m_left_down && !m_middle_down) {
-            m_trackball->update_rotate(cur, w, h);
-            sync_to_components();
-            m_prev_mouse = cur;
-            return true;
-        }
-        if (m_middle_down) {
-            glm::vec2 delta = cur - m_prev_mouse;
-            m_trackball->pan(delta.x, delta.y);
-            sync_to_components();
-            m_prev_mouse = cur;
-            return true;
+        if(m_mode == Mode::Trackball) {
+            if (m_left_down && !m_middle_down && m_trackball) {
+                m_trackball->update_rotate(cur, w, h);
+                sync_to_components();
+                m_prev_mouse = cur;
+                return true;
+            }
+            if (m_middle_down && m_trackball) {
+                glm::vec2 delta = cur - m_prev_mouse;
+                m_trackball->pan(delta.x, delta.y);
+                sync_to_components();
+                m_prev_mouse = cur;
+                return true;
+            }
+        } else { // Fly look with RMB
+            if(m_right_down) {
+                glm::vec2 delta = cur - m_prev_mouse;
+                // Apply yaw (around up) and pitch (around right)
+                float yaw_deg = delta.x * m_look_sensitivity;
+                float pitch_deg = -delta.y * m_look_sensitivity;
+                glm::vec3 right = glm::normalize(glm::cross(m_view_params.forward, m_view_params.up));
+                // Build rotations in world space
+                glm::mat4 yawM = glm::rotate(glm::mat4(1.f), glm::radians(yaw_deg), m_view_params.up);
+                glm::mat4 pitchM = glm::rotate(glm::mat4(1.f), glm::radians(pitch_deg), right);
+                glm::vec3 f = glm::normalize(glm::vec3(yawM * pitchM * glm::vec4(m_view_params.forward, 0.f)));
+                // Avoid flipping: constrain pitch to not align with up
+                if(glm::abs(glm::dot(f, m_view_params.up)) < 0.99f) {
+                    m_view_params.forward = f;
+                    // Recompute right/up to keep orthonormal
+                    right = glm::normalize(glm::cross(m_view_params.forward, m_view_params.up));
+                    m_view_params.up = glm::normalize(glm::cross(right, m_view_params.forward));
+                    sync_to_components();
+                }
+                m_prev_mouse = cur;
+                return true;
+            }
         }
         m_prev_mouse = cur;
         return false;
@@ -161,10 +213,19 @@ namespace RDE {
 
     bool CameraControllerLayer::on_mouse_scrolled(MouseScrolledEvent &e) {
         if (!m_enable_input) return false;
-        if (m_camera_entity == entt::null || !m_trackball) return false;
-        m_trackball->dolly(e.get_y_offset());
-        sync_to_components();
-        return true;
+        if (m_camera_entity == entt::null) return false;
+        if(m_mode == Mode::Trackball && m_trackball) {
+            m_trackball->dolly(e.get_y_offset());
+            sync_to_components();
+            return true;
+        }
+        if(m_mode == Mode::Fly) {
+            // Adjust fly speed using scroll
+            m_fly_speed *= (e.get_y_offset() > 0 ? 1.1f : 0.9f);
+            m_fly_speed = glm::clamp(m_fly_speed, 0.1f, 200.0f);
+            return true;
+        }
+        return false;
     }
 
     void CameraControllerLayer::on_render_gui() {
@@ -172,6 +233,15 @@ namespace RDE {
             ImGui::Checkbox("Enable Input", &m_enable_input);
             ImGui::SameLine();
             ImGui::Checkbox("Ignore ImGui Capture", &m_ignore_imgui_capture);
+            int mode = (m_mode == Mode::Trackball ? 0 : 1);
+            if(ImGui::RadioButton("Trackball", mode==0)) { m_mode = Mode::Trackball; }
+            ImGui::SameLine();
+            if(ImGui::RadioButton("Fly", mode==1)) { m_mode = Mode::Fly; }
+            if(m_mode == Mode::Fly) {
+                ImGui::DragFloat("Fly Speed", &m_fly_speed, 0.1f, 0.1f, 200.f, "%.2f");
+                ImGui::DragFloat("Look Sens.", &m_look_sensitivity, 0.01f, 0.01f, 2.0f, "%.2f");
+                ImGui::TextDisabled("RMB to look, WASD to move, Q/E down/up, Shift = turbo");
+            }
             if(m_camera_entity == entt::null) {
                 ImGui::TextDisabled("No primary camera");
             } else {
@@ -227,3 +297,4 @@ namespace RDE {
         ImGui::End();
     }
 }
+

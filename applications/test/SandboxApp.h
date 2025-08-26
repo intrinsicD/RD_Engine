@@ -26,6 +26,8 @@ namespace RDE {
 
         void set_last_selected_entity(entt::entity e) { m_last_selected_entity = e; }
 
+        // NEW: window accessor for layers needing sizes/scales
+        IWindow* get_window() const { return m_window.get(); }
     private:
         bool init() override;
 
