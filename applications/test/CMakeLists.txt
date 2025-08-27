@@ -38,9 +38,9 @@ target_sources(Test PRIVATE
         AssetViewerLayer.cpp
         CameraControllers.cpp
         CameraControllerLayer.cpp
-        CameraControllerLayer.h
         EditorLayer.cpp
-        EditorLayer.h
+        FileDropLayer.cpp
+        DefaultComponentGui.cpp
 )
 
 find_package(OpenGL REQUIRED)

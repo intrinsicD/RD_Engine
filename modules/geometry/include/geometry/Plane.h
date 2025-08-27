@@ -8,6 +8,12 @@ namespace RDE {
     struct Plane {
         glm::vec3 normal;
         float distance; // Distance from origin along the normal
+
+        Plane(const glm::vec3 &normal = glm::vec3(0.0f, 1.0f, 0.0f), float distance = 0.0f)
+                : normal(glm::normalize(normal)), distance(distance) {}
+
+        Plane(const glm::vec3 &normal, const glm::vec3 &plane_point)
+                : normal(glm::normalize(normal)), distance(glm::dot(normal, plane_point)) {}
     };
 
     inline glm::vec3 closest_point(const Plane &plane, const glm::vec3 &point) {

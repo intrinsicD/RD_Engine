@@ -63,11 +63,19 @@ set(IMGUI_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(IMGUI_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(imgui)
 
+# --- ImGuiFileDialog: fetch sources only; build within our rde_imgui target ---
+FetchContent_GetProperties(ImGuiFileDialog)
+if(NOT ImGuiFileDialog_POPULATED)
+    FetchContent_Populate(ImGuiFileDialog)
+endif()
+
 # --- All other dependencies ---
 # Most of these are header-only or have simple builds.
 FetchContent_MakeAvailable(VulkanMemoryAllocator)
 #FetchContent_MakeAvailable(daxa)
-FetchContent_MakeAvailable(spdlog ImGuiFileDialog tinyobjloader yaml-cpp efsw glm)
+
+# NOTE: Do NOT MakeAvailable(ImGuiFileDialog) to avoid building it standalone
+FetchContent_MakeAvailable(spdlog tinyobjloader yaml-cpp efsw glm)
 
 FetchContent_MakeAvailable(stb_image)
 add_library(rde_stb_image INTERFACE)

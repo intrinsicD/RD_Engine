@@ -1,4 +1,6 @@
 #include "CameraControllers.h"
+#include "core/Constants.h"
+#include "geometry/IntersectionRayPlane.h"
 #include "components/CameraComponent.h"
 
 #include <glm/gtc/quaternion.hpp>
@@ -12,14 +14,22 @@ namespace RDE::Camera {
 
     void ViewController::set_forward(const glm::vec3 &forward) {
         m_view_params.forward = glm::normalize(forward);
-        // Ensure the up vector is orthogonal to the forward vector
-        m_view_params.up = glm::normalize(glm::cross(m_view_params.forward, glm::vec3(0.0f, 1.0f, 0.0f)));
+        glm::vec3 right;
+        // Handle the case where the forward vector is parallel to the world's up vector
+        if (glm::abs(glm::dot(m_view_params.forward, WORLD_UP)) > 0.999f) {
+            right = glm::normalize(
+                    glm::cross(m_view_params.forward, glm::vec3(0.0f, 0.0f, 1.0f))); // Fallback right vector
+        } else {
+            right = glm::normalize(glm::cross(m_view_params.forward, WORLD_UP));
+        }
+        m_view_params.up = glm::normalize(glm::cross(right, m_view_params.forward));
     }
 
     void ViewController::set_up(const glm::vec3 &up) {
         m_view_params.up = glm::normalize(up);
-        // Ensure the forward vector is orthogonal to the up vector
-        m_view_params.forward = glm::normalize(glm::cross(m_view_params.up, glm::vec3(0.0f, 0.0f, -1.0f)));
+        // Re-orthogonalize the forward vector based on the new up vector
+        auto right = glm::normalize(glm::cross(m_view_params.forward, m_view_params.up));
+        m_view_params.forward = glm::normalize(glm::cross(m_view_params.up, right));
     }
 
     void ViewController::translate(const glm::vec3 &translation) {
@@ -48,6 +58,8 @@ namespace RDE::Camera {
         m_view_params.position = target - m_view_params.forward * distance;
         // Ensure the camera is looking at the target
         m_view_params.forward = glm::normalize(target - m_view_params.position);
+        glm::vec3 right = glm::normalize(glm::cross(m_view_params.forward, m_view_params.up));
+        m_view_params.up = glm::normalize(glm::cross(right, m_view_params.forward));
     }
 
     void ZoomController::zoom(float delta) {
@@ -55,30 +67,38 @@ namespace RDE::Camera {
         if (std::holds_alternative<ProjectionParameters::Perspective>(m_projection_params.parameters)) {
             auto &perspective_params = std::get<ProjectionParameters::Perspective>(m_projection_params.parameters);
             perspective_params.fov_degrees -= delta;
-            perspective_params.fov_degrees = glm::clamp(perspective_params.fov_degrees, 1.0f, 45.0f); // Clamp to reasonable bounds
+            perspective_params.fov_degrees = glm::clamp(perspective_params.fov_degrees, 1.0f,
+                                                        45.0f); // Clamp to reasonable bounds
         } else if (std::holds_alternative<ProjectionParameters::Orthographic>(m_projection_params.parameters)) {
-            auto &orthographic_params = std::get<ProjectionParameters::Orthographic>(m_projection_params.parameters);
-            orthographic_params.left += delta;
-            orthographic_params.right -= delta;
-            orthographic_params.bottom += delta;
-            orthographic_params.top -= delta;
+            auto &o = std::get<ProjectionParameters::Orthographic>(m_projection_params.parameters);
+
+            double cx = 0.5 * (o.left + o.right);
+            double cy = 0.5 * (o.bottom + o.top);
+            double sx = 0.5 * (o.right - o.left) - delta;
+            double sy = 0.5 * (o.top - o.bottom) - delta;
+            sx = std::max(sx, 1e-6);
+            sy = std::max(sy, 1e-6);
+            o.left = cx - sx;
+            o.right = cx + sx;
+            o.bottom = cy - sy;
+            o.top = cy + sy;
         }
     }
 
     bool ArcBallController::map_to_sphere(const glm::vec2 &screen_space_point, int screen_width, int screen_height,
-                                           glm::vec3 &result_on_sphere) const {
+                                          glm::vec3 &result_on_sphere) const {
         //Maps a 2D screen point to a 3D point on a virtual sphere using Shoemake's sinusoidal projection.
         if (screen_space_point.x < 0.0f || screen_space_point.x > screen_width ||
             screen_space_point.y < 0.0f || screen_space_point.y > screen_height) {
             return false;
         }
 
-        const float mapped_x = (screen_space_point.x - 0.5f * screen_width) / screen_width;
-        const float mapped_y = (0.5f * screen_height - screen_space_point.y) / screen_height;
-        const float sinx = std::sin(std::numbers::pi_v<float> * mapped_x * 0.5);
-        const float siny = std::sin(std::numbers::pi_v<float> * mapped_y * 0.5);
-        const float sinx2siny2 = (sinx * sinx) + (siny * siny);
-        const float z = sinx2siny2 < 1.0f ? std::sqrt(1.0f - sinx2siny2) : 0.0f;
+        const double mapped_x = (screen_space_point.x - 0.5 * screen_width) / screen_width;
+        const double mapped_y = (0.5 * screen_height - screen_space_point.y) / screen_height;
+        const double sinx = std::sin(std::numbers::pi_v<double> * mapped_x * 0.5);
+        const double siny = std::sin(std::numbers::pi_v<double> * mapped_y * 0.5);
+        const double sinx2siny2 = (sinx * sinx) + (siny * siny);
+        const double z = sinx2siny2 < 1.0 ? std::sqrt(1.0 - sinx2siny2) : 0.0;
         result_on_sphere = glm::vec3(sinx, siny, z);
         return true;
     }
@@ -92,8 +112,8 @@ namespace RDE::Camera {
                 glm::vec3 axis = cross(m_last_point_3d, result_on_sphere);
                 float cos_angle = glm::dot(m_last_point_3d, result_on_sphere);
 
-                if (fabs(cos_angle) < 1.0) {
-                    float angle_degrees = glm::degrees(acos(cos_angle));
+                if (std::abs(cos_angle) < 1.0) {
+                    float angle_degrees = glm::degrees(std::acos(cos_angle));
                     rotate_around_target(m_target_world_space, axis, -angle_degrees);
                 }
             }
@@ -119,13 +139,11 @@ namespace RDE::Camera {
     }
 
     void FirstPersonController::move_forward(float distance) {
-        glm::vec3 forward = glm::normalize(m_view_params.forward);
-        m_view_params.position += forward * distance;
+        m_view_params.position += m_view_params.forward * distance;
     }
 
     void FirstPersonController::move_backward(float distance) {
-        glm::vec3 backward = glm::normalize(-m_view_params.forward);
-        m_view_params.position += backward * distance;
+        m_view_params.position -= m_view_params.forward * distance;
     }
 
     void FirstPersonController::strafe_left(float distance) {
@@ -139,28 +157,31 @@ namespace RDE::Camera {
     }
 
     void FirstPersonController::look_around(float delta_x, float delta_y) {
-        // Adjust the forward vector based on mouse movement
-        float sensitivity = 0.1f; // Adjust sensitivity as needed
-        glm::quat yaw = glm::angleAxis(glm::radians(delta_x * sensitivity), m_view_params.up);
-        glm::quat pitch = glm::angleAxis(glm::radians(delta_y * sensitivity), glm::normalize(glm::cross(m_view_params.forward, m_view_params.up)));
+        glm::vec3 right = glm::normalize(glm::cross(m_view_params.forward, m_view_params.up));
+        glm::quat yaw = glm::angleAxis(glm::radians(-delta_x * m_sensitivity), m_view_params.up);
+        glm::quat pitch = glm::angleAxis(glm::radians(-delta_y * m_sensitivity), right);
 
-        // Apply the rotations to the forward vector
-        m_view_params.forward = glm::normalize(yaw * pitch * m_view_params.forward);
-        m_view_params.up = glm::normalize(glm::cross(m_view_params.forward, glm::vec3(0.0f, 1.0f, 0.0f)));
+        // Apply the rotations to both forward and up vectors to prevent roll
+        m_view_params.forward = glm::normalize(pitch * yaw * m_view_params.forward);
+        m_view_params.up = glm::normalize(pitch * yaw * m_view_params.up);
+    }
+
+    void FirstPersonController::set_sensitivity(float sensitivity) {
+        m_sensitivity = sensitivity;
     }
 
     void ArcBallController::rotate_around_target(const glm::vec3 &target_world_space, const glm::vec3 &axis,
-                                                       float angle) {
+                                                 float angle) {
         glm::mat4 rotation_matrix = glm::rotate(glm::mat4(1.0f), glm::radians(angle), axis);
         glm::vec3 direction = m_view_params.position - target_world_space;
         glm::vec3 rotated_direction = glm::vec3(rotation_matrix * glm::vec4(direction, 1.0f));
         m_view_params.position = target_world_space + rotated_direction;
         m_view_params.forward = glm::normalize(target_world_space - m_view_params.position);
-        m_view_params.up = glm::normalize(glm::cross(m_view_params.forward, glm::vec3(0.0f, 1.0f, 0.0f)));
+        m_view_params.up = glm::normalize(glm::mat3(rotation_matrix) * m_view_params.up);
     }
 
     void PixelPerfectDragController::start_drag(const glm::vec2 &start_mouse_position,
-                                                      const glm::vec3 &drag_point_world_space) {
+                                                const glm::vec3 &drag_point_world_space) {
         m_start_mouse_position = start_mouse_position;
         m_initial_camera_position = m_view_params.position;
         m_drag_plane_point = drag_point_world_space;
@@ -168,22 +189,23 @@ namespace RDE::Camera {
     }
 
     void PixelPerfectDragController::drag(const glm::vec2 &current_mouse_position,
-                                                int sceen_width, int screen_height) {
+                                          int screen_width, int screen_height) {
         if (!m_is_dragging) {
             return;
         }
 
         // Define the drag plane: normal is the camera's forward vector, and it passes through m_drag_plane_point
         glm::vec3 drag_plane_normal = -m_view_params.forward;
-        Plane drag_plane = {drag_plane_normal, glm::dot(drag_plane_normal, m_drag_plane_point)};
+        ///fix how the drag plane is defined so that it works correctly
+        Plane drag_plane = {drag_plane_normal, m_drag_plane_point};
 
         // Get the ray for the current mouse position
-        Ray current_ray = unproject(current_mouse_position, sceen_width, screen_height);
+        Ray current_ray = unproject(current_mouse_position, screen_width, screen_height);
 
         // Find the intersection of the current ray with the drag plane
-        float intersection_distance;
-        if (ray_plane_intersection(current_ray, drag_plane, intersection_distance)) {
-            glm::vec3 current_world_position = current_ray.origin + current_ray.direction * intersection_distance;
+        IntersectionRayPlane result = Intersect(current_ray, drag_plane);
+        if (result.hit) {
+            glm::vec3 current_world_position = current_ray.origin + current_ray.direction * result.distance;
 
             // The vector from the initially clicked point to the new point on the plane
             glm::vec3 drag_delta = current_world_position - m_drag_plane_point;
@@ -199,13 +221,13 @@ namespace RDE::Camera {
     }
 
     Ray PixelPerfectDragController::unproject(const glm::vec2 &screen_coords, int screen_width,
-                                                    int screen_height) const {
+                                              int screen_height) const {
         //TODO move to a utility file
 
         // Convert screen coordinates to normalized device coordinates (NDC)
-        float x = (2.0f * screen_coords.x) / screen_width - 1.0f;
-        float y = 1.0f - (2.0f * screen_coords.y) / screen_height;
-        float z = 1.0f; // Furthest point in the clip space cube
+        double x = (2.0 * screen_coords.x) / screen_width - 1.0;
+        double y = 1.0 - (2.0 * screen_coords.y) / screen_height;
+        double z = 1.0; // Furthest point in the clip space cube
         glm::vec3 ray_nds = glm::vec3(x, y, z);
 
         // Convert to clip space
@@ -223,27 +245,15 @@ namespace RDE::Camera {
         return {m_view_params.position, ray_world_dir};
     }
 
-    bool PixelPerfectDragController::ray_plane_intersection(const Ray &ray,
-                                                                  const Plane &plane,
-                                                                  float &out_distance) const {
-        //TODO move to a utility file
-        float denominator = glm::dot(plane.normal, ray.direction);
-        if (std::abs(denominator) > 1e-6) { // Avoid division by zero
-            float numerator = glm::dot(plane.normal, plane.normal * plane.distance - ray.origin);
-            out_distance = numerator / denominator;
-            return out_distance >= 0; // Intersection must be in front of the ray's origin
-        }
-        return false;
-    }
-
     bool TrackballController::map_to_sphere(const glm::vec2 &p, int w, int h, glm::vec3 &out) const {
-        if (p.x < 0.f || p.x > (float)w || p.y < 0.f || p.y > (float)h) return false;
-        float x = (p.x - 0.5f * w) / (float)w;            // [-0.5,0.5]
-        float y = (0.5f * h - p.y) / (float)h;             // [-0.5,0.5] with y up
-        float sinx = std::sin(std::numbers::pi_v<float> * x);
-        float siny = std::sin(std::numbers::pi_v<float> * y);
-        float ss = sinx * sinx + siny * siny;
-        float z = ss < 1.f ? std::sqrt(1.f - ss) : 0.f;
+        if (p.x<0.f || p.x>(double)w || p.y<0.f || p.y>(double)
+        h) return false;
+        double x = (p.x - 0.5f * w) / (double) w;            // [-0.5,0.5]
+        double y = (0.5f * h - p.y) / (double) h;             // [-0.5,0.5] with y up
+        double sinx = std::sin(std::numbers::pi_v<double> * x);
+        double siny = std::sin(std::numbers::pi_v<double> * y);
+        double ss = sinx * sinx + siny * siny;
+        double z = ss < 1.0 ? std::sqrt(1.0 - ss) : 0.0;
         out = glm::vec3(sinx, siny, z);
         return true;
     }

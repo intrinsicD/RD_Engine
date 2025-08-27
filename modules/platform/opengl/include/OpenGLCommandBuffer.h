@@ -62,13 +62,13 @@ namespace RDE {
 
 
     private:
-        OpenGLDevice *m_device;
+        [[maybe_unused]] OpenGLDevice *m_device;
         bool m_recording = false;
         bool m_inRenderPass = false;
 
         // Cached state (optional)
-        GLuint m_boundProgram = 0;
-        GLuint m_indexBuffer = 0;
+        [[maybe_unused]] GLuint m_boundProgram = 0;
+        [[maybe_unused]] GLuint m_indexBuffer = 0;
         GLenum m_indexTypeGL = GL_UNSIGNED_INT;
     };
 }

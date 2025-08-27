@@ -24,8 +24,16 @@
 #include "assets/ShaderDefLoader.h"
 #include "assets/GenerateDefaultTextures.h"
 #include "components/CameraComponent.h"
+#include "components/RenderableComponent.h"
+#include "components/MaterialComponent.h"
+#include "components/GeometryComponent.h"
+#include "components/BoundingVolumeComponent.h"
+#include "components/NameTagComponent.h"
+#include "components/FilepathComponent.h"
+#include "assets/AssetComponentTypes.h"
 
 #include <imgui.h>
+#include <filesystem>
 
 namespace RDE {
     SandboxApp::SandboxApp(std::unique_ptr<IWindow> window) : m_window(
@@ -74,6 +82,18 @@ namespace RDE {
             m_asset_manager->register_loader(std::make_shared<MeshMtlLoader>());
             m_asset_manager->register_loader(std::make_shared<MaterialManifestLoader>());
             m_asset_manager->register_loader(std::make_shared<ShaderDefLoader>());
+
+            // Preload default material for new entities
+            try {
+                auto f = m_asset_manager->load_async("materials/default.mat");
+                f.wait();
+                m_default_material_asset = f.get();
+                if(!m_default_material_asset || !m_default_material_asset->is_valid()) {
+                    RDE_CORE_WARN("Default material not found or invalid.");
+                }
+            } catch(...) {
+                RDE_CORE_WARN("Exception while loading default material.");
+            }
         }
         {
             auto &scene_registry = m_scene->get_registry();
@@ -276,13 +296,28 @@ namespace RDE {
             });
             dispatcher.dispatch<WindowFileDropEvent>([this](WindowFileDropEvent &e) {
                 // Handle file drop event
+                auto asset_root_opt = get_asset_path();
                 for (const auto &file_path: e.get_files()) {
-                    auto f_asset = m_asset_manager->load_async(file_path);
+                    std::filesystem::path p(file_path);
+                    std::string uri_rel;
+                    if (p.is_absolute()) {
+                        if (asset_root_opt && p.string().rfind(asset_root_opt->string(), 0) == 0) {
+                            uri_rel = std::filesystem::relative(p, *asset_root_opt).generic_string();
+                        } else {
+                            RDE_CORE_WARN("{}", fmt::format("Dropped file '{}' is outside the asset directory. Skipping.", file_path));
+                            continue;
+                        }
+                    } else {
+                        uri_rel = p.generic_string();
+                    }
 
+                    auto f_asset = m_asset_manager->load_async(uri_rel);
                     f_asset.wait();
                     auto asset_id = f_asset.get();
                     if(asset_id && asset_id->is_valid()){
-                        //TODO instanciate the asset in the scene with default parameters where missing
+                        auto abs_path = (asset_root_opt ? (*asset_root_opt / uri_rel).string() : uri_rel);
+                        entt::entity e_new = instantiate_entity_from_asset(asset_id, abs_path);
+                        if (e_new != entt::null) set_last_selected_entity(e_new);
                     }
                 }
                 return false; // Allow layers to handle the event
@@ -297,6 +332,47 @@ namespace RDE {
                 (*it)->on_event(e);
             }
         }
+    }
+
+    entt::entity SandboxApp::instantiate_entity_from_asset(const AssetID &asset_id, const std::string &absolute_uri) {
+        if (!asset_id || !asset_id->is_valid()) return entt::null;
+        auto &registry = m_scene->get_registry();
+        entt::entity e = registry.create();
+        // Basic components
+        auto &tx = registry.emplace<TransformLocal>(e);
+        (void)tx;
+        registry.emplace_or_replace<NameTagComponent>(e, NameTagComponent{ absolute_uri });
+        // File path breakdown
+        registry.emplace_or_replace<FilepathComponent>(e, GetFilepathComponent(std::filesystem::path(absolute_uri)));
+
+        // If asset has a human-friendly name, use it
+        if (auto *name = m_asset_database->try_get<AssetName>(asset_id)) {
+            registry.emplace_or_replace<NameTagComponent>(e, NameTagComponent{ name->name });
+        }
+
+        // Attach geometry linkage for CPU ops
+        registry.emplace_or_replace<GeometryComponent>(e, GeometryComponent{ asset_id });
+        // Renderable + default material
+        registry.emplace_or_replace<RenderableComponent>(e, RenderableComponent{ asset_id, true });
+        if (m_default_material_asset && m_default_material_asset->is_valid()) {
+            MaterialComponent mat{}; mat.material_asset_id = m_default_material_asset; registry.emplace_or_replace<MaterialComponent>(e, std::move(mat));
+        }
+
+        // Compute local AABB from CPU geometry if available
+        if (auto *cpu_geo = m_asset_database->try_get<AssetCpuGeometry>(asset_id)) {
+            auto positions = cpu_geo->vertices.get<glm::vec3>("v:point");
+            if (positions) {
+                AABB aabb; aabb.clear();
+                for (const auto &v : positions.vector()) {
+                    aabb.min = glm::min(aabb.min, v);
+                    aabb.max = glm::max(aabb.max, v);
+                }
+                BoundingVolumeAABBComponent bv{}; bv.local = aabb; bv.world = aabb; // will be updated by system
+                registry.emplace_or_replace<BoundingVolumeAABBComponent>(e, bv);
+            }
+        }
+
+        return e;
     }
 
     void SandboxApp::ensure_primary_camera() {

@@ -14,6 +14,7 @@ target_include_directories(Scene
 target_sources(Scene
         PRIVATE
         src/Scene.cpp
+        src/SceneUtils.cpp
 
         src/BoundingVolumeComponent.cpp
         src/CameraComponent.cpp

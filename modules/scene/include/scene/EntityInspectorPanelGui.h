@@ -2,6 +2,7 @@
 
 #include "components/TransformInspectorPanelGui.h"
 #include "components/CameraInspectorPanelGui.h"
+#include "scene/ComponentRegistry.h"
 
 #include <entt/entity/registry.hpp>
 
@@ -19,32 +20,30 @@ namespace RDE{
                 return;
             }
 
-            // Retrieve components from the registry
-            TransformInspectorPanelGui transformInspector{
-                .transform_local = registry->try_get<TransformLocal>(entity),
-                .transform_world = registry->try_get<TransformWorld>(entity)
-            };
-
-            if(!transformInspector) {
-                ImGui::Text("No Transform components found for this entity.");
-                return;
-            }else{
-                transformInspector.Draw();
+            // Header row: Add/Remove helpers
+            if (ImGui::Button("Add Component")) {
+                ImGui::OpenPopup("AddComponentPopup");
             }
+            ComponentRegistryGui::instance().draw_add_component_popup(*registry, entity);
 
-            CameraInspectorPanelGui cameraInspector{
-                .camera_matrices = registry->try_get<CameraMatrices>(entity),
-                .camera_view_params = registry->try_get<CameraViewParameters>(entity),
-                .camera_projection_params = registry->try_get<CameraProjectionParameters>(entity),
-                .camera_frustum_planes = registry->try_get<CameraFrustumPlanes>(entity),
-                .camera_dirty = registry->all_of<CameraDirty>(entity),
-                .camera_primary = registry->all_of<CameraPrimary>(entity)
-            };
+            ImGui::Separator();
 
-            if(!cameraInspector) {
-                ImGui::Text("No Camera components found for this entity.");
-            } else {
-                cameraInspector.Draw();
+            // Iterate over all registered components and draw those that exist on this entity
+            for (const auto &desc : ComponentRegistryGui::instance().descriptors()) {
+                if (!desc.has(*registry, entity)) continue;
+                ImGui::PushID((int)desc.type_hash);
+                bool open = ImGui::TreeNode(desc.name.c_str());
+                ImGui::SameLine();
+                if (ImGui::SmallButton("Remove")) {
+                    desc.remove(*registry, entity);
+                    ImGui::PopID();
+                    continue;
+                }
+                if (open) {
+                    desc.draw(*registry, entity);
+                    ImGui::TreePop();
+                }
+                ImGui::PopID();
             }
         }
     };

@@ -8,6 +8,7 @@
 #include "material/MaterialDatabase.h"
 #include "components/CameraComponent.h"
 #include "components/TransformComponent.h"
+#include "assets/AssetHandle.h"
 
 namespace RDE {
     class ImGuiLayer;
@@ -41,6 +42,8 @@ namespace RDE {
 
         void ensure_primary_camera();
 
+        // Create a scene entity from a loaded asset with sensible default components
+        entt::entity instantiate_entity_from_asset(const AssetID &asset_id, const std::string &absolute_uri);
 
         void attach_editor_layer();
 
@@ -77,5 +80,8 @@ namespace RDE {
         std::vector<entt::entity> m_selected_entities;
 
         RDE::View m_main_view;
+
+        // --- Cached defaults ---
+        AssetID m_default_material_asset; // default material for new renderables
     };
 }

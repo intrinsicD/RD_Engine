@@ -86,8 +86,11 @@ namespace RDE::Camera {
 
         void look_around(float delta_x, float delta_y);
 
+        void set_sensitivity(float sensitivity);
+
     private:
         ViewParameters &m_view_params; // Reference to the camera view parameters
+        float m_sensitivity = 0.1f; // Mouse sensitivity for looking around
     };
 
     class PixelPerfectDragController {
@@ -108,9 +111,6 @@ namespace RDE::Camera {
     private:
         // Helper to unproject screen coordinates to a world space ray
         Ray unproject(const glm::vec2 &screen_coords, int screen_width, int screen_height) const;
-
-        // Helper to find the intersection of a ray and a plane
-        bool ray_plane_intersection(const Ray &ray, const Plane &plane, float &out_distance) const;
 
         ViewParameters &m_view_params;
         const ProjectionParameters &m_projection_params;
