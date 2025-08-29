@@ -101,6 +101,7 @@ namespace RDE {
             build_dependency_graph(root_uri, graph);
 
             const auto data_path = get_asset_path();
+            const std::string root_abs = (data_path.value() / root_uri).string();
 
             // -- II. SCHEDULING PHASE --
             auto stages = graph.bake();
@@ -115,12 +116,12 @@ namespace RDE {
                 // TODO: Replace with parallel_for or dispatch to a thread pool.
                 for (const std::string* uri_ptr : stage) {
                     //make sure the path is the correct absolute path containing the parent path
-                    const std::string& current_uri = data_path.value() / *uri_ptr;
+                    const std::string current_abs = (data_path.value() / *uri_ptr).string();
 
                     // Skip if it was loaded as a dependency of another parallel asset.
-                    if (m_cache.count(current_uri)) continue;
+                    if (m_cache.count(current_abs)) continue;
 
-                    std::filesystem::path path(current_uri);
+                    std::filesystem::path path(current_abs);
                     std::string ext = path.extension().string();
                     auto it_loader = m_loaders.find(ext);
                     if (it_loader == m_loaders.end()) {
@@ -128,15 +129,15 @@ namespace RDE {
                     }
 
                     // The loader does the actual work.
-                    AssetID primary_id = it_loader->second->load_asset(current_uri, m_database, *this);
+                    AssetID primary_id = it_loader->second->load_asset(current_abs, m_database, *this);
 
                     if(primary_id){
                         // Cache the result immediately.
-                        m_cache[current_uri] = primary_id;
+                        m_cache[current_abs] = primary_id;
                     }
                 }
             }
-            return m_cache.at(root_uri);
+            return m_cache.at(root_abs);
         }
 
         void build_dependency_graph(const std::string& root_uri, DependencyGraph<std::string, std::string>& graph) {

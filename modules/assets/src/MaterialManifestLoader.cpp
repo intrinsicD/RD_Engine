@@ -101,7 +101,6 @@ namespace RDE {
                 if (idx < texture_deps.size()) {
                     // Quick fix, the asset base path is missing here because we load the relative path from the manifest.
                     // Just prepend the base path to the texture URI.
-                    // TODO: Find a better way to handle absolute and relative paths in manifests.
                     auto asset_path = get_asset_path();
                     const auto texture_uri = asset_path.value() / texture_deps[idx].as<std::string>();
                     material.textures["t_" + texture_name] = manager.get_loaded_asset(texture_uri);
@@ -127,7 +126,9 @@ namespace RDE {
     std::vector<std::string> MaterialManifestLoader::get_dependencies(const std::string &uri) const {
         // A fast dependency scan of the YAML file
         std::vector<std::string> deps;
-        YAML::Node doc = YAML::LoadFile(uri);
+        // Ensure we open the absolute file path under the assets directory
+        const auto asset_path = get_asset_path();
+        YAML::Node doc = YAML::LoadFile((asset_path.value() / uri).string());
 
         for (const auto &node: doc["dependencies"]["shaders"]) {
             deps.push_back(node.as<std::string>());

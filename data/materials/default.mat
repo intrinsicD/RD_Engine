@@ -1,87 +1,45 @@
 #data/materials/default.mat
 # ===================================================================
-# RDE Default Material
-#
-# This is the fallback material used for any mesh that does not have
-# a material assigned. It uses a standard PBR metallic/roughness
-# workflow.
-#
-# You can copy this file to create new materials.
+# RDE Default Material (schema-compliant)
 # ===================================================================
-# --- Shader Program Definition ---
 version: 1.0
 name: Default
 
 dependencies:
-  # The shader definition file that contains the shader program.
   shaders:
     - "shaders/basic_lit.shaderdef"
-
-  # Textures used by this material.
   textures:
-    - "textures/default_white.png"       # Albedo map (1x1 white texture)
-    - "textures/default_normal.png"      # Normal map (1x1 flat normal texture)
-    - "textures/default_metal_rough.png" # Metal/Roughness/AO map (1x1 default values)
+    - "textures/default_white.png"       # Index 0: Albedo
+    - "textures/default_normal.png"      # Index 1: Normal
+    - "textures/default_metal_rough.png" # Index 2: Metal/Rough/AO
 
-# -------------------------------------------------------------------
-# Pipeline State
-# Defines how the GPU should be configured when rendering this material.
-# -------------------------------------------------------------------
+# --- GPU Pipeline State ---
 pipeline:
-  # cullMode: Which side of the triangles to discard.
-  # Options: Back, Front, None
   cullMode: Back
-
-  # polygonMode: How to draw the triangles.
-  # Options: Fill, Line, Point
   polygonMode: Fill
-
-  # depthTest: If true, objects will correctly occlude each other.
   depthTest: true
-
-  # depthWrite: If true, this object will write to the depth buffer,
-  # allowing it to occlude other objects drawn after it.
-  # (Transparent materials would set this to false).
   depthWrite: true
 
-# -------------------------------------------------------------------
-# Material Parameters
-# These are the intrinsic properties of the surface.
-# They are uploaded to a Uniform Buffer for the shader to use.
-# -------------------------------------------------------------------
+# --- Material Parameters ---
 parameters:
-  # The base color of the material (albedo), in RGBA format.
-  # This is a neutral grey, which is a good default.
-  baseColor: [0.8, 0.8, 0.8, 1.0]
+  - name: baseColor
+    type: vec4
+    value: [0.8, 0.8, 0.8, 1.0]
+  - name: metalness
+    type: float
+    value: 0.0
+  - name: roughness
+    type: float
+    value: 0.5
+  - name: emissiveFactor
+    type: vec3
+    value: [0.0, 0.0, 0.0]
 
-  # How metallic the surface is. 0.0 = dielectric (plastic, wood),
-  # 1.0 = fully metallic (gold, steel).
-  metalness: 0.0
-
-  # How rough the surface is. 0.0 = perfectly smooth (mirror),
-  # 1.0 = fully rough (chalk, clay). A value of 0.5 is a good
-  # neutral default.
-  roughness: 0.5
-
-  # Emissive factor. Makes the object appear to glow.
-  # Default is black (no emission).
-  emissiveFactor: [0.0, 0.0, 0.0]
-
-# -------------------------------------------------------------------
-# Texture Maps
-# These link shader samplers to texture files.
-# The engine will look for these textures relative to the assets/ directory.
-# -------------------------------------------------------------------
+# --- Texture Maps ---
 textures:
-  # The albedoMap multiplies with the baseColor parameter.
-  # A 1x1 white texture means "don't change the baseColor".
-  # This is a critical default for PBR.
-  albedoMap: 0
-
-  # The normalMap provides fine surface detail.
-  # A 1x1 flat normal texture (RGB 128,128,255) means "the surface is perfectly flat".
-  normalMap: 1
-
-  # Metal/Roughness/AO map. Often packed into one texture (R=Metal, G=Roughness, B=AO).
-  # A 1x1 texture with our default values is a good fallback.
-  metalRoughnessMap: 2
+  - name: albedoMap
+    index: 0
+  - name: normalMap
+    index: 1
+  - name: metalRoughnessMap
+    index: 2
