@@ -2,7 +2,9 @@
 #include "ral/Resources.h"
 #include "core/Application.h"
 #include "core/Paths.h"
+#include "core/IWindow.h"
 
+#include <glm/glm.hpp>
 #include <imgui.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_vulkan.h>

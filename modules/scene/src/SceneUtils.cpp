@@ -5,8 +5,8 @@
 
 namespace RDE{
     void EnsureDefaultComponents(entt::registry &registry, entt::entity entity){
-        Requires<TransformLocal>(registry, entity);
-        Requires<MaterialComponent>(registry, entity);
-        Requires<RenderableComponent>(registry, entity);
+        Require<TransformLocal>(registry, entity);
+        Require<MaterialComponent>(registry, entity);
+        Require<RenderableComponent>(registry, entity);
     }
 }

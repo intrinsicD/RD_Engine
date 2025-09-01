@@ -109,8 +109,8 @@ namespace RDE::CameraUtils {
         }
         if (!registry.valid(entity_id)) return entt::null;
 
-        if (!registry.all_of<CameraProjectionParameters>(entity_id)) {
-            registry.emplace<CameraProjectionParameters>(entity_id);
+        if (!registry.all_of<CameraComponent>(entity_id)) {
+            registry.emplace<CameraComponent>(entity_id);
         }
         if (!registry.all_of<TransformLocal>(entity_id)) {
             registry.emplace<TransformLocal>(entity_id);
@@ -120,7 +120,7 @@ namespace RDE::CameraUtils {
 
     bool MakeCameraEntityPrimary(entt::registry &registry, entt::entity entity_id) {
         if (!registry.valid(entity_id) ||
-            !registry.all_of<TransformLocal, CameraProjectionParameters>(entity_id)) {
+            !registry.all_of<TransformLocal, CameraComponent>(entity_id)) {
             return false; // Invalid entity or not a camera
         }
 
@@ -143,7 +143,7 @@ namespace RDE::CameraUtils {
 
     void SetCameraDirty(entt::registry &registry, entt::entity entity_id) {
         if (!registry.valid(entity_id) ||
-            !registry.all_of<CameraProjectionParameters>(entity_id)) {
+            !registry.all_of<CameraComponent>(entity_id)) {
             return; // Invalid entity or not a camera
         }
 

@@ -34,6 +34,9 @@
 
 #include <imgui.h>
 #include <filesystem>
+#include <entt/entity/registry.hpp>
+
+#include "scene/SceneUtils.h"
 
 namespace RDE {
     SandboxApp::SandboxApp(std::unique_ptr<IWindow> window) : m_window(
@@ -60,9 +63,10 @@ namespace RDE {
         m_is_running = true;
         m_is_minimized = false;
 
-        m_primary_camera_entity = entt::null; // will be created on demand
-        m_last_selected_entity = entt::null; // No entity selected initially
-        m_selected_entities.clear();
+        m_primary_camera_context.entity = entt::null;
+
+        m_selection_context.last_selected_entity = entt::null;
+        m_selection_context.selected_entities.clear();
 
         {
             m_material_database = std::make_shared<MaterialDatabase>();
@@ -197,8 +201,9 @@ namespace RDE {
         auto &system_scheduler = m_scene->get_system_scheduler();
         system_scheduler.execute(delta_time);
         // --- NEW: push primary camera matrices to renderer camera UBO ---
+        ensure_primary_camera();
         auto &registry = m_scene->get_registry();
-        entt::entity primary = CameraUtils::GetCameraEntityPrimary(registry);
+        entt::entity primary = m_primary_camera_context.entity;
         if(primary != entt::null && registry.valid(primary)) {
             if(registry.all_of<CameraMatrices>(primary)) {
                 const auto &camMats = registry.get<CameraMatrices>(primary);
@@ -208,6 +213,8 @@ namespace RDE {
                     camPos = glm::vec3(tw.matrix[3]);
                 } else if(registry.all_of<TransformLocal>(primary)) {
                     camPos = registry.get<TransformLocal>(primary).translation;
+                }else {
+                    camPos = m_primary_camera_context.default_camera_config.default_transform.translation;
                 }
                 m_renderer->update_camera(camMats.view_matrix, camMats.projection_matrix, camPos);
             }
@@ -317,7 +324,7 @@ namespace RDE {
                     if(asset_id && asset_id->is_valid()){
                         auto abs_path = (asset_root_opt ? (*asset_root_opt / uri_rel).string() : uri_rel);
                         entt::entity e_new = instantiate_entity_from_asset(asset_id, abs_path);
-                        if (e_new != entt::null) set_last_selected_entity(e_new);
+                        if (e_new != entt::null) m_selection_context.last_selected_entity = e_new;
                     }
                 }
                 return false; // Allow layers to handle the event
@@ -377,36 +384,35 @@ namespace RDE {
 
     void SandboxApp::ensure_primary_camera() {
         auto &registry = m_scene->get_registry();
-        // If current primary camera handle invalid or null, try to find an existing one
-        if (m_primary_camera_entity == entt::null || !registry.valid(m_primary_camera_entity) ||
-            !registry.all_of<CameraComponent, TransformLocal>(m_primary_camera_entity)) {
-            // Search for any existing camera
-            entt::entity found = entt::null;
-            auto view = registry.view<CameraComponent, TransformLocal>();
-            for (auto e : view) { found = e; break; }
-            if (found != entt::null) {
-                m_primary_camera_entity = found;
-                CameraUtils::MakeCameraEntityPrimary(registry, m_primary_camera_entity);
-                return;
+        if (m_primary_camera_context.entity == entt::null) {
+            m_primary_camera_context.entity = CameraUtils::GetCameraEntityPrimary(registry);
+
+            if (m_primary_camera_context.entity == entt::null) {
+                auto view = registry.view<CameraComponent>();
+                if (view.empty()) {
+                    m_primary_camera_context.entity = entt::null; // No primary camera found
+                }else {
+                    m_primary_camera_context.entity = *view.begin();
+                }
             }
-            // Create new camera from default config
-            entt::entity cam = registry.create();
-            registry.emplace<TransformLocal>(cam, m_default_camera_config.transform);
-            CameraComponent camComp{}; camComp.projection_params = m_default_camera_config.projection;
-            registry.emplace<CameraComponent>(cam, camComp);
-            CameraUtils::MakeCameraEntityPrimary(registry, cam);
-            m_primary_camera_entity = cam;
-        } else {
-            // Ensure it has primary tag
-            if (!registry.all_of<CameraPrimary>(m_primary_camera_entity)) {
-                CameraUtils::MakeCameraEntityPrimary(registry, m_primary_camera_entity);
+
+            if (m_primary_camera_context.entity == entt::null) {
+                m_primary_camera_context.entity = registry.create();
+                Require<CameraComponent>(registry, m_primary_camera_context.entity, {m_primary_camera_context.default_camera_config.projection_parameters});
+                Require<TransformLocal>(registry, m_primary_camera_context.entity, m_primary_camera_context.default_camera_config.default_transform);
             }
+            CameraUtils::MakeCameraEntityPrimary(registry, m_primary_camera_context.entity);
+        }
+
+        if (m_primary_camera_context.entity == entt::null) {
+            RDE_CORE_ERROR("No primary camera entity could be found or created!");
+            return;
         }
     }
 
     void SandboxApp::attach_editor_layer() {
         if(m_editor_layer) return; // already attached
-        auto editor = std::make_shared<EditorLayer>(m_scene->get_registry(), this);
+        auto editor = std::make_shared<EditorLayer>(*m_scene, m_selection_context, get_window());
         m_editor_layer = editor.get();
         m_layer_stack.push_layer(editor);
         RDE_INFO("EditorLayer attached");

@@ -1,4 +1,4 @@
-#include "assets/FileWatcher.h"
+#include "../../core/include/core/FileWatcher.h"
 #include "core/Log.h" // Your logging utility
 
 // Include the actual efsw header here in the .cpp

@@ -1,6 +1,9 @@
 #pragma once
 
 #include "core/ILayer.h"
+#include "core/SelectionContext.h"
+#include "core/IWindow.h"
+#include "scene/Scene.h"
 #include <entt/entity/fwd.hpp>
 
 namespace RDE {
@@ -8,19 +11,24 @@ namespace RDE {
 
     class EditorLayer : public ILayer {
     public:
-        EditorLayer(entt::registry &registry, SandboxApp *app) : m_registry(registry), m_app(app) {}
+        EditorLayer(Scene &scene, SelectionContext &selection_context, IWindow *window) : m_scene(scene),
+            m_selection_context(selection_context), m_window(window) {
+        }
 
         ~EditorLayer() override = default;
 
         void on_attach() override;
 
-        void on_detach() override {}
+        void on_detach() override {
+        }
 
-        void on_update(float) override {}
+        void on_update(float) override {
+        }
 
         void on_event(Event &) override;
 
-        void on_render(RAL::CommandBuffer *) override {}
+        void on_render(RAL::CommandBuffer *) override {
+        }
 
         void on_render_gui() override;
 
@@ -36,7 +44,8 @@ namespace RDE {
 
         bool pick_at_cursor(entt::entity &out_entity) const;
 
-        entt::registry &m_registry;
-        SandboxApp *m_app = nullptr;
+        Scene &m_scene;
+        SelectionContext &m_selection_context;
+        IWindow *m_window = nullptr;
     };
 }

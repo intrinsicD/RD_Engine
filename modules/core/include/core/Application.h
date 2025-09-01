@@ -1,17 +1,6 @@
 #pragma once
 
 #include "core/events/Event.h"
-#include "core/Mouse.h"
-#include "core/Keyboard.h"
-#include "scene/SystemScheduler.h"
-#include "core/LayerStack.h"
-#include "core/IWindow.h"
-
-#include "assets/AssetManager.h"
-#include "assets/AssetDatabase.h"
-#include "assets/FileWatcher.h"
-
-#include <entt/fwd.hpp>
 
 struct GLFWwindow;
 
