@@ -25,22 +25,10 @@ namespace RDE {
         VkShaderModule module{VK_NULL_HANDLE};
     };
 
-    struct VulkanPipeline {
-        VkPipeline handle{VK_NULL_HANDLE};
-        VkPipelineLayout layout{VK_NULL_HANDLE};
-        VkPipelineBindPoint bindPoint{VK_PIPELINE_BIND_POINT_GRAPHICS}; // NEW
-    };
-
-    struct VulkanSampler {
-        VkSampler handle{VK_NULL_HANDLE};
-    };
-
-    struct VulkanDescriptorSetLayout {
         VkDescriptorSetLayout handle{VK_NULL_HANDLE};
     };
 
-    struct VulkanDescriptorSet {
+        VkPipelineBindPoint bindPoint{VK_PIPELINE_BIND_POINT_GRAPHICS}; // NEW
         VkDescriptorSet handle{VK_NULL_HANDLE};
-    };
     // ... other concrete types later
-}
+    struct VulkanSampler {

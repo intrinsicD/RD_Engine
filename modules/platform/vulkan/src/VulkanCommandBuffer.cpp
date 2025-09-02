@@ -52,6 +52,18 @@ namespace RDE {
             b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             b.image = vkTex.handle;
             // Removed incorrect override of oldLayout for swapchain images; must use tracked state (Undefined first use)
+            if(vkTex.isSwapchainImage && desiredLayout == RAL::ImageLayout::ColorAttachment) {
+                b.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+            }
+            if(vkTex.isSwapchainImage && desiredLayout == RAL::ImageLayout::ColorAttachment) {
+                b.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+            }
+            if(vkTex.isSwapchainImage && desiredLayout == RAL::ImageLayout::ColorAttachment) {
+                b.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+            }
+            if(vkTex.isSwapchainImage && desiredLayout == RAL::ImageLayout::ColorAttachment) {
+                b.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+            }
             if (has_flag(ralDesc.usage, RAL::TextureUsage::DepthStencilAttachment)) {
                 b.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
                 if (ralDesc.format == RAL::Format::D24_UNORM_S8_UINT || ralDesc.format == RAL::Format::D32_SFLOAT_S8_UINT)
@@ -255,18 +267,6 @@ namespace RDE {
                 .minDepth = viewport.min_depth,
                 .maxDepth = viewport.max_depth
         };
-        vkCmdSetViewport(m_handle, 0, 1, &vkViewport);
-    }
-
-    void VulkanCommandBuffer::set_scissor(const RAL::Rect2D &scissor) {
-        VkRect2D vkScissor{
-                .offset = {scissor.x, scissor.y},
-                .extent = {scissor.width, scissor.height}
-        };
-        vkCmdSetScissor(m_handle, 0, 1, &vkScissor);
-    }
-
-    void VulkanCommandBuffer::draw(uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex,
                                    uint32_t first_instance) {
         vkCmdDraw(m_handle, vertex_count, instance_count, first_vertex, first_instance);
     }
@@ -280,11 +280,11 @@ namespace RDE {
         auto &pipeline = m_device->get_resources_database().get<VulkanPipeline>(pipeline_handle);
         vkCmdBindPipeline(m_handle, pipeline.bindPoint, pipeline.handle); // UPDATED
     }
-
-    void VulkanCommandBuffer::pipeline_barrier(const RAL::ResourceBarrier &barrier) {
-        VkImageMemoryBarrier imageBarrier{};
+                    barrier.textureTransition.texture);
+            const auto &ralDesc = m_device->get_resources_database().get<RAL::TextureDescription>(
+                    barrier.textureTransition.texture);
         bool hasImage = false;
-        if (barrier.textureTransition.texture.is_valid()) {
+            imageBarrier.oldLayout = ToVulkanImageLayout(barrier.textureTransition.oldLayout);
             auto &db = m_device->get_resources_database();
             auto &vkTexture = db.get<VulkanTexture>(barrier.textureTransition.texture);
             const auto &ralDesc = db.get<RAL::TextureDescription>(barrier.textureTransition.texture);
@@ -299,9 +299,9 @@ namespace RDE {
                 // RDE_CORE_WARN("pipeline_barrier: overriding user oldLayout ({})-> tracked ({})", (int)barrier.textureTransition.oldLayout, (int)trackedOld);
             }
             imageBarrier.oldLayout = ToVulkanImageLayout(trackedOld);
-            imageBarrier.newLayout = ToVulkanImageLayout(barrier.textureTransition.newLayout);
-            imageBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             imageBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                // Add stencil if your format supports it
+                if (ralDesc.format == RAL::Format::D24_UNORM_S8_UINT || ralDesc.format ==
             imageBarrier.image = vkTexture.handle;
 
             if (has_flag(ralDesc.usage, RAL::TextureUsage::DepthStencilAttachment)) {
@@ -310,19 +310,19 @@ namespace RDE {
                     imageBarrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
             } else {
                 imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            }
-            imageBarrier.subresourceRange.baseMipLevel = 0;
-            imageBarrier.subresourceRange.levelCount = ralDesc.mipLevels;
+
+                // Add stencil if your format supports it
+                if (ralDesc.format == RAL::Format::D24_UNORM_S8_UINT || ralDesc.format ==
             imageBarrier.subresourceRange.baseArrayLayer = 0;
             imageBarrier.subresourceRange.layerCount = 1;
             hasImage = true;
         }
-
+        // A global memory barrier is defined by having no resource-specific transitions
         VkMemoryBarrier memoryBarrier{};
         bool hasMemory = false;
         if (!barrier.textureTransition.texture.is_valid()) {
             memoryBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-            memoryBarrier.srcAccessMask = ToVulkanAccessFlags(barrier.srcAccess);
+        vkCmdPipelineBarrier(
             memoryBarrier.dstAccessMask = ToVulkanAccessFlags(barrier.dstAccess);
             hasMemory = true;
         }
