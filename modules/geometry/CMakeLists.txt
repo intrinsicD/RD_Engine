@@ -5,6 +5,10 @@
 add_library(Geometry INTERFACE)
 add_library(RDE::Geometry ALIAS Geometry)
 
+target_sources(Geometry PRIVATE
+        src/HalfedgeMeshCirculators.cpp
+)
+
 # Anything that links to this library will automatically get its include path.
 target_include_directories(Geometry
         INTERFACE

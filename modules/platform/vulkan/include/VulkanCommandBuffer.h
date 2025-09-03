@@ -38,8 +38,8 @@ namespace RDE {
         void bind_descriptor_set(RAL::PipelineHandle pipeline, RAL::DescriptorSetHandle set,
                                  uint32_t setIndex) override;
 
-        void copy_buffer(RAL::BufferHandle src, RAL::BufferHandle dst, uint64_t size, uint64_t srcOffset = 0,
-                         uint64_t dstOffset = 0) override;
+        void copy_buffer(RAL::BufferHandle src, RAL::BufferHandle dst, uint64_t size, uint64_t srcOffset,
+                         uint64_t dstOffset) override;
 
         void copy_buffer_to_texture(RAL::BufferHandle src, RAL::TextureHandle dst, const std::vector<RAL::BufferTextureCopy> &regions) override;
 
@@ -60,7 +60,7 @@ namespace RDE {
         void dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) override;
 
         // --- Vulkan Specific ---
-        VkCommandBuffer get_handle() const { return m_handle; }
+        [[nodiscard]] VkCommandBuffer get_handle() const { return m_handle; }
 
     private:
         VkCommandBuffer m_handle = VK_NULL_HANDLE;

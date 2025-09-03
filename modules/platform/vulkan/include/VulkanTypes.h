@@ -3,6 +3,7 @@
 
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
+#include "ral/Resources.h"
 
 namespace RDE {
     struct VulkanBuffer {
@@ -10,7 +11,7 @@ namespace RDE {
         VmaAllocation allocation = VK_NULL_HANDLE;
         size_t size = 0;
         RAL::MemoryUsage memoryUsage = RAL::MemoryUsage::DeviceLocal; // Default to DeviceLocal, can be changed later
-        void* mapped_data = nullptr;
+        void *mapped_data = nullptr;
     };
 
     struct VulkanTexture {
@@ -25,10 +26,21 @@ namespace RDE {
         VkShaderModule module{VK_NULL_HANDLE};
     };
 
+    struct VulkanPipeline {
+        VkPipeline handle{VK_NULL_HANDLE};
+        VkPipelineLayout layout{VK_NULL_HANDLE};
+        VkPipelineBindPoint bindPoint{VK_PIPELINE_BIND_POINT_GRAPHICS}; // Default to graphics
+    };
+
+    struct VulkanDescriptorSetLayout {
         VkDescriptorSetLayout handle{VK_NULL_HANDLE};
     };
 
-        VkPipelineBindPoint bindPoint{VK_PIPELINE_BIND_POINT_GRAPHICS}; // NEW
+    struct VulkanDescriptorSet {
         VkDescriptorSet handle{VK_NULL_HANDLE};
-    // ... other concrete types later
+    };
+
     struct VulkanSampler {
+        VkSampler handle{VK_NULL_HANDLE};
+    };
+}
